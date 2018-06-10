@@ -1,22 +1,39 @@
 ---
 title: "Advanced R"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
+# Names and Values
+We'll use the development version of lobstr to dig into the memory representation of R objects.
 
-
-
-
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
-
-```{r}
-plot(cars)
+```{r, echo=FALSE, results='hide'}
+# devtools does not seem to work with R 3.5.0. Below is a work around - see https://github.com/r-lib/devtools/issues/1772
+# library(devtools)
+# assignInNamespace("version_info", c(devtools:::version_info, list("3.5" = list(version_min = "3.3.0", version_max = "99.99.99", path = "bin"))), "devtools")
+# find_rtools()
+# devtools::install_github("r-lib/lobstr")
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+```{r, echo=FALSE}
+library(lobstr)
+```
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+```{r, tidy=TRUE, results='hold'}
+x <- 1:3
+y <- x
+obj_addr(x)
+obj_addr(y)
+```
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+```{r, out.width="200px"}
+knitr::include_graphics("Images/binding-2.png")
+```
+
+
+
+
+
+
