@@ -60,8 +60,22 @@ c <- b
 d <- 1:10
 ```
 
+`a`, `b` and `c` point to the same value/object; `d` points to a different value/object
+```{r, echo = FALSE}
+a <- 1:10
+b <- a
+c <- b
+d <- 1:10
+```
 
-2. The following code accesses the mean function in multiple different ways. Do they ll point to the same underlying function object? Verify with `lobstr::obj_addr`.
+```{r}
+obj_addr(a)
+obj_addr(b)
+obj_addr(b)
+obj_addr(d)
+```
+
+2. The following code accesses the mean function in multiple different ways. Do they all point to the same underlying function object? Verify with `lobstr::obj_addr`.
 ```
 mean
 base::mean
@@ -69,5 +83,44 @@ get("mean")
 evalq(mean)
 match.fun("mean")
 ```
+
+Yes, they all point to the same underlying function object.
+```{r}
+obj_addr(mean)
+obj_addr(base::mean)
+obj_addr(get("mean"))
+obj_addr(evalq(mean))
+obj_addr(match.fun("mean"))
+```
+
+## Non-syntactic names
+A **syntactic** name must consist of letters, digits, `.` and `_`, and can't begin with `_` or a digit. Additionally, it can not be one of a list of  **reserved words** like `TRUE`, `NULL`, `if`, and `function` (see the complete list in `?Reserved`). Names that don't follow these rules are called **non-syntactic** names, and if you try to use them you'll get an error.
+
+```{r, error=TRUE}
+_abc <- 1
+```
+
+```{r, error=TRUE}
+if <- 10
+```
+
+It is possible to override the usual rules and use a name with any sequence of characters by surronding the name with backticks:
+
+```{r, error=TRUE}
+`_abc` <- 1
+print(`_abc`)
+
+`if` <- 10
+print(`if`)
+```
+
+Typically, you won't deliberately use such crazy names. Instead you need to understand them because you'll be subjected to them by others - this happens most commonly when you load data that has been created outside of R.
+
+## Exercises
+1. By default, base R data import functions, like `read.csv()`, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?
+
+2. What rules does `make.names()` use to convert non-syntactic names into syntactic names?
+
+3. Why is .123e1 not a syntactic name? Read `?make.names`.
 
 
