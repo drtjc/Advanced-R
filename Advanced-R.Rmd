@@ -51,8 +51,23 @@ As can been seen, both `x` and `y` point to the same location in memory.
 knitr::include_graphics("Images/binding-2.png")
 ```
 
+## Exercises
+1. Explain the relationsip between `a`, `b`, `c` and `d` in the following code:
+```
+a <- 1:10
+b <- a
+c <- b
+d <- 1:10
+```
 
 
-
+2. The following code accesses the mean function in multiple different ways. Do they ll point to the same underlying function object? Verify with `lobstr::obj_addr`.
+```
+mean
+base::mean
+get("mean")
+evalq(mean)
+match.fun("mean")
+```
 
 
