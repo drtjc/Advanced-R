@@ -26,3 +26,9 @@ vignettes/*.pdf
 rsconnect/
 .Rproj.user
 Advanced-R.Rproj
+Advanced-R.toc
+Advanced-R.aux
+Advanced-R.log
+Advanced-R.out
+Advanced-R.pdf
+Advanced-R.tex

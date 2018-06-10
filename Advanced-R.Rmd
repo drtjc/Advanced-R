@@ -2,9 +2,11 @@
 title: "Advanced R"
 output:
   html_document:
-    toc: true
-    number_sections: true
     df_print: paged
+    number_sections: yes
+    toc: yes
+  pdf_document:
+    toc: yes
 ---
 
 ```{r global_options, include=FALSE}
@@ -52,30 +54,29 @@ knitr::include_graphics("Images/binding-2.png")
 ```
 
 ## Exercises
-1. Explain the relationsip between `a`, `b`, `c` and `d` in the following code:
+1. Explain the relationsip between `a`, `b`, `c` and `d` in the following code:  
 ```
 a <- 1:10
 b <- a
 c <- b
 d <- 1:10
 ```
+**A**: `a`, `b` and `c` point to the same value/object; `d` points to a different value/object
 
-`a`, `b` and `c` point to the same value/object; `d` points to a different value/object
-```{r, echo = FALSE}
-a <- 1:10
-b <- a
-c <- b
-d <- 1:10
-```
+    ```{r, echo = FALSE}
+    a <- 1:10
+    b <- a
+    c <- b
+    d <- 1:10
+    ```
+    ```{r}
+    obj_addr(a)
+    obj_addr(b)
+    obj_addr(b)
+    obj_addr(d)
+    ```
 
-```{r}
-obj_addr(a)
-obj_addr(b)
-obj_addr(b)
-obj_addr(d)
-```
-
-2. The following code accesses the mean function in multiple different ways. Do they all point to the same underlying function object? Verify with `lobstr::obj_addr`.
+2. The following code accesses the mean function in multiple different ways. Do they all point to the same underlying function object? Verify with `lobstr::obj_addr`.  
 ```
 mean
 base::mean
@@ -83,18 +84,17 @@ get("mean")
 evalq(mean)
 match.fun("mean")
 ```
-
-Yes, they all point to the same underlying function object.
-```{r}
-obj_addr(mean)
-obj_addr(base::mean)
-obj_addr(get("mean"))
-obj_addr(evalq(mean))
-obj_addr(match.fun("mean"))
-```
+**A**: Yes, they all point to the same underlying function object.
+    ```{r}
+    obj_addr(mean)
+    obj_addr(base::mean)
+    obj_addr(get("mean"))
+    obj_addr(evalq(mean))
+    obj_addr(match.fun("mean"))
+    ```
 
 ## Non-syntactic names
-A **syntactic** name must consist of letters, digits, `.` and `_`, and can't begin with `_` or a digit. Additionally, it can not be one of a list of  **reserved words** like `TRUE`, `NULL`, `if`, and `function` (see the complete list in `?Reserved`). Names that don't follow these rules are called **non-syntactic** names, and if you try to use them you'll get an error.
+A **syntactic** name must consist of letters^[Surprisingly, what consitutes a letter is determined by you current locale. That means that the synax of R code actually differs from computer to computer, and it's possible for a file that works on one computer to not even parse on another!], digits, `.` and `_`, and can't begin with `_`, a digit, or `.` followed by a digit. Additionally, it can not be one of a list of  **reserved words** like `TRUE`, `NULL`, `if`, and `function` (see the complete list in `?Reserved`). Names that don't follow these rules are called **non-syntactic** names, and if you try to use them you'll get an error.
 
 ```{r, error=TRUE}
 _abc <- 1
@@ -119,8 +119,10 @@ Typically, you won't deliberately use such crazy names. Instead you need to unde
 ## Exercises
 1. By default, base R data import functions, like `read.csv()`, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?
 
-2. What rules does `make.names()` use to convert non-syntactic names into syntactic names?
+2. What rules does `make.names()` use to convert non-syntactic names into syntactic names?  
+**A**: The character `X` is prepended if necessary. All invalid characters are translated to `.`. A missing value is translated to `NA`. Names which match R keywords have a `.` appended to them. Duplicated values are altered by `make.unique`.
 
-3. Why is .123e1 not a syntactic name? Read `?make.names`.
+3. Why is `.123e1` not a syntactic name? Read `?make.names`.  
+**A**: Because it starts with a `.` followed by a digit. 
 
 
