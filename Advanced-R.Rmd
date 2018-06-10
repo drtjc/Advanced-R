@@ -2,33 +2,52 @@
 title: "Advanced R"
 output:
   html_document:
+    toc: true
+    number_sections: true
     df_print: paged
 ---
 
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, results='hold')
+```
+
 # Names and Values
+## Prerequisites
 We'll use the development version of lobstr to dig into the memory representation of R objects.
 
-```{r, echo=FALSE, results='hide'}
+```{r, echo=FALSE}
 # devtools does not seem to work with R 3.5.0. Below is a work around - see https://github.com/r-lib/devtools/issues/1772
 # library(devtools)
 # assignInNamespace("version_info", c(devtools:::version_info, list("3.5" = list(version_min = "3.3.0", version_max = "99.99.99", path = "bin"))), "devtools")
 # find_rtools()
 # devtools::install_github("r-lib/lobstr")
-```
-
-```{r, echo=FALSE}
 library(lobstr)
 ```
 
-```{r, tidy=TRUE, results='hold'}
+## Binding basics
+Take this code:
+```{r}
+x <- 1:3
+```
+It is easy to read this code as: "create an object named 'x', containing the values 1, 2, and 3".
+It's more accurate to think about this code as doing two things:
+
+* Creating an object, a vector of values, `1:3`.
+* Binding the object to a name, `x`.
+
+Note that the object, or value, doesn't have a name; it's the name that has a value.You can think  of a name as a refence for a value.
+For example, if you run this code you don't get another copy of the value `1:3`.
+
+```{r}
 x <- 1:3
 y <- x
 obj_addr(x)
 obj_addr(y)
 ```
 
+As can been seen, both `x` and `y` point to the same location in memory.
 
-```{r, out.width="200px"}
+```{r, out.width="200px", echo=FALSE}
 knitr::include_graphics("Images/binding-2.png")
 ```
 
