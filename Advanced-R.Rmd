@@ -201,9 +201,9 @@ tracemem(x)
 y <- x
 y[3] <- 4L
 y[3] <- 5L # y is not copied
+untracemem(x)
 z <- y
 z[3] <- 6L
-untracemem(x)
 w <- x
 w[3] <- 4L # x was not being traced
 untracemem(y)
@@ -265,6 +265,76 @@ untracemem(x)
 address(x)
 address(z)
 ```
+
+### Lists
+It's not just names (i.e. variables) that point to values; the elements of a list do too. Take this list, which is superficially very similar to the vector above:
+
+```{r}
+l1 <- list(1, 2, 3)
+```
+
+The internal representation of the list is actually quite different to that of a vector. A list is really a vector of references:
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/list.png")
+```
+
+This is particularly important when we modify a list:
+
+```{r}
+l2 <- l1
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/l-modify-1.png")
+```
+
+```{r}
+l2[[3]] <- 4
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/l-modify-2.png")
+```
+
+Like vectors, lists are copied-on-modify; the original list is left unchanged, and R creates a modifed copy. Note that the copy is **shallow**: the list object and its bindings are copied, but the values pointed to by the bindings are not.
+
+You can use `lobstr::ref()` to see values that are shared across lists. `ref()` prints the memory address of each object, along with a local id so that you can easily cross-reference shared components.
+
+```{r}
+lobstr::ref(l1, l2)
+```
+
+Consider this code:
+
+```{r}
+l1 <- list(1,2)
+l2 <- list(3,4)
+l <- list(l1, l2)
+lc <- l
+lc[[1]][[1]] <- 5
+lobstr::ref(l, lc)
+```
+Or in words:
+
+* List `lc` has a different address from `l` - local ids 1 and 8
+* List `lc[[1]]` (i.e. '`l1`') has a different address from `l[[1]]` - local ids 2 and 9
+* Dbl `lc[[1]][[1]]` has a different address from `l[[1]][[1]]` - local ids 3 and 10
+* Dbl `lc[[1]][[2]]` has the same address as `l[[1]][[2]]` - local id 4
+* List `lc[[2]]` (i.e. '`l2`') has the same address as `l[[2]]` - local id 5
+
+### Data frames
+Data frames are lists, so copy-on-modify has important consequences when you modify a data frame. Take this data frame as a example:
+
+```{r}
+d1 <- data.frame(x = c(1, 5, 6), y = c(2, 4, 3))
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/dataframe.png")
+```
+
+
 
 ## Modify-in-place
 wgwgwgwegwggwgwgwgwe
