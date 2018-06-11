@@ -18,7 +18,7 @@ knitr::opts_chunk$set(tidy=TRUE, results='hold', fig.align='center')
 We'll use the development version of the lobstr package and the CRAN pryr package to dig into the memory representation of R objects and to pry back the surface of R and dig into the details.
 
 ```{r, echo=FALSE, include=FALSE}
-# devtools does not seem to work with R 3.5.0. Below is a work around - see https://github.com/r-lib/devtools/issues/1772
+# devtools does not seem to work with R 3.5.0. Below is a workaround - see https://github.com/r-lib/devtools/issues/1772
 # library(devtools)
 # assignInNamespace("version_info", c(devtools:::version_info, list("3.5" = list(version_min = "3.3.0", version_max = "99.99.99", path = "bin"))), "devtools")
 # find_rtools()
@@ -106,7 +106,7 @@ match.fun("mean")
     address(evalq(mean))
     address(match.fun("mean"))
     ```    
-    However, there is a work around:
+    However, there is a workaround:
     ```{r}
     x1 <- mean
     address(x1)
@@ -312,10 +312,17 @@ l1 <- list(1,2)
 l2 <- list(3,4)
 l <- list(l1, l2)
 lc <- l
+lobstr::ref(l, lc)
+```
+
+Both names, `l` and `lc`, are bound to the same object. Now take this code:
+
+```{r}
 lc[[1]][[1]] <- 5
 lobstr::ref(l, lc)
 ```
-Or in words:
+
+`lc[[1]][[1]]` and its ancestors are copied from `l`, while the rest of the `lc` is bound to the same objects as `l`. Specifically:
 
 * List `lc` has a different address from `l` - local ids 1 and 8
 * List `lc[[1]]` (i.e. '`l1`') has a different address from `l[[1]]` - local ids 2 and 9
@@ -333,6 +340,77 @@ d1 <- data.frame(x = c(1, 5, 6), y = c(2, 4, 3))
 ```{r, out.width="200px", echo=FALSE}
 knitr::include_graphics("Images/dataframe.png")
 ```
+
+If you modify a column, only that column needs to be modified; the others can continue to point to the same place:
+
+```{r}
+d2 <- d1
+d2[, 2] <- d2[, 2] * 2
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/d-modify-c.png")
+```
+
+However, if you modify a row, there is no way to share data with the previous version of the data frame.
+
+```{r}
+d3 <- d1
+d3[1, ] <- d3[1, ] * 2
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/d-modify-r.png")
+```
+
+If you modify a single element of a column that is an atomic vector, then the entire column is copied:
+
+```{r}
+d1 <- data.frame(x = c(1, 5, 6), y = c(2, 4, 3))
+d2 <- d1
+d2[1,2] <- 7
+lobstr::ref(d1, d2)
+```
+
+However, this is not true if a column is not an atomic vector. Since a data frame is a list of vectors, and a list is a vector, it is possible for a data frame to have a column that is a list:
+
+```{r, results='markup'}
+df1 <- data.frame(x = I(list(1:2, 1:3)))
+print(df1)
+df2 <- df1
+df2[1,1][[1]] <- list(4:5)
+print(df2)
+lobstr::ref(df2, df1)
+
+```
+ 
+*When a list is given to* `data.frame()`, *it tries to put each item of the list into its own column. A workaround is to use* `I()` *which causes* `data.frame()` *to treat the list as one unit.*
+
+### Object size
+You can find out how much space an object occupies in memory with `lobst::obj_size()`.
+
+```{r}
+lobstr::obj_size(letters)
+pryr::object_size(letters)
+utils::object.size(letters)
+```
+
+```{r}
+x <- 1:1e6
+y <- list(x, x, x)
+
+lobstr::obj_size(x)
+lobstr::obj_size(y)
+
+pryr::object_size(x)
+pryr::object_size(y)
+
+utils::object.size(x)
+utils::object.size(y)
+
+
+```
+
 
 
 
