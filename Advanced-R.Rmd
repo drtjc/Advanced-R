@@ -386,8 +386,11 @@ lobstr::ref(df2, df1)
  
 *When a list is given to* `data.frame()`, *it tries to put each item of the list into its own column. A workaround is to use* `I()` *which causes* `data.frame()` *to treat the list as one unit.*
 
-### Object size
-You can find out how much space an object occupies in memory with `lobst::obj_size()`.
+### Character vectors
+
+
+## Object size
+You can find out how much space an object occupies in memory with various functions.
 
 ```{r}
 lobstr::obj_size(letters)
@@ -401,18 +404,24 @@ y <- list(x, x, x)
 
 lobstr::obj_size(x)
 lobstr::obj_size(y)
-
+```
+```{r}
 pryr::object_size(x)
 pryr::object_size(y)
-
+```
+```{r}
 utils::object.size(x)
 utils::object.size(y)
 
-
 ```
 
+Using `lobstr::obj_size()`, `y` is only 72 bytes bigger than `x`. That's the size of an empty list with three elements:
 
+```{r}
+lobstr::obj_size(list(NULL, NULL, NULL))
+```
 
+Note that `utils::object.size()` incorrectly counts `x`three times.
 
 ## Modify-in-place
 wgwgwgwegwggwgwgwgwe
