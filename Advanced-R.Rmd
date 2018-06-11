@@ -387,6 +387,26 @@ lobstr::ref(df2, df1)
 *When a list is given to* `data.frame()`, *it tries to put each item of the list into its own column. A workaround is to use* `I()` *which causes* `data.frame()` *to treat the list as one unit.*
 
 ### Character vectors
+R uses references in character vectors. We draw character vectors like this:
+
+```{r}
+x <- c("a", "a", "abc", "d")
+```
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/character.png")
+```
+
+This is a polite fiction because R has a **globl string pool**. Each element of a character vector is acutally a pointer to a unique string in that pool:
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/character-2.png")
+```
+
+You can request that `ref()` show these references:
+
+```{r}
+ref(x, character = TRUE)
+```
 
 
 ## Object size
