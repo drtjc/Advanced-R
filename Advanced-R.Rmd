@@ -15,15 +15,17 @@ knitr::opts_chunk$set(tidy=TRUE, results='hold')
 
 # Names and Values
 ## Prerequisites
-We'll use the development version of lobstr to dig into the memory representation of R objects.
+We'll use the development version of the lobstr package and the CRAN pryr package to dig into the memory representation of R objects and to pry back the surface of R and dig into the details.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, include=FALSE}
 # devtools does not seem to work with R 3.5.0. Below is a work around - see https://github.com/r-lib/devtools/issues/1772
 # library(devtools)
 # assignInNamespace("version_info", c(devtools:::version_info, list("3.5" = list(version_min = "3.3.0", version_max = "99.99.99", path = "bin"))), "devtools")
 # find_rtools()
 # devtools::install_github("r-lib/lobstr")
 library(lobstr)
+# pryr package also provides tools to pry back the surface of R and dig into the details
+library(pryr)
 ```
 
 ## Binding basics
@@ -43,8 +45,10 @@ For example, if you run this code you don't get another copy of the value `1:3`.
 ```{r}
 x <- 1:3
 y <- x
-obj_addr(x)
-obj_addr(y)
+lobstr::obj_addr(x)
+lobstr::obj_addr(y)
+pryr::address(x)
+pryr::address(y)
 ```
 
 As can been seen, both `x` and `y` point to the same location in memory.
@@ -70,10 +74,10 @@ d <- 1:10
     d <- 1:10
     ```
     ```{r}
-    obj_addr(a)
-    obj_addr(b)
-    obj_addr(b)
-    obj_addr(d)
+    address(a)
+    address(b)
+    address(c)
+    address(d)
     ```
 
 2. The following code accesses the mean function in multiple different ways. Do they all point to the same underlying function object? Verify with `lobstr::obj_addr`.  
@@ -92,7 +96,28 @@ match.fun("mean")
     obj_addr(evalq(mean))
     obj_addr(match.fun("mean"))
     ```
-
+    Note that pryr::address doesn't work for function representations 2-5 above:
+    ```{r, error = TRUE, results='markup'}
+    address(mean)
+    address(base::mean)
+    address(get("mean"))
+    address(evalq(mean))
+    address(match.fun("mean"))
+    ```    
+    However, there is a work around:
+    ```{r}
+    x1 <- mean
+    address(x1)
+    x2 <- base::mean
+    address(x2)
+    x3 <- get("mean")
+    address(x3)
+    x4 <- evalq(mean)
+    address(x4)
+    x5 <- match.fun("mean")
+    address(x5)
+    ```    
+    
 ## Non-syntactic names
 A **syntactic** name must consist of letters^[Surprisingly, what consitutes a letter is determined by you current locale. That means that the synax of R code actually differs from computer to computer, and it's possible for a file that works on one computer to not even parse on another!], digits, `.` and `_`, and can't begin with `_`, a digit, or `.` followed by a digit. Additionally, it can not be one of a list of  **reserved words** like `TRUE`, `NULL`, `if`, and `function` (see the complete list in `?Reserved`). Names that don't follow these rules are called **non-syntactic** names, and if you try to use them you'll get an error.
 
@@ -117,10 +142,31 @@ print(`if`)
 Typically, you won't deliberately use such crazy names. Instead you need to understand them because you'll be subjected to them by others - this happens most commonly when you load data that has been created outside of R.
 
 ## Exercises
-1. By default, base R data import functions, like `read.csv()`, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?
+1. By default, base R data import functions, like `read.csv()`, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?  
+**A**: This might be especially problematic in non-interactive R usage, when R reads and writes data and the output is expected to contain the same names as used in the data source. Name conversion can be supressed by setting the `check.names` argument to `FALSE`.
 
 2. What rules does `make.names()` use to convert non-syntactic names into syntactic names?  
-**A**: The character `X` is prepended if necessary. All invalid characters are translated to `.`. A missing value is translated to `NA`. Names which match R keywords have a `.` appended to them. Duplicated values are altered by `make.unique`.
+**A**: The character "X" is prepended if necessary. All invalid characters are translated to ".". A missing value is translated to "NA". Names which match R keywords have a "." appended to them. Duplicated values are altered by `make.unique` if specified.
+    ```{r}
+    str(make.names)
+    ```
+    ```{r}
+    str(make.unique)
+    ```
+    ```{r}
+    names <- c(".1x", "if", "x!%*", NA, "", ".1x")
+    make.names(names)
+    make.names(names, unique = TRUE)
+    ```
+    Note that `NA` is converted to "NA.". That is because it is first converted to "NA", which is an R keyword, so a "." is appended.
+    ```{r}
+    names <- c("x", "x")
+    make.unique(names)
+    make.unique(names, sep = "_")
+    make.names(names)
+    make.names(names, TRUE)
+    ```
+    
 
 3. Why is `.123e1` not a syntactic name? Read `?make.names`.  
 **A**: Because it starts with a `.` followed by a digit. 
