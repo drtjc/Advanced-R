@@ -435,12 +435,12 @@ c <- list(b, a, 1:10)
     ref(a,b,c)
     ```
 
-4. What happens when you run this code?
+4. What happens when you run this code?  
 ```
 x <- list(1:10)
 x[[2]] <- x
 ```
-When `x` is bound, it will point to a list (local id 1) of one element (local id 2) which points to `1:10`.
+**A**: When `x` is bound, it will point to a list (local id 1) of one element (local id 2) which points to `1:10`.
     ```{r}
     x <- list(1:10)
     ref(x)
@@ -488,6 +488,37 @@ lobstr::obj_size(list(NULL, NULL, NULL))
 ```
 
 Note that `utils::object.size()` incorrectly counts `x`three times.
+`obj_size(x) + obj_size(y)` will only equal `obj_size(x, y)` if there are no shared values. Here, the combined size of `x` and `y` is the same as the size of `y`.
+
+```{r}
+obj_size(x)
+obj_size(y)
+obj_size(x, y)
+```
+
+The global string pool means that character vectors take up less memory than you might expect.
+```{r}
+banana <- "bananas bananas bananas"
+obj_size(banana)
+obj_size(rep(banana, 100))
+```
+
+### Exercises
+1. Take the following list. Why is its size somewhat misleading?  
+```
+x <- list(mean, sd, var)
+obj_size(x)
+```
+**A**: The list contains pointers to the functions, but `obj_size()` includes the size of the functions.
+    ```{r}
+    x <- list(mean, sd, var)
+    obj_size(x)
+    obj_size(x) - obj_size(mean, sd, var)
+    obj_size(list(NULL, NULL, NULL)) # Size of an empty list of 3 elements
+    ref(mean, x[[1]])
+    ```
+
+
 
 ## Modify-in-place
 wgwgwgwegwggwgwgwgwe
