@@ -58,8 +58,31 @@ As can been seen, both `x` and `y` point to the same location in memory.
 ```{r, out.width="200px", echo=FALSE}
 knitr::include_graphics("Images/binding-2.png")
 ```
+    
+### Non-syntactic names
+A **syntactic** name must consist of letters^[Surprisingly, what consitutes a letter is determined by you current locale. That means that the synax of R code actually differs from computer to computer, and it's possible for a file that works on one computer to not even parse on another!], digits, `.` and `_`, and can't begin with `_`, a digit, or `.` followed by a digit. Additionally, it can not be one of a list of  **reserved words** like `TRUE`, `NULL`, `if`, and `function` (see the complete list in `?Reserved`). Names that don't follow these rules are called **non-syntactic** names, and if you try to use them you'll get an error.
 
-## Exercises
+```{r, error=TRUE}
+_abc <- 1
+```
+
+```{r, error=TRUE}
+if <- 10
+```
+
+It is possible to override the usual rules and use a name with any sequence of characters by surronding the name with backticks:
+
+```{r, error=TRUE}
+`_abc` <- 1
+print(`_abc`)
+
+`if` <- 10
+print(`if`)
+```
+
+Typically, you won't deliberately use such crazy names. Instead you need to understand them because you'll be subjected to them by others - this happens most commonly when you load data that has been created outside of R.
+
+### Exercises
 1. Explain the relationsip between `a`, `b`, `c` and `d` in the following code:  
 ```
 a <- 1:10
@@ -119,35 +142,11 @@ match.fun("mean")
     x5 <- match.fun("mean")
     address(x5)
     ```    
-    
-### Non-syntactic names
-A **syntactic** name must consist of letters^[Surprisingly, what consitutes a letter is determined by you current locale. That means that the synax of R code actually differs from computer to computer, and it's possible for a file that works on one computer to not even parse on another!], digits, `.` and `_`, and can't begin with `_`, a digit, or `.` followed by a digit. Additionally, it can not be one of a list of  **reserved words** like `TRUE`, `NULL`, `if`, and `function` (see the complete list in `?Reserved`). Names that don't follow these rules are called **non-syntactic** names, and if you try to use them you'll get an error.
 
-```{r, error=TRUE}
-_abc <- 1
-```
-
-```{r, error=TRUE}
-if <- 10
-```
-
-It is possible to override the usual rules and use a name with any sequence of characters by surronding the name with backticks:
-
-```{r, error=TRUE}
-`_abc` <- 1
-print(`_abc`)
-
-`if` <- 10
-print(`if`)
-```
-
-Typically, you won't deliberately use such crazy names. Instead you need to understand them because you'll be subjected to them by others - this happens most commonly when you load data that has been created outside of R.
-
-### Exercises
-1. By default, base R data import functions, like `read.csv()`, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?  
+3. By default, base R data import functions, like `read.csv()`, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?  
 **A**: This might be especially problematic in non-interactive R usage, when R reads and writes data and the output is expected to contain the same names as used in the data source. Name conversion can be supressed by setting the `check.names` argument to `FALSE`.
 
-2. What rules does `make.names()` use to convert non-syntactic names into syntactic names?  
+4. What rules does `make.names()` use to convert non-syntactic names into syntactic names?  
 **A**: The character "X" is prepended if necessary. All invalid characters are translated to ".". A missing value is translated to "NA". Names which match R keywords have a "." appended to them. Duplicated values are altered by `make.unique` if specified.
     ```{r}
     str(make.names)
@@ -170,7 +169,7 @@ Typically, you won't deliberately use such crazy names. Instead you need to unde
     ```
     
 
-3. Why is `.123e1` not a syntactic name? Read `?make.names`.  
+5. Why is `.123e1` not a syntactic name? Read `?make.names`.  
 **A**: Because it starts with a `.` followed by a digit. 
 
 ## Copy-on-modify
@@ -407,6 +406,53 @@ You can request that `ref()` show these references:
 ```{r}
 ref(x, character = TRUE)
 ```
+
+### Exercises
+1. Why is `tracemem(1:10)` not useful?  
+**A**: Without a binding `1:10` will not stay in memory.
+
+2. Explain why `tracemem()` records two copies when you run this code.  
+```
+x <- 1:3
+tracemem(x)
+x[[3]] <- 4
+```
+**A**: Initially `x` is an integer vector. Within the replacement call, we assign a double to the third element of `x`. So besides the new value of the third element, a type conversion (coercion) is also triggered affecting whole vector.
+
+3. Sketch the relationship between the following objects:
+```
+a <- 1:10
+b <- list(a, a)
+c <- list(b, a, 1:10)
+```
+`a`, the two elements of `b`, and the second element of `c` all point to the same object `1:10`. Additionally, the first element of `c` points to `b` (whose two elements point to the same `1:10`).      
+    ```{r, include=FALSE}
+    a <- 1:10
+    b <- list(a, a)
+    c <- list(b, a, 1:10)
+    ```
+    ```{r}
+    ref(a,b,c)
+    ```
+
+4. What happens when you run this code?
+```
+x <- list(1:10)
+x[[2]] <- x
+```
+When `x` is bound, it will point to a list (local id 1) of one element (local id 2) which points to `1:10`.
+    ```{r}
+    x <- list(1:10)
+    ref(x)
+    ```
+When `x` has an `x` appended to itself, it will point to a new list (local id 1) of two elements (local ids 2 and 3). Element with local id 2 points to the same `1:10` object as before. Element with local id 3 points to the prior list object (which had local id 1).
+    ```{r}
+    x[[2]] <- x
+    ref(x)
+    ```
+    ```{r, out.width="300px", echo=FALSE}
+    knitr::include_graphics("Images/l-modify-3.png")
+    ```
 
 
 ## Object size
