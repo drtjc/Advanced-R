@@ -560,28 +560,30 @@ y[[1]][[1]] <- 10
 obj_size(y)
 obj_size(x, y)
 ```
-**A**: An
+**A**: A new object of **doubles** is created, `c(10, 2, 3, ..., 1e6)`. This requires 40 B + 1,000,000 * 8 B = 8,000,040 B. Previously `y` required 4,000,096 B, so `y` now requires 12,000,136 B.
     ```{r}
     y[[1]][[1]] <- 10
     str(y)
+    obj_size(y)
     ```
-    
-
-
+And this code:
 ```
 y[[2]][[1]] <- 10
 obj_size(y)
 obj_size(x, y)
-
 ```
-**A**: Th
-
-Note that a list is a vector, as is an integer, and so when they are empty they should all require the same memory allocation.
-```{r}
-obj_size(integer(0))
-obj_size(list())
-obj_size(vector())
-```
+**A**: We have two vectors of doubles each requiring 8,000,040 B. In addtion, the list plus two pointers is 40 B + 16 B = 56B. Hence the total requirement for `y` is 16,000,136 B. `x` and `y` no longer point to any of the same objects. Hence the memory required for both is 4,000,040 B + 16,000,136 B = 20,000,176 B.
+    ```{r}
+    y[[2]][[1]] <- 10
+    obj_size(y)
+    obj_size(x, y)
+    ```
+**Note**: a list is a vector, as is an integer, and so when they are empty they should all require the same memory allocation.
+    ```{r}
+    obj_size(integer(0))
+    obj_size(list())
+    obj_size(vector())
+    ```
 
 
 ## Modify-in-place
