@@ -11,3 +11,8 @@ tracemem(l)
 l[1] <- 1
 untracemem(l)
 
+rm(v)
+v <- 1:3
+tracemem(v)
+v[3] <- 4L
+untracemem(v)
