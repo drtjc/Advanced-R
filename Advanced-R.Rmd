@@ -585,6 +585,22 @@ obj_size(x, y)
     obj_size(vector())
     ```
 
-
 ## Modify-in-place
-wgwgwgwegwggwgwgwgwe
+Most of the time, modifying an R object will create a copy. THere are two exceptions:
+
+* Object with a single binding get a special performance optimization.
+* Environments are a special type of object that is always modifed in place.
+
+### Object with a single binding
+If an object only has a single binding to it, R will modifiy it in place. It's challenging to predict exactly when R will make this optimization. One complication is that whenever you call a regular function, it will make a reference to the object, except specially written C functions, which occurr mostly in the base package. (Also note that the environment browser in RStudio makes a reference to every object created at the command line.) We can use `tracemem()` to empirically determine if a copy has occurred.
+
+### Environments
+Environments are always modified in place. This is sometimes referred to as having **reference semantics** because whenever you modify an environment the existing bindings continue to have the same reference.
+
+### Exercises
+
+
+```{r}
+```
+
+## Copying - Data frames *vs.* lists
