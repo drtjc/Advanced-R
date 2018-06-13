@@ -518,6 +518,70 @@ obj_size(x)
     ref(mean, x[[1]])
     ```
 
+2. Predict the output of the following code:  
+```
+x <- 1e6
+obj_size(x)
+```
+**A**: R does not have a scalar type, only vectors. The amount of space to store an empty vector is 40 B. Each integer inside the vector requires 4B, with R allocating memory in 8B increments. Hence `x` requires 40 B + 1,000,000 * 4 B = 4,000,040 B.
+    ```{r}
+    obj_size(integer(0))
+    obj_size(integer(1))
+    obj_size(integer(2))
+    obj_size(integer(3))
+    obj_size(integer(4))
+    x <- 1:1e6
+    obj_size(x)
+    ```
+And this code:
+```
+y <- list(x, x)
+obj_size(y)
+obj_size(x, y)
+```
+**A**: An empty list requires 40 B; each elements requires 8 B. `x` requires 4,000,040 B, hence `y` requires 4,000,096 B. Since `y` contains pointers to `x`, the memory requirement for `x` and `y` is the same as `y`.
+    ```{r}
+    lobstr::obj_size(list()) # 40 B for an empty list
+    pryr::object_size(list()) # note that the pryr package calculated an empty list at 48 B
+    
+    obj_size(list(NULL)) # 48 B for a list and a pointer
+    obj_size(list(integer(0))) # 88B for a list (40 B), a pointer (8 B), and an empty vector (40 B)
+    obj_size(list(1L)) # 96B for a list, a point, and a vector containing a single integer (min allocation is 8 B)
+    
+    x <- 1:1e6
+    y <- list(x, x)
+    obj_size(y)
+    obj_size(x, y)
+    
+    ```
+And this code:
+```
+y[[1]][[1]] <- 10
+obj_size(y)
+obj_size(x, y)
+```
+**A**: An
+    ```{r}
+    y[[1]][[1]] <- 10
+    str(y)
+    ```
+    
+
+
+```
+y[[2]][[1]] <- 10
+obj_size(y)
+obj_size(x, y)
+
+```
+**A**: Th
+
+Note that a list is a vector, as is an integer, and so when they are empty they should all require the same memory allocation.
+```{r}
+obj_size(integer(0))
+obj_size(list())
+obj_size(vector())
+```
 
 
 ## Modify-in-place
