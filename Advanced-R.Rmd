@@ -636,10 +636,18 @@ e1 <- rlang::env(a = 1, b = 2, c = 3)
 tracemem(e1)
 ```
 
-
-
-
-```{r}
-```
-
 ## Copying - Data frames *vs.* lists
+Note that replacement for data frames requires 3 copies! A list requires only 1 copy. This is because data frame subsetting is a non-primitive function with complicated subsetting rules, while list subsetting is a primitive function.
+```{r, results='markup'}
+d <- data.frame(1)
+tracemem(d)
+d[1] <- 1
+
+l <- list(1)
+tracemem(l)
+l[1] <- 1
+
+untracemem(d)
+untracemem(l)
+```
+When doing extensive iteration with data frames it might make sense to first convert to a list using `as.list()`.
