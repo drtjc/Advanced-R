@@ -597,7 +597,46 @@ If an object only has a single binding to it, R will modifiy it in place. It's c
 ### Environments
 Environments are always modified in place. This is sometimes referred to as having **reference semantics** because whenever you modify an environment the existing bindings continue to have the same reference.
 
+Take this environment, which we bind to `e1` and `e2`;
+```{r}
+e1 <- rlang::env(a = 1, b = 2, c = 3)
+e2 <- e1
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/e-modify-1.png")
+```
+
+If we change a binding, the environment is modified in place:
+```{r}
+e1$c <- 4
+e2$c
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/e-modify-2.png")
+```
+
+One consequence of this is that environments can contain themselves:
+```{r}
+e <- rlang::env()
+e$self <- e
+ref(e)
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/e-self.png")
+```
+
 ### Exercises
+1. What happens if you attempt to use `tracemem()` on an environment?  
+**A**: As a copy of an environment is never made, `tracemem()` does nothing - in fact, it returns an error.
+```{r, error=TRUE}
+e1 <- rlang::env(a = 1, b = 2, c = 3)
+tracemem(e1)
+```
+
+
 
 
 ```{r}
