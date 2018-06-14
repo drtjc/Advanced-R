@@ -651,3 +651,5 @@ untracemem(d)
 untracemem(l)
 ```
 When doing extensive iteration with data frames it might make sense to first convert to a list using `as.list()`.
+
+## Unbinding and the garbage collector
