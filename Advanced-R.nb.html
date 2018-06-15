@@ -179,10 +179,8 @@ $(document).ready(function () {
 <h1>Names and Values</h1>
 <div id="prerequisites" class="section level2">
 <h2>Prerequisites</h2>
-<p>We’ll use the development version of lobstr to dig into the memory representation of R objects.</p>
+<p>We’ll use the development version of the lobstr package and the CRAN pryr package to dig into the memory representation of R objects and to pry back the surface of R and dig into the details.</p>
 <!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
 <div id="binding-basics" class="section level2">
@@ -190,20 +188,9 @@ $(document).ready(function () {
 <p>Take this code:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnkgPC0geFxub2JqX2FkZHIoeClcbmBgYCJ9 -->
-<pre class="r"><code>x &lt;- 1:3
-y &lt;- x
-obj_addr(x)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbmBgYCJ9 -->
+<pre class="r"><code>x &lt;- 1:3</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIFwiMHgxNzI2YWQ1OFwiXG4ifQ== -->
-<pre><code>[1] &quot;0x1726ad58&quot;</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub2JqX2FkZHIoeSlcbmBgYCJ9 -->
-<pre class="r"><code>obj_addr(y)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIFwiMHgxNzI2YWQ1OFwiXG4ifQ== -->
-<pre><code>[1] &quot;0x1726ad58&quot;</code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>It is easy to read this code as: “create an object named ‘x’, containing the values 1, 2, and 3”. It’s more accurate to think about this code as doing two things:</p>
@@ -214,11 +201,13 @@ obj_addr(x)</code></pre>
 <p>Note that the object, or value, doesn’t have a name; it’s the name that has a value.You can think of a name as a refence for a value. For example, if you run this code you don’t get another copy of the value <code>1:3</code>.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnkgPC0geFxub2JqX2FkZHIoeClcbm9ial9hZGRyKHkpXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnkgPC0geFxubG9ic3RyOjpvYmpfYWRkcih4KVxubG9ic3RyOjpvYmpfYWRkcih5KVxucHJ5cjo6YWRkcmVzcyh4KVxucHJ5cjo6YWRkcmVzcyh5KVxuYGBgIn0= -->
 <pre class="r"><code>x &lt;- 1:3
 y &lt;- x
-obj_addr(x)
-obj_addr(y)</code></pre>
+lobstr::obj_addr(x)
+lobstr::obj_addr(y)
+pryr::address(x)
+pryr::address(y)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -227,11 +216,819 @@ obj_addr(y)</code></pre>
 <!-- rnb-chunk-begin -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
+<div id="non-syntactic-names" class="section level3">
+<h3>Non-syntactic names</h3>
+<p>A <strong>syntactic</strong> name must consist of letters<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>, digits, <code>.</code> and <code>_</code>, and can’t begin with <code>_</code>, a digit, or <code>.</code> followed by a digit. Additionally, it can not be one of a list of <strong>reserved words</strong> like <code>TRUE</code>, <code>NULL</code>, <code>if</code>, and <code>function</code> (see the complete list in <code>?Reserved</code>). Names that don’t follow these rules are called <strong>non-syntactic</strong> names, and if you try to use them you’ll get an error.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuX2FiYyA8LSAxXG5gYGAifQ== -->
+<pre class="r"><code>_abc &lt;- 1</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuaWYgPC0gMTBcbmBgYCJ9 -->
+<pre class="r"><code>if &lt;- 10</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>It is possible to override the usual rules and use a name with any sequence of characters by surronding the name with backticks:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYF9hYmNgIDwtIDFcbnByaW50KGBfYWJjYClcblxuYGlmYCA8LSAxMFxucHJpbnQoYGlmYClcbmBgYCJ9 -->
+<pre class="r"><code>`_abc` &lt;- 1
+print(`_abc`)
+
+`if` &lt;- 10
+print(`if`)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Typically, you won’t deliberately use such crazy names. Instead you need to understand them because you’ll be subjected to them by others - this happens most commonly when you load data that has been created outside of R.</p>
+</div>
+<div id="exercises" class="section level3">
+<h3>Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Explain the relationsip between <code>a</code>, <code>b</code>, <code>c</code> and <code>d</code> in the following code:</p>
+<pre><code>a &lt;- 1:10
+b &lt;- a
+c &lt;- b
+d &lt;- 1:10</code></pre>
+<p><strong>A</strong>: <code>a</code>, <code>b</code> and <code>c</code> point to the same value/object; <code>d</code> points to a different value/object</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+address(a)
+address(b)
+address(c)
+address(d)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="2" style="list-style-type: decimal">
+<li><p>The following code accesses the mean function in multiple different ways. Do they all point to the same underlying function object? Verify with <code>lobstr::obj_addr</code>.</p>
+<pre><code>mean
+base::mean
+get(&quot;mean&quot;)
+evalq(mean)
+match.fun(&quot;mean&quot;)</code></pre>
+<p><strong>A</strong>: Yes, they all point to the same underlying function object.</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+obj_addr(mean)
+obj_addr(base::mean)
+obj_addr(get(&quot;mean&quot;))
+obj_addr(evalq(mean))
+obj_addr(match.fun(&quot;mean&quot;))
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<pre><code>Note that pryr::address doesn't work for function representations 2-5 above:</code></pre>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+address(mean)
+address(base::mean)
+address(get(&quot;mean&quot;))
+address(evalq(mean))
+address(match.fun(&quot;mean&quot;))
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<pre><code>However, there is a workaround:</code></pre>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+x1 &lt;- mean
+address(x1)
+x2 &lt;- base::mean
+address(x2)
+x3 &lt;- get(&quot;mean&quot;)
+address(x3)
+x4 &lt;- evalq(mean)
+address(x4)
+x5 &lt;- match.fun(&quot;mean&quot;)
+address(x5)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="3" style="list-style-type: decimal">
+<li><p>By default, base R data import functions, like <code>read.csv()</code>, will automatically convert non-syntactic names to syntactic names. Why might this be problematic? What option allows you to suppress this behaviour?<br />
+<strong>A</strong>: This might be especially problematic in non-interactive R usage, when R reads and writes data and the output is expected to contain the same names as used in the data source. Name conversion can be supressed by setting the <code>check.names</code> argument to <code>FALSE</code>.</p></li>
+<li><p>What rules does <code>make.names()</code> use to convert non-syntactic names into syntactic names?<br />
+<strong>A</strong>: The character “X” is prepended if necessary. All invalid characters are translated to “.”. A missing value is translated to “NA”. Names which match R keywords have a “.” appended to them. Duplicated values are altered by <code>make.unique</code> if specified.</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+str(make.names)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+str(make.unique)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+names &lt;- c(&quot;.1x&quot;, &quot;if&quot;, &quot;x!%*&quot;, NA, &quot;&quot;, &quot;.1x&quot;)
+make.names(names)
+make.names(names, unique = TRUE)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<pre><code>Note that `NA` is converted to &quot;NA.&quot;. That is because it is first converted to &quot;NA&quot;, which is an R keyword, so a &quot;.&quot; is appended.</code></pre>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+names &lt;- c(&quot;x&quot;, &quot;x&quot;)
+make.unique(names)
+make.unique(names, sep = &quot;_&quot;)
+make.names(names)
+make.names(names, TRUE)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="5" style="list-style-type: decimal">
+<li>Why is <code>.123e1</code> not a syntactic name? Read <code>?make.names</code>.<br />
+<strong>A</strong>: Because it starts with a <code>.</code> followed by a digit.</li>
+</ol>
+</div>
+</div>
+<div id="copy-on-modify" class="section level2">
+<h2>Copy-on-modify</h2>
+<p>Consider the following code, which binds <code>x</code> and <code>y</code> to the same underlying value, then modifies <code>y</code>.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnkgPC0geFxueVszXSA8LSA0XG54XG5gYGAifQ== -->
+<pre class="r"><code>x &lt;- 1:3
+y &lt;- x
+y[3] &lt;- 4
+x</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>While the value associated with <code>y</code> changes, the original object does not. Instead, R creates a new object with one value changed, then rebinds <code>y</code> to that object.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>This behaivour is called <strong>copy-on-modify</strong>. There are a couple of important exceptions to copy-on-modify - see <a href="#modify-in-place">Modify-in-place</a>.</p>
+<div id="tracemem" class="section level3">
+<h3>tracemem()</h3>
+<p>You can see when an object gets copied with the help of <code>base::tracemem()</code>.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnN0cih4KVxudHJhY2VtZW0oeClcbnkgPC0geFxueVszXSA8LSA0TFxueVszXSA8LSA1TCAjIHkgaXMgbm90IGNvcGllZFxudW50cmFjZW1lbSh4KVxueiA8LSB5XG56WzNdIDwtIDZMXG53IDwtIHhcbndbM10gPC0gNEwgIyB4IHdhcyBub3QgYmVpbmcgdHJhY2VkXG51bnRyYWNlbWVtKHkpXG51bnRyYWNlbWVtKHopXG56WzNdIDwtIDcuNSAjIHogaXMgbm90IGJlaW5nIHRyYWNlZC4gSWYgaXQgd2VyZSwgYSBjb3B5IHdvdWxkIG9jY3VyIGFzIHpbM10gaXMgbm93IG51bWVyaWMsIG5vdCBhbiBpbnRlZ2VyXG5zdHIoeilcbmBgYCJ9 -->
+<pre class="r"><code>x &lt;- 1:3
+str(x)
+tracemem(x)
+y &lt;- x
+y[3] &lt;- 4L
+y[3] &lt;- 5L # y is not copied
+untracemem(x)
+z &lt;- y
+z[3] &lt;- 6L
+w &lt;- x
+w[3] &lt;- 4L # x was not being traced
+untracemem(y)
+untracemem(z)
+z[3] &lt;- 7.5 # z is not being traced. If it were, a copy would occur as z[3] is now numeric, not an integer
+str(z)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="function-calls" class="section level3">
+<h3>Function calls</h3>
+<p>The same rules for copying also apply to function calls. Take this code:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZiA8LSBmdW5jdGlvbihhKSB7XG4gIGFcbn1cbmBgYCJ9 -->
+<pre class="r"><code>f &lt;- function(a) {
+  a
+}</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnRyYWNlbWVtKHgpXG56IDwtIGYoeClcbnpcbnVudHJhY2VtZW0oeClcbmBgYCJ9 -->
+<pre class="r"><code>x &lt;- 1:3
+tracemem(x)
+z &lt;- f(x)
+z
+untracemem(x)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>While <code>f()</code> is running, <code>a</code> inside the function will point to the same value as <code>x</code> does outside of it:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>And once complete, <code>z</code> will point to the same object.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWRkcmVzcyh4KVxuYWRkcmVzcyh6KVxuYGBgIn0= -->
+<pre class="r"><code>address(x)
+address(z)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>If <code>f()</code> were to modify <code>x</code>, R would create a new copy, and then <code>z</code> would bind to that object.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZiA8LSBmdW5jdGlvbihhKSB7XG4gIGFbM10gPC0gNExcbiAgYVxufVxuYGBgIn0= -->
+<pre class="r"><code>f &lt;- function(a) {
+  a[3] &lt;- 4L
+  a
+}</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjNcbnRyYWNlbWVtKHgpXG56IDwtIGYoeClcbnpcbnVudHJhY2VtZW0oeClcbmBgYCJ9 -->
+<pre class="r"><code>x &lt;- 1:3
+tracemem(x)
+z &lt;- f(x)
+z
+untracemem(x)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWRkcmVzcyh4KVxuYWRkcmVzcyh6KVxuYGBgIn0= -->
+<pre class="r"><code>address(x)
+address(z)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="lists" class="section level3">
+<h3>Lists</h3>
+<p>It’s not just names (i.e. variables) that point to values; the elements of a list do too. Take this list, which is superficially very similar to the vector above:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubDEgPC0gbGlzdCgxLCAyLCAzKVxuYGBgIn0= -->
+<pre class="r"><code>l1 &lt;- list(1, 2, 3)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>The internal representation of the list is actually quite different to that of a vector. A list is really a vector of references:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>This is particularly important when we modify a list:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubDIgPC0gbDFcbmBgYCJ9 -->
+<pre class="r"><code>l2 &lt;- l1</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubDJbWzNdXSA8LSA0XG5gYGAifQ== -->
+<pre class="r"><code>l2[[3]] &lt;- 4</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Like vectors, lists are copied-on-modify; the original list is left unchanged, and R creates a modifed copy. Note that the copy is <strong>shallow</strong>: the list object and its bindings are copied, but the values pointed to by the bindings are not.</p>
+<p>You can use <code>lobstr::ref()</code> to see values that are shared across lists. <code>ref()</code> prints the memory address of each object, along with a local id so that you can easily cross-reference shared components.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubG9ic3RyOjpyZWYobDEsIGwyKVxuYGBgIn0= -->
+<pre class="r"><code>lobstr::ref(l1, l2)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Consider this code:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubDEgPC0gbGlzdCgxLDIpXG5sMiA8LSBsaXN0KDMsNClcbmwgPC0gbGlzdChsMSwgbDIpXG5sYyA8LSBsXG5sb2JzdHI6OnJlZihsLCBsYylcbmBgYCJ9 -->
+<pre class="r"><code>l1 &lt;- list(1,2)
+l2 &lt;- list(3,4)
+l &lt;- list(l1, l2)
+lc &lt;- l
+lobstr::ref(l, lc)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Both names, <code>l</code> and <code>lc</code>, are bound to the same object. Now take this code:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGNbWzFdXVtbMV1dIDwtIDVcbmxvYnN0cjo6cmVmKGwsIGxjKVxuYGBgIn0= -->
+<pre class="r"><code>lc[[1]][[1]] &lt;- 5
+lobstr::ref(l, lc)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p><code>lc[[1]][[1]]</code> and its ancestors are copied from <code>l</code>, while the rest of the <code>lc</code> is bound to the same objects as <code>l</code>. Specifically:</p>
+<ul>
+<li>List <code>lc</code> has a different address from <code>l</code> - local ids 1 and 8</li>
+<li>List <code>lc[[1]]</code> (i.e. ‘<code>l1</code>’) has a different address from <code>l[[1]]</code> - local ids 2 and 9</li>
+<li>Dbl <code>lc[[1]][[1]]</code> has a different address from <code>l[[1]][[1]]</code> - local ids 3 and 10</li>
+<li>Dbl <code>lc[[1]][[2]]</code> has the same address as <code>l[[1]][[2]]</code> - local id 4</li>
+<li>List <code>lc[[2]]</code> (i.e. ‘<code>l2</code>’) has the same address as <code>l[[2]]</code> - local id 5</li>
+</ul>
+</div>
+<div id="data-frames" class="section level3">
+<h3>Data frames</h3>
+<p>Data frames are lists, so copy-on-modify has important consequences when you modify a data frame. Take this data frame as a example:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZDEgPC0gZGF0YS5mcmFtZSh4ID0gYygxLCA1LCA2KSwgeSA9IGMoMiwgNCwgMykpXG5gYGAifQ== -->
+<pre class="r"><code>d1 &lt;- data.frame(x = c(1, 5, 6), y = c(2, 4, 3))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>If you modify a column, only that column needs to be modified; the others can continue to point to the same place:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZDIgPC0gZDFcbmQyWywgMl0gPC0gZDJbLCAyXSAqIDJcbmBgYCJ9 -->
+<pre class="r"><code>d2 &lt;- d1
+d2[, 2] &lt;- d2[, 2] * 2</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>However, if you modify a row, there is no way to share data with the previous version of the data frame.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZDMgPC0gZDFcbmQzWzEsIF0gPC0gZDNbMSwgXSAqIDJcbmBgYCJ9 -->
+<pre class="r"><code>d3 &lt;- d1
+d3[1, ] &lt;- d3[1, ] * 2</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>If you modify a single element of a column that is an atomic vector, then the entire column is copied:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZDEgPC0gZGF0YS5mcmFtZSh4ID0gYygxLCA1LCA2KSwgeSA9IGMoMiwgNCwgMykpXG5kMiA8LSBkMVxuZDJbMSwyXSA8LSA3XG5sb2JzdHI6OnJlZihkMSwgZDIpXG5gYGAifQ== -->
+<pre class="r"><code>d1 &lt;- data.frame(x = c(1, 5, 6), y = c(2, 4, 3))
+d2 &lt;- d1
+d2[1,2] &lt;- 7
+lobstr::ref(d1, d2)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>However, this is not true if a column is not an atomic vector. Since a data frame is a list of vectors, and a list is a vector, it is possible for a data frame to have a column that is a list:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGYxIDwtIGRhdGEuZnJhbWUoeCA9IEkobGlzdCgxOjIsIDE6MykpKVxucHJpbnQoZGYxKVxuZGYyIDwtIGRmMVxuZGYyWzEsMV1bWzFdXSA8LSBsaXN0KDQ6NSlcbnByaW50KGRmMilcbmxvYnN0cjo6cmVmKGRmMiwgZGYxKVxuXG5gYGAifQ== -->
+<pre class="r"><code>df1 &lt;- data.frame(x = I(list(1:2, 1:3)))
+print(df1)
+df2 &lt;- df1
+df2[1,1][[1]] &lt;- list(4:5)
+print(df2)
+lobstr::ref(df2, df1)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p><em>When a list is given to</em> <code>data.frame()</code>, <em>it tries to put each item of the list into its own column. A workaround is to use</em> <code>I()</code> <em>which causes</em> <code>data.frame()</code> <em>to treat the list as one unit.</em></p>
+</div>
+<div id="character-vectors" class="section level3">
+<h3>Character vectors</h3>
+<p>R uses references in character vectors. We draw character vectors like this:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSBjKFwiYVwiLCBcImFcIiwgXCJhYmNcIiwgXCJkXCIpXG5gYGAifQ== -->
+<pre class="r"><code>x &lt;- c(&quot;a&quot;, &quot;a&quot;, &quot;abc&quot;, &quot;d&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>This is a polite fiction because R has a <strong>globl string pool</strong>. Each element of a character vector is acutally a pointer to a unique string in that pool:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>You can request that <code>ref()</code> show these references:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucmVmKHgsIGNoYXJhY3RlciA9IFRSVUUpXG5gYGAifQ== -->
+<pre class="r"><code>ref(x, character = TRUE)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="exercises-1" class="section level3">
+<h3>Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Why is <code>tracemem(1:10)</code> not useful?<br />
+<strong>A</strong>: Without a binding <code>1:10</code> will not stay in memory.</p></li>
+<li><p>Explain why <code>tracemem()</code> records two copies when you run this code.</p>
+<pre><code>x &lt;- 1:3
+tracemem(x)
+x[[3]] &lt;- 4</code></pre>
+<p><strong>A</strong>: Initially <code>x</code> is an integer vector. Within the replacement call, we assign a double to the third element of <code>x</code>. So besides the new value of the third element, a type conversion (coercion) is also triggered affecting whole vector.</p></li>
+<li><p>Sketch the relationship between the following objects:</p>
+<pre><code>a &lt;- 1:10
+b &lt;- list(a, a)
+c &lt;- list(b, a, 1:10)</code></pre>
+<p><code>a</code>, the two elements of <code>b</code>, and the second element of <code>c</code> all point to the same object <code>1:10</code>. Additionally, the first element of <code>c</code> points to <code>b</code> (whose two elements point to the same <code>1:10</code>).</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+ref(a,b,c)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="4" style="list-style-type: decimal">
+<li><p>What happens when you run this code?</p>
+<pre><code>x &lt;- list(1:10)
+x[[2]] &lt;- x</code></pre>
+<p><strong>A</strong>: When <code>x</code> is bound, it will point to a list (local id 1) of one element (local id 2) which points to <code>1:10</code>.</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+x &lt;- list(1:10)
+ref(x)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>When <code>x</code> has an <code>x</code> appended to itself, it will point to a new list (local id 1) of two elements (local ids 2 and 3). Element with local id 2 points to the same <code>1:10</code> object as before. Element with local id 3 points to the prior list object (which had local id 1).</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+x[[2]] &lt;- x
+ref(x)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+</div>
+<div id="object-size" class="section level2">
+<h2>Object size</h2>
+<p>You can find out how much space an object occupies in memory with various functions.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubG9ic3RyOjpvYmpfc2l6ZShsZXR0ZXJzKVxucHJ5cjo6b2JqZWN0X3NpemUobGV0dGVycylcbnV0aWxzOjpvYmplY3Quc2l6ZShsZXR0ZXJzKVxuYGBgIn0= -->
+<pre class="r"><code>lobstr::obj_size(letters)
+pryr::object_size(letters)
+utils::object.size(letters)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxueCA8LSAxOjFlNlxueSA8LSBsaXN0KHgsIHgsIHgpXG5cbmxvYnN0cjo6b2JqX3NpemUoeClcbmxvYnN0cjo6b2JqX3NpemUoeSlcbmBgYCJ9 -->
+<pre class="r"><code>x &lt;- 1:1e6
+y &lt;- list(x, x, x)
+
+lobstr::obj_size(x)
+lobstr::obj_size(y)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHJ5cjo6b2JqZWN0X3NpemUoeClcbnByeXI6Om9iamVjdF9zaXplKHkpXG5gYGAifQ== -->
+<pre class="r"><code>pryr::object_size(x)
+pryr::object_size(y)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXRpbHM6Om9iamVjdC5zaXplKHgpXG51dGlsczo6b2JqZWN0LnNpemUoeSlcblxuYGBgIn0= -->
+<pre class="r"><code>utils::object.size(x)
+utils::object.size(y)
+</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Using <code>lobstr::obj_size()</code>, <code>y</code> is only 72 bytes bigger than <code>x</code>. That’s the size of an empty list with three elements:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubG9ic3RyOjpvYmpfc2l6ZShsaXN0KE5VTEwsIE5VTEwsIE5VTEwpKVxuYGBgIn0= -->
+<pre class="r"><code>lobstr::obj_size(list(NULL, NULL, NULL))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Note that <code>utils::object.size()</code> incorrectly counts <code>x</code>three times. <code>obj_size(x) + obj_size(y)</code> will only equal <code>obj_size(x, y)</code> if there are no shared values. Here, the combined size of <code>x</code> and <code>y</code> is the same as the size of <code>y</code>.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxub2JqX3NpemUoeClcbm9ial9zaXplKHkpXG5vYmpfc2l6ZSh4LCB5KVxuYGBgIn0= -->
+<pre class="r"><code>obj_size(x)
+obj_size(y)
+obj_size(x, y)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>The global string pool means that character vectors take up less memory than you might expect.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYmFuYW5hIDwtIFwiYmFuYW5hcyBiYW5hbmFzIGJhbmFuYXNcIlxub2JqX3NpemUoYmFuYW5hKVxub2JqX3NpemUocmVwKGJhbmFuYSwgMTAwKSlcbmBgYCJ9 -->
+<pre class="r"><code>banana &lt;- &quot;bananas bananas bananas&quot;
+obj_size(banana)
+obj_size(rep(banana, 100))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<div id="exercises-2" class="section level3">
+<h3>Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Take the following list. Why is its size somewhat misleading?</p>
+<pre><code>x &lt;- list(mean, sd, var)
+obj_size(x)</code></pre>
+<p><strong>A</strong>: The list contains pointers to the functions, but <code>obj_size()</code> includes the size of the functions.</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+x &lt;- list(mean, sd, var)
+obj_size(x)
+obj_size(x) - obj_size(mean, sd, var)
+obj_size(list(NULL, NULL, NULL)) # Size of an empty list of 3 elements
+ref(mean, x[[1]])
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<ol start="2" style="list-style-type: decimal">
+<li><p>Predict the output of the following code:</p>
+<pre><code>x &lt;- 1e6
+obj_size(x)</code></pre>
+<p><strong>A</strong>: R does not have a scalar type, only vectors. The amount of space to store an empty vector is 40 B. Each integer inside the vector requires 4B, with R allocating memory in 8B increments. Hence <code>x</code> requires 40 B + 1,000,000 * 4 B = 4,000,040 B.</p></li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+obj_size(integer(0))
+obj_size(integer(1))
+obj_size(integer(2))
+obj_size(integer(3))
+obj_size(integer(4))
+x &lt;- 1:1e6
+obj_size(x)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>And this code:</p>
+<pre><code>y &lt;- list(x, x)
+obj_size(y)
+obj_size(x, y)</code></pre>
+<p><strong>A</strong>: An empty list requires 40 B; each elements requires 8 B. <code>x</code> requires 4,000,040 B, hence <code>y</code> requires 4,000,096 B. Since <code>y</code> contains pointers to <code>x</code>, the memory requirement for <code>x</code> and <code>y</code> is the same as <code>y</code>.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+lobstr::obj_size(list()) # 40 B for an empty list
+pryr::object_size(list()) # note that the pryr package calculated an empty list at 48 B
+
+obj_size(list(NULL)) # 48 B for a list and a pointer
+obj_size(list(integer(0))) # 88B for a list (40 B), a pointer (8 B), and an empty vector (40 B)
+obj_size(list(1L)) # 96B for a list, a point, and a vector containing a single integer (min allocation is 8 B)
+
+x &lt;- 1:1e6
+y &lt;- list(x, x)
+obj_size(y)
+obj_size(x, y)
+
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>And this code:</p>
+<pre><code>y[[1]][[1]] &lt;- 10
+obj_size(y)
+obj_size(x, y)</code></pre>
+<p><strong>A</strong>: A new object of <strong>doubles</strong> is created, <code>c(10, 2, 3, ..., 1e6)</code>. This requires 40 B + 1,000,000 * 8 B = 8,000,040 B. Previously <code>y</code> required 4,000,096 B, so <code>y</code> now requires 12,000,136 B.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+y[[1]][[1]] &lt;- 10
+str(y)
+obj_size(y)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>And this code:</p>
+<pre><code>y[[2]][[1]] &lt;- 10
+obj_size(y)
+obj_size(x, y)</code></pre>
+<p><strong>A</strong>: We have two vectors of doubles each requiring 8,000,040 B. In addtion, the list plus two pointers is 40 B + 16 B = 56B. Hence the total requirement for <code>y</code> is 16,000,136 B. <code>x</code> and <code>y</code> no longer point to any of the same objects. Hence the memory required for both is 4,000,040 B + 16,000,136 B = 20,000,176 B.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+y[[2]][[1]] &lt;- 10
+obj_size(y)
+obj_size(x, y)
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p><strong>Note</strong>: a list is a vector, as is an integer, and so when they are empty they should all require the same memory allocation.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<pre><code>```r
+obj_size(integer(0))
+obj_size(list())
+obj_size(vector())
+```</code></pre>
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+</div>
+<div id="modify-in-place" class="section level2">
+<h2>Modify-in-place</h2>
+<p>Most of the time, modifying an R object will create a copy. THere are two exceptions:</p>
+<ul>
+<li>Object with a single binding get a special performance optimization.</li>
+<li>Environments are a special type of object that is always modifed in place.</li>
+</ul>
+<div id="object-with-a-single-binding" class="section level3">
+<h3>Object with a single binding</h3>
+<p>If an object only has a single binding to it, R will modifiy it in place. It’s challenging to predict exactly when R will make this optimization. One complication is that whenever you call a regular function, it will make a reference to the object, except specially written C functions, which occurr mostly in the base package. (Also note that the environment browser in RStudio makes a reference to every object created at the command line.) We can use <code>tracemem()</code> to empirically determine if a copy has occurred.</p>
+</div>
+<div id="environments" class="section level3">
+<h3>Environments</h3>
+<p>Environments are always modified in place. This is sometimes referred to as having <strong>reference semantics</strong> because whenever you modify an environment the existing bindings continue to have the same reference.</p>
+<p>Take this environment, which we bind to <code>e1</code> and <code>e2</code>;</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZTEgPC0gcmxhbmc6OmVudihhID0gMSwgYiA9IDIsIGMgPSAzKVxuZTIgPC0gZTFcbmBgYCJ9 -->
+<pre class="r"><code>e1 &lt;- rlang::env(a = 1, b = 2, c = 3)
+e2 &lt;- e1</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>If we change a binding, the environment is modified in place:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZTEkYyA8LSA0XG5lMiRjXG5gYGAifQ== -->
+<pre class="r"><code>e1$c &lt;- 4
+e2$c</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>One consequence of this is that environments can contain themselves:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZSA8LSBybGFuZzo6ZW52KClcbmUkc2VsZiA8LSBlXG5yZWYoZSlcbmBgYCJ9 -->
+<pre class="r"><code>e &lt;- rlang::env()
+e$self &lt;- e
+ref(e)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="exercises-3" class="section level3">
+<h3>Exercises</h3>
+<ol style="list-style-type: decimal">
+<li>What happens if you attempt to use <code>tracemem()</code> on an environment?<br />
+<strong>A</strong>: As a copy of an environment is never made, <code>tracemem()</code> does nothing - in fact, it returns an error.</li>
+</ol>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZTEgPC0gcmxhbmc6OmVudihhID0gMSwgYiA9IDIsIGMgPSAzKVxudHJhY2VtZW0oZTEpXG5gYGAifQ== -->
+<pre class="r"><code>e1 &lt;- rlang::env(a = 1, b = 2, c = 3)
+tracemem(e1)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+</div>
+<div id="copying---data-frames-vs.-lists" class="section level2">
+<h2>Copying - Data frames <em>vs.</em> lists</h2>
+<p>Note that replacement for data frames requires 3 copies! A list requires only 1 copy. This is because data frame subsetting is a non-primitive function with complicated subsetting rules, while list subsetting is a primitive function.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZCA8LSBkYXRhLmZyYW1lKDEpXG50cmFjZW1lbShkKVxuZFsxXSA8LSAxXG5cbmwgPC0gbGlzdCgxKVxudHJhY2VtZW0obClcbmxbMV0gPC0gMVxuXG51bnRyYWNlbWVtKGQpXG51bnRyYWNlbWVtKGwpXG5gYGAifQ== -->
+<pre class="r"><code>d &lt;- data.frame(1)
+tracemem(d)
+d[1] &lt;- 1
+
+l &lt;- list(1)
+tracemem(l)
+l[1] &lt;- 1
+
+untracemem(d)
+untracemem(l)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>When doing extensive iteration with data frames it might make sense to first convert to a list using <code>as.list()</code>.</p>
+</div>
+<div id="unbinding-and-the-garbage-collector" class="section level2">
+<h2>Unbinding and the garbage collector</h2>
+<p>Consider this code:</p>
+<pre><code>x &lt;- 1:3</code></pre>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<pre><code>x &lt;- 2:4</code></pre>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<pre><code>x &lt;- rm(x)</code></pre>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>We have two unbound objects - how do they get deleted? That’s the job of the <strong>garbage collector</strong>, or GC, for short. The garbage collector is run automatically whenever a new R object is created and R needs more memory. If you want to see when that occurs, call <code>gcinfo(TRUE)</code>: it will print message to the console every time the garbage collector runs. There’ no need to call <code>gc()</code> yourseslf. You can force the garbage collector to run by calling <code>gc()</code> to ask R to return memory to your operating system, or for its side-effect of telling you how much memory is currently being usesd:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2MoKVxuYGBgIn0= -->
+<pre class="r"><code>gc()</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p><code>lobstr::mem_used()</code> is a wrapper around <code>gc()</code> that just prints the total number of bytes used:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubG9ic3RyOjptZW1fdXNlZCgpXG5gYGAifQ== -->
+<pre class="r"><code>lobstr::mem_used()</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<div id="memory-leaks" class="section level3">
+<h3>Memory leaks</h3>
+<p>The garbge collector takes care of deleting all objects that do not have bindings. But you are still at risk for a <strong>memory leak</strong>, which occurs when you keep a binding to an object without realising it. In R, the two main causes of memory leaks are formulas and functions because they both capture the enclosing environment.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZjEgPC0gZnVuY3Rpb24oKSB7XG4gIHggPC0gMToxZTZcbiAgMTBcbn1cbnggPC0gZjEoKVxub2JqX3NpemUoeClcbmBgYCJ9 -->
+<pre class="r"><code>f1 &lt;- function() {
+  x &lt;- 1:1e6
+  10
+}
+x &lt;- f1()
+obj_size(x)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZjIgPC0gZnVuY3Rpb24oKSB7XG4gIHggPC0gMToxZTZcbiAgYSB+IGJcbn1cbnkgPC0gZjIoKVxub2JqX3NpemUoeSlcbmBgYCJ9 -->
+<pre class="r"><code>f2 &lt;- function() {
+  x &lt;- 1:1e6
+  a ~ b
+}
+y &lt;- f2()
+obj_size(y)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZjMgPC0gZnVuY3Rpb24oKSB7XG4gIHggPC0gMToxZTZcbiAgZnVuY3Rpb24oKSAxMFxufVxueiA8LSBmMygpXG5vYmpfc2l6ZSh6KVxuYGBgIn0= -->
+<pre class="r"><code>f3 &lt;- function() {
+  x &lt;- 1:1e6
+  function() 10
+}
+z &lt;- f3()
+obj_size(z)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 </div>
 </div>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Surprisingly, what consitutes a letter is determined by you current locale. That means that the synax of R code actually differs from computer to computer, and it’s possible for a file that works on one computer to not even parse on another!<a href="#fnref1">↩</a></p></li>
+</ol>
+</div>
 
-<div id="rmd-source-code">LS0tDQp0aXRsZTogIkFkdmFuY2VkIFIiDQpvdXRwdXQ6DQogIGh0bWxfZG9jdW1lbnQ6DQogICAgdG9jOiB0cnVlDQogICAgbnVtYmVyX3NlY3Rpb25zOiB0cnVlDQogICAgZGZfcHJpbnQ6IHBhZ2VkDQotLS0NCg0KYGBge3IgZ2xvYmFsX29wdGlvbnMsIGluY2x1ZGU9RkFMU0V9DQprbml0cjo6b3B0c19jaHVuayRzZXQodGlkeT1UUlVFLCByZXN1bHRzPSdob2xkJykNCmBgYA0KDQojIE5hbWVzIGFuZCBWYWx1ZXMNCiMjIFByZXJlcXVpc2l0ZXMNCldlJ2xsIHVzZSB0aGUgZGV2ZWxvcG1lbnQgdmVyc2lvbiBvZiBsb2JzdHIgdG8gZGlnIGludG8gdGhlIG1lbW9yeSByZXByZXNlbnRhdGlvbiBvZiBSIG9iamVjdHMuDQoNCmBgYHtyLCBlY2hvPUZBTFNFfQ0KIyBkZXZ0b29scyBkb2VzIG5vdCBzZWVtIHRvIHdvcmsgd2l0aCBSIDMuNS4wLiBCZWxvdyBpcyBhIHdvcmsgYXJvdW5kIC0gc2VlIGh0dHBzOi8vZ2l0aHViLmNvbS9yLWxpYi9kZXZ0b29scy9pc3N1ZXMvMTc3Mg0KIyBsaWJyYXJ5KGRldnRvb2xzKQ0KIyBhc3NpZ25Jbk5hbWVzcGFjZSgidmVyc2lvbl9pbmZvIiwgYyhkZXZ0b29sczo6OnZlcnNpb25faW5mbywgbGlzdCgiMy41IiA9IGxpc3QodmVyc2lvbl9taW4gPSAiMy4zLjAiLCB2ZXJzaW9uX21heCA9ICI5OS45OS45OSIsIHBhdGggPSAiYmluIikpKSwgImRldnRvb2xzIikNCiMgZmluZF9ydG9vbHMoKQ0KIyBkZXZ0b29sczo6aW5zdGFsbF9naXRodWIoInItbGliL2xvYnN0ciIpDQpsaWJyYXJ5KGxvYnN0cikNCmBgYA0KDQojIyBCaW5kaW5nIGJhc2ljcw0KVGFrZSB0aGlzIGNvZGU6DQpgYGB7cn0NCnggPC0gMTozDQpgYGANCkl0IGlzIGVhc3kgdG8gcmVhZCB0aGlzIGNvZGUgYXM6ICJjcmVhdGUgYW4gb2JqZWN0IG5hbWVkICd4JywgY29udGFpbmluZyB0aGUgdmFsdWVzIDEsIDIsIGFuZCAzIi4NCkl0J3MgbW9yZSBhY2N1cmF0ZSB0byB0aGluayBhYm91dCB0aGlzIGNvZGUgYXMgZG9pbmcgdHdvIHRoaW5nczoNCg0KKiBDcmVhdGluZyBhbiBvYmplY3QsIGEgdmVjdG9yIG9mIHZhbHVlcywgYDE6M2AuDQoqIEJpbmRpbmcgdGhlIG9iamVjdCB0byBhIG5hbWUsIGB4YC4NCg0KTm90ZSB0aGF0IHRoZSBvYmplY3QsIG9yIHZhbHVlLCBkb2Vzbid0IGhhdmUgYSBuYW1lOyBpdCdzIHRoZSBuYW1lIHRoYXQgaGFzIGEgdmFsdWUuWW91IGNhbiB0aGluayAgb2YgYSBuYW1lIGFzIGEgcmVmZW5jZSBmb3IgYSB2YWx1ZS4NCkZvciBleGFtcGxlLCBpZiB5b3UgcnVuIHRoaXMgY29kZSB5b3UgZG9uJ3QgZ2V0IGFub3RoZXIgY29weSBvZiB0aGUgdmFsdWUgYDE6M2AuDQoNCmBgYHtyfQ0KeCA8LSAxOjMNCnkgPC0geA0Kb2JqX2FkZHIoeCkNCm9ial9hZGRyKHkpDQpgYGANCg0KQXMgY2FuIGJlZW4gc2VlbiwgYm90aCBgeGAgYW5kIGB5YCBwb2ludCB0byB0aGUgc2FtZSBsb2NhdGlvbiBpbiBtZW1vcnkuDQoNCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvYmluZGluZy0yLnBuZyIpDQpgYGANCg0KDQoNCg0KDQoNCg==</div>
+<div id="rmd-source-code">LS0tDQp0aXRsZTogIkFkdmFuY2VkIFIiDQpvdXRwdXQ6DQogIGh0bWxfbm90ZWJvb2s6DQogIGh0bWxfZG9jdW1lbnQ6DQogICAgZGZfcHJpbnQ6IHBhZ2VkDQogICAgbnVtYmVyX3NlY3Rpb25zOiB5ZXMNCiAgICB0b2M6IHllcw0KICBwZGZfZG9jdW1lbnQ6DQogICAgdG9jOiB5ZXMNCi0tLQ0KDQpgYGB7ciBnbG9iYWxfb3B0aW9ucywgaW5jbHVkZT1GQUxTRX0NCmtuaXRyOjpvcHRzX2NodW5rJHNldCh0aWR5PVRSVUUsIHJlc3VsdHM9J2hvbGQnLCBmaWcuYWxpZ249J2NlbnRlcicpDQpgYGANCg0KIyBOYW1lcyBhbmQgVmFsdWVzDQojIyBQcmVyZXF1aXNpdGVzDQpXZSdsbCB1c2UgdGhlIGRldmVsb3BtZW50IHZlcnNpb24gb2YgdGhlIGxvYnN0ciBwYWNrYWdlIGFuZCB0aGUgQ1JBTiBwcnlyIHBhY2thZ2UgdG8gZGlnIGludG8gdGhlIG1lbW9yeSByZXByZXNlbnRhdGlvbiBvZiBSIG9iamVjdHMgYW5kIHRvIHByeSBiYWNrIHRoZSBzdXJmYWNlIG9mIFIgYW5kIGRpZyBpbnRvIHRoZSBkZXRhaWxzLg0KDQpgYGB7ciwgZWNobz1GQUxTRSwgaW5jbHVkZT1GQUxTRX0NCiMgZGV2dG9vbHMgZG9lcyBub3Qgc2VlbSB0byB3b3JrIHdpdGggUiAzLjUuMC4gQmVsb3cgaXMgYSB3b3JrYXJvdW5kIC0gc2VlIGh0dHBzOi8vZ2l0aHViLmNvbS9yLWxpYi9kZXZ0b29scy9pc3N1ZXMvMTc3Mg0KIyBsaWJyYXJ5KGRldnRvb2xzKQ0KIyBhc3NpZ25Jbk5hbWVzcGFjZSgidmVyc2lvbl9pbmZvIiwgYyhkZXZ0b29sczo6OnZlcnNpb25faW5mbywgbGlzdCgiMy41IiA9IGxpc3QodmVyc2lvbl9taW4gPSAiMy4zLjAiLCB2ZXJzaW9uX21heCA9ICI5OS45OS45OSIsIHBhdGggPSAiYmluIikpKSwgImRldnRvb2xzIikNCiMgZmluZF9ydG9vbHMoKQ0KIyBkZXZ0b29sczo6aW5zdGFsbF9naXRodWIoInItbGliL2xvYnN0ciIpDQpsaWJyYXJ5KGxvYnN0cikNCiMgcHJ5ciBwYWNrYWdlIGFsc28gcHJvdmlkZXMgdG9vbHMgdG8gcHJ5IGJhY2sgdGhlIHN1cmZhY2Ugb2YgUiBhbmQgZGlnIGludG8gdGhlIGRldGFpbHMNCmxpYnJhcnkocHJ5cikNCmBgYA0KDQojIyBCaW5kaW5nIGJhc2ljcw0KVGFrZSB0aGlzIGNvZGU6DQoNCmBgYHtyfQ0KeCA8LSAxOjMNCmBgYA0KDQpJdCBpcyBlYXN5IHRvIHJlYWQgdGhpcyBjb2RlIGFzOiAiY3JlYXRlIGFuIG9iamVjdCBuYW1lZCAneCcsIGNvbnRhaW5pbmcgdGhlIHZhbHVlcyAxLCAyLCBhbmQgMyIuDQpJdCdzIG1vcmUgYWNjdXJhdGUgdG8gdGhpbmsgYWJvdXQgdGhpcyBjb2RlIGFzIGRvaW5nIHR3byB0aGluZ3M6DQoNCiogQ3JlYXRpbmcgYW4gb2JqZWN0LCBhIHZlY3RvciBvZiB2YWx1ZXMsIGAxOjNgLg0KKiBCaW5kaW5nIHRoZSBvYmplY3QgdG8gYSBuYW1lLCBgeGAuDQoNCk5vdGUgdGhhdCB0aGUgb2JqZWN0LCBvciB2YWx1ZSwgZG9lc24ndCBoYXZlIGEgbmFtZTsgaXQncyB0aGUgbmFtZSB0aGF0IGhhcyBhIHZhbHVlLllvdSBjYW4gdGhpbmsgIG9mIGEgbmFtZSBhcyBhIHJlZmVuY2UgZm9yIGEgdmFsdWUuDQpGb3IgZXhhbXBsZSwgaWYgeW91IHJ1biB0aGlzIGNvZGUgeW91IGRvbid0IGdldCBhbm90aGVyIGNvcHkgb2YgdGhlIHZhbHVlIGAxOjNgLg0KDQpgYGB7cn0NCnggPC0gMTozDQp5IDwtIHgNCmxvYnN0cjo6b2JqX2FkZHIoeCkNCmxvYnN0cjo6b2JqX2FkZHIoeSkNCnByeXI6OmFkZHJlc3MoeCkNCnByeXI6OmFkZHJlc3MoeSkNCmBgYA0KDQpBcyBjYW4gYmVlbiBzZWVuLCBib3RoIGB4YCBhbmQgYHlgIHBvaW50IHRvIHRoZSBzYW1lIGxvY2F0aW9uIGluIG1lbW9yeS4NCg0KYGBge3IsIG91dC53aWR0aD0iMjAwcHgiLCBlY2hvPUZBTFNFfQ0Ka25pdHI6OmluY2x1ZGVfZ3JhcGhpY3MoIkltYWdlcy9iaW5kaW5nLTIucG5nIikNCmBgYA0KICAgIA0KIyMjIE5vbi1zeW50YWN0aWMgbmFtZXMNCkEgKipzeW50YWN0aWMqKiBuYW1lIG11c3QgY29uc2lzdCBvZiBsZXR0ZXJzXltTdXJwcmlzaW5nbHksIHdoYXQgY29uc2l0dXRlcyBhIGxldHRlciBpcyBkZXRlcm1pbmVkIGJ5IHlvdSBjdXJyZW50IGxvY2FsZS4gVGhhdCBtZWFucyB0aGF0IHRoZSBzeW5heCBvZiBSIGNvZGUgYWN0dWFsbHkgZGlmZmVycyBmcm9tIGNvbXB1dGVyIHRvIGNvbXB1dGVyLCBhbmQgaXQncyBwb3NzaWJsZSBmb3IgYSBmaWxlIHRoYXQgd29ya3Mgb24gb25lIGNvbXB1dGVyIHRvIG5vdCBldmVuIHBhcnNlIG9uIGFub3RoZXIhXSwgZGlnaXRzLCBgLmAgYW5kIGBfYCwgYW5kIGNhbid0IGJlZ2luIHdpdGggYF9gLCBhIGRpZ2l0LCBvciBgLmAgZm9sbG93ZWQgYnkgYSBkaWdpdC4gQWRkaXRpb25hbGx5LCBpdCBjYW4gbm90IGJlIG9uZSBvZiBhIGxpc3Qgb2YgICoqcmVzZXJ2ZWQgd29yZHMqKiBsaWtlIGBUUlVFYCwgYE5VTExgLCBgaWZgLCBhbmQgYGZ1bmN0aW9uYCAoc2VlIHRoZSBjb21wbGV0ZSBsaXN0IGluIGA/UmVzZXJ2ZWRgKS4gTmFtZXMgdGhhdCBkb24ndCBmb2xsb3cgdGhlc2UgcnVsZXMgYXJlIGNhbGxlZCAqKm5vbi1zeW50YWN0aWMqKiBuYW1lcywgYW5kIGlmIHlvdSB0cnkgdG8gdXNlIHRoZW0geW91J2xsIGdldCBhbiBlcnJvci4NCg0KYGBge3IsIGVycm9yPVRSVUV9DQpfYWJjIDwtIDENCmBgYA0KDQpgYGB7ciwgZXJyb3I9VFJVRX0NCmlmIDwtIDEwDQpgYGANCg0KSXQgaXMgcG9zc2libGUgdG8gb3ZlcnJpZGUgdGhlIHVzdWFsIHJ1bGVzIGFuZCB1c2UgYSBuYW1lIHdpdGggYW55IHNlcXVlbmNlIG9mIGNoYXJhY3RlcnMgYnkgc3Vycm9uZGluZyB0aGUgbmFtZSB3aXRoIGJhY2t0aWNrczoNCg0KYGBge3IsIGVycm9yPVRSVUV9DQpgX2FiY2AgPC0gMQ0KcHJpbnQoYF9hYmNgKQ0KDQpgaWZgIDwtIDEwDQpwcmludChgaWZgKQ0KYGBgDQoNClR5cGljYWxseSwgeW91IHdvbid0IGRlbGliZXJhdGVseSB1c2Ugc3VjaCBjcmF6eSBuYW1lcy4gSW5zdGVhZCB5b3UgbmVlZCB0byB1bmRlcnN0YW5kIHRoZW0gYmVjYXVzZSB5b3UnbGwgYmUgc3ViamVjdGVkIHRvIHRoZW0gYnkgb3RoZXJzIC0gdGhpcyBoYXBwZW5zIG1vc3QgY29tbW9ubHkgd2hlbiB5b3UgbG9hZCBkYXRhIHRoYXQgaGFzIGJlZW4gY3JlYXRlZCBvdXRzaWRlIG9mIFIuDQoNCiMjIyBFeGVyY2lzZXMNCjEuIEV4cGxhaW4gdGhlIHJlbGF0aW9uc2lwIGJldHdlZW4gYGFgLCBgYmAsIGBjYCBhbmQgYGRgIGluIHRoZSBmb2xsb3dpbmcgY29kZTogIA0KYGBgDQphIDwtIDE6MTANCmIgPC0gYQ0KYyA8LSBiDQpkIDwtIDE6MTANCmBgYA0KKipBKio6IGBhYCwgYGJgIGFuZCBgY2AgcG9pbnQgdG8gdGhlIHNhbWUgdmFsdWUvb2JqZWN0OyBgZGAgcG9pbnRzIHRvIGEgZGlmZmVyZW50IHZhbHVlL29iamVjdA0KDQogICAgYGBge3IsIGVjaG8gPSBGQUxTRX0NCiAgICBhIDwtIDE6MTANCiAgICBiIDwtIGENCiAgICBjIDwtIGINCiAgICBkIDwtIDE6MTANCiAgICBgYGANCiAgICBgYGB7cn0NCiAgICBhZGRyZXNzKGEpDQogICAgYWRkcmVzcyhiKQ0KICAgIGFkZHJlc3MoYykNCiAgICBhZGRyZXNzKGQpDQogICAgYGBgDQoNCjIuIFRoZSBmb2xsb3dpbmcgY29kZSBhY2Nlc3NlcyB0aGUgbWVhbiBmdW5jdGlvbiBpbiBtdWx0aXBsZSBkaWZmZXJlbnQgd2F5cy4gRG8gdGhleSBhbGwgcG9pbnQgdG8gdGhlIHNhbWUgdW5kZXJseWluZyBmdW5jdGlvbiBvYmplY3Q/IFZlcmlmeSB3aXRoIGBsb2JzdHI6Om9ial9hZGRyYC4gIA0KYGBgDQptZWFuDQpiYXNlOjptZWFuDQpnZXQoIm1lYW4iKQ0KZXZhbHEobWVhbikNCm1hdGNoLmZ1bigibWVhbiIpDQpgYGANCioqQSoqOiBZZXMsIHRoZXkgYWxsIHBvaW50IHRvIHRoZSBzYW1lIHVuZGVybHlpbmcgZnVuY3Rpb24gb2JqZWN0Lg0KICAgIGBgYHtyfQ0KICAgIG9ial9hZGRyKG1lYW4pDQogICAgb2JqX2FkZHIoYmFzZTo6bWVhbikNCiAgICBvYmpfYWRkcihnZXQoIm1lYW4iKSkNCiAgICBvYmpfYWRkcihldmFscShtZWFuKSkNCiAgICBvYmpfYWRkcihtYXRjaC5mdW4oIm1lYW4iKSkNCiAgICBgYGANCiAgICBOb3RlIHRoYXQgcHJ5cjo6YWRkcmVzcyBkb2Vzbid0IHdvcmsgZm9yIGZ1bmN0aW9uIHJlcHJlc2VudGF0aW9ucyAyLTUgYWJvdmU6DQogICAgYGBge3IsIGVycm9yID0gVFJVRSwgcmVzdWx0cz0nbWFya3VwJ30NCiAgICBhZGRyZXNzKG1lYW4pDQogICAgYWRkcmVzcyhiYXNlOjptZWFuKQ0KICAgIGFkZHJlc3MoZ2V0KCJtZWFuIikpDQogICAgYWRkcmVzcyhldmFscShtZWFuKSkNCiAgICBhZGRyZXNzKG1hdGNoLmZ1bigibWVhbiIpKQ0KICAgIGBgYCAgICANCiAgICBIb3dldmVyLCB0aGVyZSBpcyBhIHdvcmthcm91bmQ6DQogICAgYGBge3J9DQogICAgeDEgPC0gbWVhbg0KICAgIGFkZHJlc3MoeDEpDQogICAgeDIgPC0gYmFzZTo6bWVhbg0KICAgIGFkZHJlc3MoeDIpDQogICAgeDMgPC0gZ2V0KCJtZWFuIikNCiAgICBhZGRyZXNzKHgzKQ0KICAgIHg0IDwtIGV2YWxxKG1lYW4pDQogICAgYWRkcmVzcyh4NCkNCiAgICB4NSA8LSBtYXRjaC5mdW4oIm1lYW4iKQ0KICAgIGFkZHJlc3MoeDUpDQogICAgYGBgICAgIA0KDQozLiBCeSBkZWZhdWx0LCBiYXNlIFIgZGF0YSBpbXBvcnQgZnVuY3Rpb25zLCBsaWtlIGByZWFkLmNzdigpYCwgd2lsbCBhdXRvbWF0aWNhbGx5IGNvbnZlcnQgbm9uLXN5bnRhY3RpYyBuYW1lcyB0byBzeW50YWN0aWMgbmFtZXMuIFdoeSBtaWdodCB0aGlzIGJlIHByb2JsZW1hdGljPyBXaGF0IG9wdGlvbiBhbGxvd3MgeW91IHRvIHN1cHByZXNzIHRoaXMgYmVoYXZpb3VyPyAgDQoqKkEqKjogVGhpcyBtaWdodCBiZSBlc3BlY2lhbGx5IHByb2JsZW1hdGljIGluIG5vbi1pbnRlcmFjdGl2ZSBSIHVzYWdlLCB3aGVuIFIgcmVhZHMgYW5kIHdyaXRlcyBkYXRhIGFuZCB0aGUgb3V0cHV0IGlzIGV4cGVjdGVkIHRvIGNvbnRhaW4gdGhlIHNhbWUgbmFtZXMgYXMgdXNlZCBpbiB0aGUgZGF0YSBzb3VyY2UuIE5hbWUgY29udmVyc2lvbiBjYW4gYmUgc3VwcmVzc2VkIGJ5IHNldHRpbmcgdGhlIGBjaGVjay5uYW1lc2AgYXJndW1lbnQgdG8gYEZBTFNFYC4NCg0KNC4gV2hhdCBydWxlcyBkb2VzIGBtYWtlLm5hbWVzKClgIHVzZSB0byBjb252ZXJ0IG5vbi1zeW50YWN0aWMgbmFtZXMgaW50byBzeW50YWN0aWMgbmFtZXM/ICANCioqQSoqOiBUaGUgY2hhcmFjdGVyICJYIiBpcyBwcmVwZW5kZWQgaWYgbmVjZXNzYXJ5LiBBbGwgaW52YWxpZCBjaGFyYWN0ZXJzIGFyZSB0cmFuc2xhdGVkIHRvICIuIi4gQSBtaXNzaW5nIHZhbHVlIGlzIHRyYW5zbGF0ZWQgdG8gIk5BIi4gTmFtZXMgd2hpY2ggbWF0Y2ggUiBrZXl3b3JkcyBoYXZlIGEgIi4iIGFwcGVuZGVkIHRvIHRoZW0uIER1cGxpY2F0ZWQgdmFsdWVzIGFyZSBhbHRlcmVkIGJ5IGBtYWtlLnVuaXF1ZWAgaWYgc3BlY2lmaWVkLg0KICAgIGBgYHtyfQ0KICAgIHN0cihtYWtlLm5hbWVzKQ0KICAgIGBgYA0KICAgIGBgYHtyfQ0KICAgIHN0cihtYWtlLnVuaXF1ZSkNCiAgICBgYGANCiAgICBgYGB7cn0NCiAgICBuYW1lcyA8LSBjKCIuMXgiLCAiaWYiLCAieCElKiIsIE5BLCAiIiwgIi4xeCIpDQogICAgbWFrZS5uYW1lcyhuYW1lcykNCiAgICBtYWtlLm5hbWVzKG5hbWVzLCB1bmlxdWUgPSBUUlVFKQ0KICAgIGBgYA0KICAgIE5vdGUgdGhhdCBgTkFgIGlzIGNvbnZlcnRlZCB0byAiTkEuIi4gVGhhdCBpcyBiZWNhdXNlIGl0IGlzIGZpcnN0IGNvbnZlcnRlZCB0byAiTkEiLCB3aGljaCBpcyBhbiBSIGtleXdvcmQsIHNvIGEgIi4iIGlzIGFwcGVuZGVkLg0KICAgIGBgYHtyfQ0KICAgIG5hbWVzIDwtIGMoIngiLCAieCIpDQogICAgbWFrZS51bmlxdWUobmFtZXMpDQogICAgbWFrZS51bmlxdWUobmFtZXMsIHNlcCA9ICJfIikNCiAgICBtYWtlLm5hbWVzKG5hbWVzKQ0KICAgIG1ha2UubmFtZXMobmFtZXMsIFRSVUUpDQogICAgYGBgDQogICAgDQoNCjUuIFdoeSBpcyBgLjEyM2UxYCBub3QgYSBzeW50YWN0aWMgbmFtZT8gUmVhZCBgP21ha2UubmFtZXNgLiAgDQoqKkEqKjogQmVjYXVzZSBpdCBzdGFydHMgd2l0aCBhIGAuYCBmb2xsb3dlZCBieSBhIGRpZ2l0LiANCg0KIyMgQ29weS1vbi1tb2RpZnkNCkNvbnNpZGVyIHRoZSBmb2xsb3dpbmcgY29kZSwgd2hpY2ggYmluZHMgYHhgIGFuZCBgeWAgdG8gdGhlIHNhbWUgdW5kZXJseWluZyB2YWx1ZSwgdGhlbiBtb2RpZmllcyBgeWAuDQoNCmBgYHtyfQ0KeCA8LSAxOjMNCnkgPC0geA0KeVszXSA8LSA0DQp4DQpgYGANCg0KV2hpbGUgdGhlIHZhbHVlIGFzc29jaWF0ZWQgd2l0aCBgeWAgY2hhbmdlcywgdGhlIG9yaWdpbmFsIG9iamVjdCBkb2VzIG5vdC4gSW5zdGVhZCwgUiBjcmVhdGVzIGEgbmV3IG9iamVjdCB3aXRoIG9uZSB2YWx1ZSBjaGFuZ2VkLCB0aGVuIHJlYmluZHMgYHlgIHRvIHRoYXQgb2JqZWN0Lg0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2JpbmRpbmctMy5wbmciKQ0KYGBgDQoNClRoaXMgYmVoYWl2b3VyIGlzIGNhbGxlZCAqKmNvcHktb24tbW9kaWZ5KiouIFRoZXJlIGFyZSBhIGNvdXBsZSBvZiBpbXBvcnRhbnQgZXhjZXB0aW9ucyB0byBjb3B5LW9uLW1vZGlmeSAtIHNlZSBbTW9kaWZ5LWluLXBsYWNlXS4NCg0KIyMjIHRyYWNlbWVtKCkNCllvdSBjYW4gc2VlIHdoZW4gYW4gb2JqZWN0IGdldHMgY29waWVkIHdpdGggdGhlIGhlbHAgb2YgYGJhc2U6OnRyYWNlbWVtKClgLg0KDQpgYGB7ciwgcmVzdWx0cz0nbWFya3VwJ30NCnggPC0gMTozDQpzdHIoeCkNCnRyYWNlbWVtKHgpDQp5IDwtIHgNCnlbM10gPC0gNEwNCnlbM10gPC0gNUwgIyB5IGlzIG5vdCBjb3BpZWQNCnVudHJhY2VtZW0oeCkNCnogPC0geQ0KelszXSA8LSA2TA0KdyA8LSB4DQp3WzNdIDwtIDRMICMgeCB3YXMgbm90IGJlaW5nIHRyYWNlZA0KdW50cmFjZW1lbSh5KQ0KdW50cmFjZW1lbSh6KQ0KelszXSA8LSA3LjUgIyB6IGlzIG5vdCBiZWluZyB0cmFjZWQuIElmIGl0IHdlcmUsIGEgY29weSB3b3VsZCBvY2N1ciBhcyB6WzNdIGlzIG5vdyBudW1lcmljLCBub3QgYW4gaW50ZWdlcg0Kc3RyKHopDQpgYGANCg0KIyMjIEZ1bmN0aW9uIGNhbGxzDQpUaGUgc2FtZSBydWxlcyBmb3IgY29weWluZyBhbHNvIGFwcGx5IHRvIGZ1bmN0aW9uIGNhbGxzLiBUYWtlIHRoaXMgY29kZToNCg0KYGBge3J9DQpmIDwtIGZ1bmN0aW9uKGEpIHsNCiAgYQ0KfQ0KYGBgDQpgYGB7cn0NCnggPC0gMTozDQp0cmFjZW1lbSh4KQ0KeiA8LSBmKHgpDQp6DQp1bnRyYWNlbWVtKHgpDQpgYGANCg0KV2hpbGUgYGYoKWAgaXMgcnVubmluZywgYGFgIGluc2lkZSB0aGUgZnVuY3Rpb24gd2lsbCBwb2ludCB0byB0aGUgc2FtZSB2YWx1ZSBhcyBgeGAgZG9lcyBvdXRzaWRlIG9mIGl0Og0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2JpbmRpbmctZjEucG5nIikNCmBgYA0KDQpBbmQgb25jZSBjb21wbGV0ZSwgYHpgIHdpbGwgcG9pbnQgdG8gdGhlIHNhbWUgb2JqZWN0Lg0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2JpbmRpbmctZjIucG5nIikNCmBgYA0KDQpgYGB7cn0NCmFkZHJlc3MoeCkNCmFkZHJlc3MoeikNCmBgYA0KDQoNCklmIGBmKClgIHdlcmUgdG8gbW9kaWZ5IGB4YCwgUiB3b3VsZCBjcmVhdGUgYSBuZXcgY29weSwgYW5kIHRoZW4gYHpgIHdvdWxkIGJpbmQgdG8gdGhhdCBvYmplY3QuDQoNCmBgYHtyfQ0KZiA8LSBmdW5jdGlvbihhKSB7DQogIGFbM10gPC0gNEwNCiAgYQ0KfQ0KYGBgDQpgYGB7ciwgcmVzdWx0cz0nbWFya3VwJ30NCnggPC0gMTozDQp0cmFjZW1lbSh4KQ0KeiA8LSBmKHgpDQp6DQp1bnRyYWNlbWVtKHgpDQpgYGANCmBgYHtyfQ0KYWRkcmVzcyh4KQ0KYWRkcmVzcyh6KQ0KYGBgDQoNCiMjIyBMaXN0cw0KSXQncyBub3QganVzdCBuYW1lcyAoaS5lLiB2YXJpYWJsZXMpIHRoYXQgcG9pbnQgdG8gdmFsdWVzOyB0aGUgZWxlbWVudHMgb2YgYSBsaXN0IGRvIHRvby4gVGFrZSB0aGlzIGxpc3QsIHdoaWNoIGlzIHN1cGVyZmljaWFsbHkgdmVyeSBzaW1pbGFyIHRvIHRoZSB2ZWN0b3IgYWJvdmU6DQoNCmBgYHtyfQ0KbDEgPC0gbGlzdCgxLCAyLCAzKQ0KYGBgDQoNClRoZSBpbnRlcm5hbCByZXByZXNlbnRhdGlvbiBvZiB0aGUgbGlzdCBpcyBhY3R1YWxseSBxdWl0ZSBkaWZmZXJlbnQgdG8gdGhhdCBvZiBhIHZlY3Rvci4gQSBsaXN0IGlzIHJlYWxseSBhIHZlY3RvciBvZiByZWZlcmVuY2VzOg0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2xpc3QucG5nIikNCmBgYA0KDQpUaGlzIGlzIHBhcnRpY3VsYXJseSBpbXBvcnRhbnQgd2hlbiB3ZSBtb2RpZnkgYSBsaXN0Og0KDQpgYGB7cn0NCmwyIDwtIGwxDQpgYGANCg0KYGBge3IsIG91dC53aWR0aD0iMjAwcHgiLCBlY2hvPUZBTFNFfQ0Ka25pdHI6OmluY2x1ZGVfZ3JhcGhpY3MoIkltYWdlcy9sLW1vZGlmeS0xLnBuZyIpDQpgYGANCg0KYGBge3J9DQpsMltbM11dIDwtIDQNCmBgYA0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2wtbW9kaWZ5LTIucG5nIikNCmBgYA0KDQpMaWtlIHZlY3RvcnMsIGxpc3RzIGFyZSBjb3BpZWQtb24tbW9kaWZ5OyB0aGUgb3JpZ2luYWwgbGlzdCBpcyBsZWZ0IHVuY2hhbmdlZCwgYW5kIFIgY3JlYXRlcyBhIG1vZGlmZWQgY29weS4gTm90ZSB0aGF0IHRoZSBjb3B5IGlzICoqc2hhbGxvdyoqOiB0aGUgbGlzdCBvYmplY3QgYW5kIGl0cyBiaW5kaW5ncyBhcmUgY29waWVkLCBidXQgdGhlIHZhbHVlcyBwb2ludGVkIHRvIGJ5IHRoZSBiaW5kaW5ncyBhcmUgbm90Lg0KDQpZb3UgY2FuIHVzZSBgbG9ic3RyOjpyZWYoKWAgdG8gc2VlIHZhbHVlcyB0aGF0IGFyZSBzaGFyZWQgYWNyb3NzIGxpc3RzLiBgcmVmKClgIHByaW50cyB0aGUgbWVtb3J5IGFkZHJlc3Mgb2YgZWFjaCBvYmplY3QsIGFsb25nIHdpdGggYSBsb2NhbCBpZCBzbyB0aGF0IHlvdSBjYW4gZWFzaWx5IGNyb3NzLXJlZmVyZW5jZSBzaGFyZWQgY29tcG9uZW50cy4NCg0KYGBge3J9DQpsb2JzdHI6OnJlZihsMSwgbDIpDQpgYGANCg0KQ29uc2lkZXIgdGhpcyBjb2RlOg0KDQpgYGB7cn0NCmwxIDwtIGxpc3QoMSwyKQ0KbDIgPC0gbGlzdCgzLDQpDQpsIDwtIGxpc3QobDEsIGwyKQ0KbGMgPC0gbA0KbG9ic3RyOjpyZWYobCwgbGMpDQpgYGANCg0KQm90aCBuYW1lcywgYGxgIGFuZCBgbGNgLCBhcmUgYm91bmQgdG8gdGhlIHNhbWUgb2JqZWN0LiBOb3cgdGFrZSB0aGlzIGNvZGU6DQoNCmBgYHtyfQ0KbGNbWzFdXVtbMV1dIDwtIDUNCmxvYnN0cjo6cmVmKGwsIGxjKQ0KYGBgDQoNCmBsY1tbMV1dW1sxXV1gIGFuZCBpdHMgYW5jZXN0b3JzIGFyZSBjb3BpZWQgZnJvbSBgbGAsIHdoaWxlIHRoZSByZXN0IG9mIHRoZSBgbGNgIGlzIGJvdW5kIHRvIHRoZSBzYW1lIG9iamVjdHMgYXMgYGxgLiBTcGVjaWZpY2FsbHk6DQoNCiogTGlzdCBgbGNgIGhhcyBhIGRpZmZlcmVudCBhZGRyZXNzIGZyb20gYGxgIC0gbG9jYWwgaWRzIDEgYW5kIDgNCiogTGlzdCBgbGNbWzFdXWAgKGkuZS4gJ2BsMWAnKSBoYXMgYSBkaWZmZXJlbnQgYWRkcmVzcyBmcm9tIGBsW1sxXV1gIC0gbG9jYWwgaWRzIDIgYW5kIDkNCiogRGJsIGBsY1tbMV1dW1sxXV1gIGhhcyBhIGRpZmZlcmVudCBhZGRyZXNzIGZyb20gYGxbWzFdXVtbMV1dYCAtIGxvY2FsIGlkcyAzIGFuZCAxMA0KKiBEYmwgYGxjW1sxXV1bWzJdXWAgaGFzIHRoZSBzYW1lIGFkZHJlc3MgYXMgYGxbWzFdXVtbMl1dYCAtIGxvY2FsIGlkIDQNCiogTGlzdCBgbGNbWzJdXWAgKGkuZS4gJ2BsMmAnKSBoYXMgdGhlIHNhbWUgYWRkcmVzcyBhcyBgbFtbMl1dYCAtIGxvY2FsIGlkIDUNCg0KIyMjIERhdGEgZnJhbWVzDQpEYXRhIGZyYW1lcyBhcmUgbGlzdHMsIHNvIGNvcHktb24tbW9kaWZ5IGhhcyBpbXBvcnRhbnQgY29uc2VxdWVuY2VzIHdoZW4geW91IG1vZGlmeSBhIGRhdGEgZnJhbWUuIFRha2UgdGhpcyBkYXRhIGZyYW1lIGFzIGEgZXhhbXBsZToNCg0KYGBge3J9DQpkMSA8LSBkYXRhLmZyYW1lKHggPSBjKDEsIDUsIDYpLCB5ID0gYygyLCA0LCAzKSkNCmBgYA0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2RhdGFmcmFtZS5wbmciKQ0KYGBgDQoNCklmIHlvdSBtb2RpZnkgYSBjb2x1bW4sIG9ubHkgdGhhdCBjb2x1bW4gbmVlZHMgdG8gYmUgbW9kaWZpZWQ7IHRoZSBvdGhlcnMgY2FuIGNvbnRpbnVlIHRvIHBvaW50IHRvIHRoZSBzYW1lIHBsYWNlOg0KDQpgYGB7cn0NCmQyIDwtIGQxDQpkMlssIDJdIDwtIGQyWywgMl0gKiAyDQpgYGANCg0KYGBge3IsIG91dC53aWR0aD0iMjAwcHgiLCBlY2hvPUZBTFNFfQ0Ka25pdHI6OmluY2x1ZGVfZ3JhcGhpY3MoIkltYWdlcy9kLW1vZGlmeS1jLnBuZyIpDQpgYGANCg0KSG93ZXZlciwgaWYgeW91IG1vZGlmeSBhIHJvdywgdGhlcmUgaXMgbm8gd2F5IHRvIHNoYXJlIGRhdGEgd2l0aCB0aGUgcHJldmlvdXMgdmVyc2lvbiBvZiB0aGUgZGF0YSBmcmFtZS4NCg0KYGBge3J9DQpkMyA8LSBkMQ0KZDNbMSwgXSA8LSBkM1sxLCBdICogMg0KYGBgDQoNCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvZC1tb2RpZnktci5wbmciKQ0KYGBgDQoNCklmIHlvdSBtb2RpZnkgYSBzaW5nbGUgZWxlbWVudCBvZiBhIGNvbHVtbiB0aGF0IGlzIGFuIGF0b21pYyB2ZWN0b3IsIHRoZW4gdGhlIGVudGlyZSBjb2x1bW4gaXMgY29waWVkOg0KDQpgYGB7cn0NCmQxIDwtIGRhdGEuZnJhbWUoeCA9IGMoMSwgNSwgNiksIHkgPSBjKDIsIDQsIDMpKQ0KZDIgPC0gZDENCmQyWzEsMl0gPC0gNw0KbG9ic3RyOjpyZWYoZDEsIGQyKQ0KYGBgDQoNCkhvd2V2ZXIsIHRoaXMgaXMgbm90IHRydWUgaWYgYSBjb2x1bW4gaXMgbm90IGFuIGF0b21pYyB2ZWN0b3IuIFNpbmNlIGEgZGF0YSBmcmFtZSBpcyBhIGxpc3Qgb2YgdmVjdG9ycywgYW5kIGEgbGlzdCBpcyBhIHZlY3RvciwgaXQgaXMgcG9zc2libGUgZm9yIGEgZGF0YSBmcmFtZSB0byBoYXZlIGEgY29sdW1uIHRoYXQgaXMgYSBsaXN0Og0KDQpgYGB7ciwgcmVzdWx0cz0nbWFya3VwJ30NCmRmMSA8LSBkYXRhLmZyYW1lKHggPSBJKGxpc3QoMToyLCAxOjMpKSkNCnByaW50KGRmMSkNCmRmMiA8LSBkZjENCmRmMlsxLDFdW1sxXV0gPC0gbGlzdCg0OjUpDQpwcmludChkZjIpDQpsb2JzdHI6OnJlZihkZjIsIGRmMSkNCg0KYGBgDQogDQoqV2hlbiBhIGxpc3QgaXMgZ2l2ZW4gdG8qIGBkYXRhLmZyYW1lKClgLCAqaXQgdHJpZXMgdG8gcHV0IGVhY2ggaXRlbSBvZiB0aGUgbGlzdCBpbnRvIGl0cyBvd24gY29sdW1uLiBBIHdvcmthcm91bmQgaXMgdG8gdXNlKiBgSSgpYCAqd2hpY2ggY2F1c2VzKiBgZGF0YS5mcmFtZSgpYCAqdG8gdHJlYXQgdGhlIGxpc3QgYXMgb25lIHVuaXQuKg0KDQojIyMgQ2hhcmFjdGVyIHZlY3RvcnMNClIgdXNlcyByZWZlcmVuY2VzIGluIGNoYXJhY3RlciB2ZWN0b3JzLiBXZSBkcmF3IGNoYXJhY3RlciB2ZWN0b3JzIGxpa2UgdGhpczoNCg0KYGBge3J9DQp4IDwtIGMoImEiLCAiYSIsICJhYmMiLCAiZCIpDQpgYGANCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvY2hhcmFjdGVyLnBuZyIpDQpgYGANCg0KVGhpcyBpcyBhIHBvbGl0ZSBmaWN0aW9uIGJlY2F1c2UgUiBoYXMgYSAqKmdsb2JsIHN0cmluZyBwb29sKiouIEVhY2ggZWxlbWVudCBvZiBhIGNoYXJhY3RlciB2ZWN0b3IgaXMgYWN1dGFsbHkgYSBwb2ludGVyIHRvIGEgdW5pcXVlIHN0cmluZyBpbiB0aGF0IHBvb2w6DQoNCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvY2hhcmFjdGVyLTIucG5nIikNCmBgYA0KDQpZb3UgY2FuIHJlcXVlc3QgdGhhdCBgcmVmKClgIHNob3cgdGhlc2UgcmVmZXJlbmNlczoNCg0KYGBge3J9DQpyZWYoeCwgY2hhcmFjdGVyID0gVFJVRSkNCmBgYA0KDQojIyMgRXhlcmNpc2VzDQoxLiBXaHkgaXMgYHRyYWNlbWVtKDE6MTApYCBub3QgdXNlZnVsPyAgDQoqKkEqKjogV2l0aG91dCBhIGJpbmRpbmcgYDE6MTBgIHdpbGwgbm90IHN0YXkgaW4gbWVtb3J5Lg0KDQoyLiBFeHBsYWluIHdoeSBgdHJhY2VtZW0oKWAgcmVjb3JkcyB0d28gY29waWVzIHdoZW4geW91IHJ1biB0aGlzIGNvZGUuICANCmBgYA0KeCA8LSAxOjMNCnRyYWNlbWVtKHgpDQp4W1szXV0gPC0gNA0KYGBgDQoqKkEqKjogSW5pdGlhbGx5IGB4YCBpcyBhbiBpbnRlZ2VyIHZlY3Rvci4gV2l0aGluIHRoZSByZXBsYWNlbWVudCBjYWxsLCB3ZSBhc3NpZ24gYSBkb3VibGUgdG8gdGhlIHRoaXJkIGVsZW1lbnQgb2YgYHhgLiBTbyBiZXNpZGVzIHRoZSBuZXcgdmFsdWUgb2YgdGhlIHRoaXJkIGVsZW1lbnQsIGEgdHlwZSBjb252ZXJzaW9uIChjb2VyY2lvbikgaXMgYWxzbyB0cmlnZ2VyZWQgYWZmZWN0aW5nIHdob2xlIHZlY3Rvci4NCg0KMy4gU2tldGNoIHRoZSByZWxhdGlvbnNoaXAgYmV0d2VlbiB0aGUgZm9sbG93aW5nIG9iamVjdHM6DQpgYGANCmEgPC0gMToxMA0KYiA8LSBsaXN0KGEsIGEpDQpjIDwtIGxpc3QoYiwgYSwgMToxMCkNCmBgYA0KYGFgLCB0aGUgdHdvIGVsZW1lbnRzIG9mIGBiYCwgYW5kIHRoZSBzZWNvbmQgZWxlbWVudCBvZiBgY2AgYWxsIHBvaW50IHRvIHRoZSBzYW1lIG9iamVjdCBgMToxMGAuIEFkZGl0aW9uYWxseSwgdGhlIGZpcnN0IGVsZW1lbnQgb2YgYGNgIHBvaW50cyB0byBgYmAgKHdob3NlIHR3byBlbGVtZW50cyBwb2ludCB0byB0aGUgc2FtZSBgMToxMGApLiAgICAgIA0KICAgIGBgYHtyLCBpbmNsdWRlPUZBTFNFfQ0KICAgIGEgPC0gMToxMA0KICAgIGIgPC0gbGlzdChhLCBhKQ0KICAgIGMgPC0gbGlzdChiLCBhLCAxOjEwKQ0KICAgIGBgYA0KICAgIGBgYHtyfQ0KICAgIHJlZihhLGIsYykNCiAgICBgYGANCg0KNC4gV2hhdCBoYXBwZW5zIHdoZW4geW91IHJ1biB0aGlzIGNvZGU/ICANCmBgYA0KeCA8LSBsaXN0KDE6MTApDQp4W1syXV0gPC0geA0KYGBgDQoqKkEqKjogV2hlbiBgeGAgaXMgYm91bmQsIGl0IHdpbGwgcG9pbnQgdG8gYSBsaXN0IChsb2NhbCBpZCAxKSBvZiBvbmUgZWxlbWVudCAobG9jYWwgaWQgMikgd2hpY2ggcG9pbnRzIHRvIGAxOjEwYC4NCiAgICBgYGB7cn0NCiAgICB4IDwtIGxpc3QoMToxMCkNCiAgICByZWYoeCkNCiAgICBgYGANCldoZW4gYHhgIGhhcyBhbiBgeGAgYXBwZW5kZWQgdG8gaXRzZWxmLCBpdCB3aWxsIHBvaW50IHRvIGEgbmV3IGxpc3QgKGxvY2FsIGlkIDEpIG9mIHR3byBlbGVtZW50cyAobG9jYWwgaWRzIDIgYW5kIDMpLiBFbGVtZW50IHdpdGggbG9jYWwgaWQgMiBwb2ludHMgdG8gdGhlIHNhbWUgYDE6MTBgIG9iamVjdCBhcyBiZWZvcmUuIEVsZW1lbnQgd2l0aCBsb2NhbCBpZCAzIHBvaW50cyB0byB0aGUgcHJpb3IgbGlzdCBvYmplY3QgKHdoaWNoIGhhZCBsb2NhbCBpZCAxKS4NCiAgICBgYGB7cn0NCiAgICB4W1syXV0gPC0geA0KICAgIHJlZih4KQ0KICAgIGBgYA0KICAgIGBgYHtyLCBvdXQud2lkdGg9IjMwMHB4IiwgZWNobz1GQUxTRX0NCiAgICBrbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2wtbW9kaWZ5LTMucG5nIikNCiAgICBgYGANCg0KDQojIyBPYmplY3Qgc2l6ZQ0KWW91IGNhbiBmaW5kIG91dCBob3cgbXVjaCBzcGFjZSBhbiBvYmplY3Qgb2NjdXBpZXMgaW4gbWVtb3J5IHdpdGggdmFyaW91cyBmdW5jdGlvbnMuDQoNCmBgYHtyfQ0KbG9ic3RyOjpvYmpfc2l6ZShsZXR0ZXJzKQ0KcHJ5cjo6b2JqZWN0X3NpemUobGV0dGVycykNCnV0aWxzOjpvYmplY3Quc2l6ZShsZXR0ZXJzKQ0KYGBgDQoNCmBgYHtyfQ0KeCA8LSAxOjFlNg0KeSA8LSBsaXN0KHgsIHgsIHgpDQoNCmxvYnN0cjo6b2JqX3NpemUoeCkNCmxvYnN0cjo6b2JqX3NpemUoeSkNCmBgYA0KYGBge3J9DQpwcnlyOjpvYmplY3Rfc2l6ZSh4KQ0KcHJ5cjo6b2JqZWN0X3NpemUoeSkNCmBgYA0KYGBge3J9DQp1dGlsczo6b2JqZWN0LnNpemUoeCkNCnV0aWxzOjpvYmplY3Quc2l6ZSh5KQ0KDQpgYGANCg0KVXNpbmcgYGxvYnN0cjo6b2JqX3NpemUoKWAsIGB5YCBpcyBvbmx5IDcyIGJ5dGVzIGJpZ2dlciB0aGFuIGB4YC4gVGhhdCdzIHRoZSBzaXplIG9mIGFuIGVtcHR5IGxpc3Qgd2l0aCB0aHJlZSBlbGVtZW50czoNCg0KYGBge3J9DQpsb2JzdHI6Om9ial9zaXplKGxpc3QoTlVMTCwgTlVMTCwgTlVMTCkpDQpgYGANCg0KTm90ZSB0aGF0IGB1dGlsczo6b2JqZWN0LnNpemUoKWAgaW5jb3JyZWN0bHkgY291bnRzIGB4YHRocmVlIHRpbWVzLg0KYG9ial9zaXplKHgpICsgb2JqX3NpemUoeSlgIHdpbGwgb25seSBlcXVhbCBgb2JqX3NpemUoeCwgeSlgIGlmIHRoZXJlIGFyZSBubyBzaGFyZWQgdmFsdWVzLiBIZXJlLCB0aGUgY29tYmluZWQgc2l6ZSBvZiBgeGAgYW5kIGB5YCBpcyB0aGUgc2FtZSBhcyB0aGUgc2l6ZSBvZiBgeWAuDQoNCmBgYHtyfQ0Kb2JqX3NpemUoeCkNCm9ial9zaXplKHkpDQpvYmpfc2l6ZSh4LCB5KQ0KYGBgDQoNClRoZSBnbG9iYWwgc3RyaW5nIHBvb2wgbWVhbnMgdGhhdCBjaGFyYWN0ZXIgdmVjdG9ycyB0YWtlIHVwIGxlc3MgbWVtb3J5IHRoYW4geW91IG1pZ2h0IGV4cGVjdC4NCmBgYHtyfQ0KYmFuYW5hIDwtICJiYW5hbmFzIGJhbmFuYXMgYmFuYW5hcyINCm9ial9zaXplKGJhbmFuYSkNCm9ial9zaXplKHJlcChiYW5hbmEsIDEwMCkpDQpgYGANCg0KIyMjIEV4ZXJjaXNlcw0KMS4gVGFrZSB0aGUgZm9sbG93aW5nIGxpc3QuIFdoeSBpcyBpdHMgc2l6ZSBzb21ld2hhdCBtaXNsZWFkaW5nPyAgDQpgYGANCnggPC0gbGlzdChtZWFuLCBzZCwgdmFyKQ0Kb2JqX3NpemUoeCkNCmBgYA0KKipBKio6IFRoZSBsaXN0IGNvbnRhaW5zIHBvaW50ZXJzIHRvIHRoZSBmdW5jdGlvbnMsIGJ1dCBgb2JqX3NpemUoKWAgaW5jbHVkZXMgdGhlIHNpemUgb2YgdGhlIGZ1bmN0aW9ucy4NCiAgICBgYGB7cn0NCiAgICB4IDwtIGxpc3QobWVhbiwgc2QsIHZhcikNCiAgICBvYmpfc2l6ZSh4KQ0KICAgIG9ial9zaXplKHgpIC0gb2JqX3NpemUobWVhbiwgc2QsIHZhcikNCiAgICBvYmpfc2l6ZShsaXN0KE5VTEwsIE5VTEwsIE5VTEwpKSAjIFNpemUgb2YgYW4gZW1wdHkgbGlzdCBvZiAzIGVsZW1lbnRzDQogICAgcmVmKG1lYW4sIHhbWzFdXSkNCiAgICBgYGANCg0KMi4gUHJlZGljdCB0aGUgb3V0cHV0IG9mIHRoZSBmb2xsb3dpbmcgY29kZTogIA0KYGBgDQp4IDwtIDFlNg0Kb2JqX3NpemUoeCkNCmBgYA0KKipBKio6IFIgZG9lcyBub3QgaGF2ZSBhIHNjYWxhciB0eXBlLCBvbmx5IHZlY3RvcnMuIFRoZSBhbW91bnQgb2Ygc3BhY2UgdG8gc3RvcmUgYW4gZW1wdHkgdmVjdG9yIGlzIDQwIEIuIEVhY2ggaW50ZWdlciBpbnNpZGUgdGhlIHZlY3RvciByZXF1aXJlcyA0Qiwgd2l0aCBSIGFsbG9jYXRpbmcgbWVtb3J5IGluIDhCIGluY3JlbWVudHMuIEhlbmNlIGB4YCByZXF1aXJlcyA0MCBCICsgMSwwMDAsMDAwICogNCBCID0gNCwwMDAsMDQwIEIuDQogICAgYGBge3J9DQogICAgb2JqX3NpemUoaW50ZWdlcigwKSkNCiAgICBvYmpfc2l6ZShpbnRlZ2VyKDEpKQ0KICAgIG9ial9zaXplKGludGVnZXIoMikpDQogICAgb2JqX3NpemUoaW50ZWdlcigzKSkNCiAgICBvYmpfc2l6ZShpbnRlZ2VyKDQpKQ0KICAgIHggPC0gMToxZTYNCiAgICBvYmpfc2l6ZSh4KQ0KICAgIGBgYA0KQW5kIHRoaXMgY29kZToNCmBgYA0KeSA8LSBsaXN0KHgsIHgpDQpvYmpfc2l6ZSh5KQ0Kb2JqX3NpemUoeCwgeSkNCmBgYA0KKipBKio6IEFuIGVtcHR5IGxpc3QgcmVxdWlyZXMgNDAgQjsgZWFjaCBlbGVtZW50cyByZXF1aXJlcyA4IEIuIGB4YCByZXF1aXJlcyA0LDAwMCwwNDAgQiwgaGVuY2UgYHlgIHJlcXVpcmVzIDQsMDAwLDA5NiBCLiBTaW5jZSBgeWAgY29udGFpbnMgcG9pbnRlcnMgdG8gYHhgLCB0aGUgbWVtb3J5IHJlcXVpcmVtZW50IGZvciBgeGAgYW5kIGB5YCBpcyB0aGUgc2FtZSBhcyBgeWAuDQogICAgYGBge3J9DQogICAgbG9ic3RyOjpvYmpfc2l6ZShsaXN0KCkpICMgNDAgQiBmb3IgYW4gZW1wdHkgbGlzdA0KICAgIHByeXI6Om9iamVjdF9zaXplKGxpc3QoKSkgIyBub3RlIHRoYXQgdGhlIHByeXIgcGFja2FnZSBjYWxjdWxhdGVkIGFuIGVtcHR5IGxpc3QgYXQgNDggQg0KICAgIA0KICAgIG9ial9zaXplKGxpc3QoTlVMTCkpICMgNDggQiBmb3IgYSBsaXN0IGFuZCBhIHBvaW50ZXINCiAgICBvYmpfc2l6ZShsaXN0KGludGVnZXIoMCkpKSAjIDg4QiBmb3IgYSBsaXN0ICg0MCBCKSwgYSBwb2ludGVyICg4IEIpLCBhbmQgYW4gZW1wdHkgdmVjdG9yICg0MCBCKQ0KICAgIG9ial9zaXplKGxpc3QoMUwpKSAjIDk2QiBmb3IgYSBsaXN0LCBhIHBvaW50LCBhbmQgYSB2ZWN0b3IgY29udGFpbmluZyBhIHNpbmdsZSBpbnRlZ2VyIChtaW4gYWxsb2NhdGlvbiBpcyA4IEIpDQogICAgDQogICAgeCA8LSAxOjFlNg0KICAgIHkgPC0gbGlzdCh4LCB4KQ0KICAgIG9ial9zaXplKHkpDQogICAgb2JqX3NpemUoeCwgeSkNCiAgICANCiAgICBgYGANCkFuZCB0aGlzIGNvZGU6DQpgYGANCnlbWzFdXVtbMV1dIDwtIDEwDQpvYmpfc2l6ZSh5KQ0Kb2JqX3NpemUoeCwgeSkNCmBgYA0KKipBKio6IEEgbmV3IG9iamVjdCBvZiAqKmRvdWJsZXMqKiBpcyBjcmVhdGVkLCBgYygxMCwgMiwgMywgLi4uLCAxZTYpYC4gVGhpcyByZXF1aXJlcyA0MCBCICsgMSwwMDAsMDAwICogOCBCID0gOCwwMDAsMDQwIEIuIFByZXZpb3VzbHkgYHlgIHJlcXVpcmVkIDQsMDAwLDA5NiBCLCBzbyBgeWAgbm93IHJlcXVpcmVzIDEyLDAwMCwxMzYgQi4NCiAgICBgYGB7cn0NCiAgICB5W1sxXV1bWzFdXSA8LSAxMA0KICAgIHN0cih5KQ0KICAgIG9ial9zaXplKHkpDQogICAgYGBgDQpBbmQgdGhpcyBjb2RlOg0KYGBgDQp5W1syXV1bWzFdXSA8LSAxMA0Kb2JqX3NpemUoeSkNCm9ial9zaXplKHgsIHkpDQpgYGANCioqQSoqOiBXZSBoYXZlIHR3byB2ZWN0b3JzIG9mIGRvdWJsZXMgZWFjaCByZXF1aXJpbmcgOCwwMDAsMDQwIEIuIEluIGFkZHRpb24sIHRoZSBsaXN0IHBsdXMgdHdvIHBvaW50ZXJzIGlzIDQwIEIgKyAxNiBCID0gNTZCLiBIZW5jZSB0aGUgdG90YWwgcmVxdWlyZW1lbnQgZm9yIGB5YCBpcyAxNiwwMDAsMTM2IEIuIGB4YCBhbmQgYHlgIG5vIGxvbmdlciBwb2ludCB0byBhbnkgb2YgdGhlIHNhbWUgb2JqZWN0cy4gSGVuY2UgdGhlIG1lbW9yeSByZXF1aXJlZCBmb3IgYm90aCBpcyA0LDAwMCwwNDAgQiArIDE2LDAwMCwxMzYgQiA9IDIwLDAwMCwxNzYgQi4NCiAgICBgYGB7cn0NCiAgICB5W1syXV1bWzFdXSA8LSAxMA0KICAgIG9ial9zaXplKHkpDQogICAgb2JqX3NpemUoeCwgeSkNCiAgICBgYGANCioqTm90ZSoqOiBhIGxpc3QgaXMgYSB2ZWN0b3IsIGFzIGlzIGFuIGludGVnZXIsIGFuZCBzbyB3aGVuIHRoZXkgYXJlIGVtcHR5IHRoZXkgc2hvdWxkIGFsbCByZXF1aXJlIHRoZSBzYW1lIG1lbW9yeSBhbGxvY2F0aW9uLg0KICAgIGBgYHtyfQ0KICAgIG9ial9zaXplKGludGVnZXIoMCkpDQogICAgb2JqX3NpemUobGlzdCgpKQ0KICAgIG9ial9zaXplKHZlY3RvcigpKQ0KICAgIGBgYA0KDQojIyBNb2RpZnktaW4tcGxhY2UNCk1vc3Qgb2YgdGhlIHRpbWUsIG1vZGlmeWluZyBhbiBSIG9iamVjdCB3aWxsIGNyZWF0ZSBhIGNvcHkuIFRIZXJlIGFyZSB0d28gZXhjZXB0aW9uczoNCg0KKiBPYmplY3Qgd2l0aCBhIHNpbmdsZSBiaW5kaW5nIGdldCBhIHNwZWNpYWwgcGVyZm9ybWFuY2Ugb3B0aW1pemF0aW9uLg0KKiBFbnZpcm9ubWVudHMgYXJlIGEgc3BlY2lhbCB0eXBlIG9mIG9iamVjdCB0aGF0IGlzIGFsd2F5cyBtb2RpZmVkIGluIHBsYWNlLg0KDQojIyMgT2JqZWN0IHdpdGggYSBzaW5nbGUgYmluZGluZw0KSWYgYW4gb2JqZWN0IG9ubHkgaGFzIGEgc2luZ2xlIGJpbmRpbmcgdG8gaXQsIFIgd2lsbCBtb2RpZml5IGl0IGluIHBsYWNlLiBJdCdzIGNoYWxsZW5naW5nIHRvIHByZWRpY3QgZXhhY3RseSB3aGVuIFIgd2lsbCBtYWtlIHRoaXMgb3B0aW1pemF0aW9uLiBPbmUgY29tcGxpY2F0aW9uIGlzIHRoYXQgd2hlbmV2ZXIgeW91IGNhbGwgYSByZWd1bGFyIGZ1bmN0aW9uLCBpdCB3aWxsIG1ha2UgYSByZWZlcmVuY2UgdG8gdGhlIG9iamVjdCwgZXhjZXB0IHNwZWNpYWxseSB3cml0dGVuIEMgZnVuY3Rpb25zLCB3aGljaCBvY2N1cnIgbW9zdGx5IGluIHRoZSBiYXNlIHBhY2thZ2UuIChBbHNvIG5vdGUgdGhhdCB0aGUgZW52aXJvbm1lbnQgYnJvd3NlciBpbiBSU3R1ZGlvIG1ha2VzIGEgcmVmZXJlbmNlIHRvIGV2ZXJ5IG9iamVjdCBjcmVhdGVkIGF0IHRoZSBjb21tYW5kIGxpbmUuKSBXZSBjYW4gdXNlIGB0cmFjZW1lbSgpYCB0byBlbXBpcmljYWxseSBkZXRlcm1pbmUgaWYgYSBjb3B5IGhhcyBvY2N1cnJlZC4NCg0KIyMjIEVudmlyb25tZW50cw0KRW52aXJvbm1lbnRzIGFyZSBhbHdheXMgbW9kaWZpZWQgaW4gcGxhY2UuIFRoaXMgaXMgc29tZXRpbWVzIHJlZmVycmVkIHRvIGFzIGhhdmluZyAqKnJlZmVyZW5jZSBzZW1hbnRpY3MqKiBiZWNhdXNlIHdoZW5ldmVyIHlvdSBtb2RpZnkgYW4gZW52aXJvbm1lbnQgdGhlIGV4aXN0aW5nIGJpbmRpbmdzIGNvbnRpbnVlIHRvIGhhdmUgdGhlIHNhbWUgcmVmZXJlbmNlLg0KDQpUYWtlIHRoaXMgZW52aXJvbm1lbnQsIHdoaWNoIHdlIGJpbmQgdG8gYGUxYCBhbmQgYGUyYDsNCmBgYHtyfQ0KZTEgPC0gcmxhbmc6OmVudihhID0gMSwgYiA9IDIsIGMgPSAzKQ0KZTIgPC0gZTENCmBgYA0KDQpgYGB7ciwgb3V0LndpZHRoPSIyMDBweCIsIGVjaG89RkFMU0V9DQprbml0cjo6aW5jbHVkZV9ncmFwaGljcygiSW1hZ2VzL2UtbW9kaWZ5LTEucG5nIikNCmBgYA0KDQpJZiB3ZSBjaGFuZ2UgYSBiaW5kaW5nLCB0aGUgZW52aXJvbm1lbnQgaXMgbW9kaWZpZWQgaW4gcGxhY2U6DQpgYGB7cn0NCmUxJGMgPC0gNA0KZTIkYw0KYGBgDQoNCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvZS1tb2RpZnktMi5wbmciKQ0KYGBgDQoNCk9uZSBjb25zZXF1ZW5jZSBvZiB0aGlzIGlzIHRoYXQgZW52aXJvbm1lbnRzIGNhbiBjb250YWluIHRoZW1zZWx2ZXM6DQpgYGB7cn0NCmUgPC0gcmxhbmc6OmVudigpDQplJHNlbGYgPC0gZQ0KcmVmKGUpDQpgYGANCg0KYGBge3IsIG91dC53aWR0aD0iMjAwcHgiLCBlY2hvPUZBTFNFfQ0Ka25pdHI6OmluY2x1ZGVfZ3JhcGhpY3MoIkltYWdlcy9lLXNlbGYucG5nIikNCmBgYA0KDQojIyMgRXhlcmNpc2VzDQoxLiBXaGF0IGhhcHBlbnMgaWYgeW91IGF0dGVtcHQgdG8gdXNlIGB0cmFjZW1lbSgpYCBvbiBhbiBlbnZpcm9ubWVudD8gIA0KKipBKio6IEFzIGEgY29weSBvZiBhbiBlbnZpcm9ubWVudCBpcyBuZXZlciBtYWRlLCBgdHJhY2VtZW0oKWAgZG9lcyBub3RoaW5nIC0gaW4gZmFjdCwgaXQgcmV0dXJucyBhbiBlcnJvci4NCmBgYHtyLCBlcnJvcj1UUlVFfQ0KZTEgPC0gcmxhbmc6OmVudihhID0gMSwgYiA9IDIsIGMgPSAzKQ0KdHJhY2VtZW0oZTEpDQpgYGANCg0KIyMgQ29weWluZyAtIERhdGEgZnJhbWVzICp2cy4qIGxpc3RzDQpOb3RlIHRoYXQgcmVwbGFjZW1lbnQgZm9yIGRhdGEgZnJhbWVzIHJlcXVpcmVzIDMgY29waWVzISBBIGxpc3QgcmVxdWlyZXMgb25seSAxIGNvcHkuIFRoaXMgaXMgYmVjYXVzZSBkYXRhIGZyYW1lIHN1YnNldHRpbmcgaXMgYSBub24tcHJpbWl0aXZlIGZ1bmN0aW9uIHdpdGggY29tcGxpY2F0ZWQgc3Vic2V0dGluZyBydWxlcywgd2hpbGUgbGlzdCBzdWJzZXR0aW5nIGlzIGEgcHJpbWl0aXZlIGZ1bmN0aW9uLg0KYGBge3IsIHJlc3VsdHM9J21hcmt1cCd9DQpkIDwtIGRhdGEuZnJhbWUoMSkNCnRyYWNlbWVtKGQpDQpkWzFdIDwtIDENCg0KbCA8LSBsaXN0KDEpDQp0cmFjZW1lbShsKQ0KbFsxXSA8LSAxDQoNCnVudHJhY2VtZW0oZCkNCnVudHJhY2VtZW0obCkNCmBgYA0KV2hlbiBkb2luZyBleHRlbnNpdmUgaXRlcmF0aW9uIHdpdGggZGF0YSBmcmFtZXMgaXQgbWlnaHQgbWFrZSBzZW5zZSB0byBmaXJzdCBjb252ZXJ0IHRvIGEgbGlzdCB1c2luZyBgYXMubGlzdCgpYC4NCg0KIyMgVW5iaW5kaW5nIGFuZCB0aGUgZ2FyYmFnZSBjb2xsZWN0b3INCkNvbnNpZGVyIHRoaXMgY29kZToNCmBgYA0KeCA8LSAxOjMNCmBgYA0KYGBge3IsIG91dC53aWR0aD0iMjAwcHgiLCBlY2hvPUZBTFNFfQ0Ka25pdHI6OmluY2x1ZGVfZ3JhcGhpY3MoIkltYWdlcy91bmJpbmRpbmctMS5wbmciKQ0KYGBgDQpgYGANCnggPC0gMjo0DQpgYGANCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvdW5iaW5kaW5nLTIucG5nIikNCmBgYA0KYGBgDQp4IDwtIHJtKHgpDQpgYGANCmBgYHtyLCBvdXQud2lkdGg9IjIwMHB4IiwgZWNobz1GQUxTRX0NCmtuaXRyOjppbmNsdWRlX2dyYXBoaWNzKCJJbWFnZXMvdW5iaW5kaW5nLTMucG5nIikNCmBgYA0KDQpXZSBoYXZlIHR3byB1bmJvdW5kIG9iamVjdHMgLSBob3cgZG8gdGhleSBnZXQgZGVsZXRlZD8gVGhhdCdzIHRoZSBqb2Igb2YgdGhlICoqZ2FyYmFnZSBjb2xsZWN0b3IqKiwgb3IgR0MsIGZvciBzaG9ydC4gVGhlIGdhcmJhZ2UgY29sbGVjdG9yIGlzIHJ1biBhdXRvbWF0aWNhbGx5IHdoZW5ldmVyIGEgbmV3IFIgb2JqZWN0IGlzIGNyZWF0ZWQgYW5kIFIgbmVlZHMgbW9yZSBtZW1vcnkuIElmIHlvdSB3YW50IHRvIHNlZSB3aGVuIHRoYXQgb2NjdXJzLCBjYWxsIGBnY2luZm8oVFJVRSlgOiBpdCB3aWxsIHByaW50ICBtZXNzYWdlIHRvIHRoZSBjb25zb2xlIGV2ZXJ5IHRpbWUgdGhlIGdhcmJhZ2UgY29sbGVjdG9yIHJ1bnMuIFRoZXJlJyBubyBuZWVkIHRvIGNhbGwgYGdjKClgIHlvdXJzZXNsZi4gWW91IGNhbiBmb3JjZSB0aGUgZ2FyYmFnZSBjb2xsZWN0b3IgdG8gcnVuIGJ5IGNhbGxpbmcgYGdjKClgIHRvIGFzayBSIHRvIHJldHVybiBtZW1vcnkgdG8geW91ciBvcGVyYXRpbmcgc3lzdGVtLCBvciBmb3IgaXRzIHNpZGUtZWZmZWN0IG9mIHRlbGxpbmcgeW91IGhvdyBtdWNoIG1lbW9yeSBpcyBjdXJyZW50bHkgYmVpbmcgdXNlc2Q6DQpgYGB7cn0NCmdjKCkNCmBgYA0KYGxvYnN0cjo6bWVtX3VzZWQoKWAgaXMgYSB3cmFwcGVyIGFyb3VuZCBgZ2MoKWAgdGhhdCBqdXN0IHByaW50cyB0aGUgdG90YWwgbnVtYmVyIG9mIGJ5dGVzIHVzZWQ6DQpgYGB7cn0NCmxvYnN0cjo6bWVtX3VzZWQoKQ0KYGBgDQoNCiMjIyBNZW1vcnkgbGVha3MNClRoZSBnYXJiZ2UgY29sbGVjdG9yIHRha2VzIGNhcmUgb2YgZGVsZXRpbmcgYWxsIG9iamVjdHMgdGhhdCBkbyBub3QgaGF2ZSBiaW5kaW5ncy4gQnV0IHlvdSBhcmUgc3RpbGwgYXQgcmlzayBmb3IgYSAqKm1lbW9yeSBsZWFrKiosIHdoaWNoIG9jY3VycyB3aGVuIHlvdSBrZWVwIGEgYmluZGluZyB0byBhbiBvYmplY3Qgd2l0aG91dCByZWFsaXNpbmcgaXQuIEluIFIsIHRoZSB0d28gbWFpbiBjYXVzZXMgb2YgbWVtb3J5IGxlYWtzIGFyZSBmb3JtdWxhcyBhbmQgZnVuY3Rpb25zIGJlY2F1c2UgdGhleSBib3RoIGNhcHR1cmUgdGhlIGVuY2xvc2luZyBlbnZpcm9ubWVudC4NCmBgYHtyfQ0KZjEgPC0gZnVuY3Rpb24oKSB7DQogIHggPC0gMToxZTYNCiAgMTANCn0NCnggPC0gZjEoKQ0Kb2JqX3NpemUoeCkNCmBgYA0KYGBge3J9DQpmMiA8LSBmdW5jdGlvbigpIHsNCiAgeCA8LSAxOjFlNg0KICBhIH4gYg0KfQ0KeSA8LSBmMigpDQpvYmpfc2l6ZSh5KQ0KYGBgDQpgYGB7cn0NCmYzIDwtIGZ1bmN0aW9uKCkgew0KICB4IDwtIDE6MWU2DQogIGZ1bmN0aW9uKCkgMTANCn0NCnogPC0gZjMoKQ0Kb2JqX3NpemUoeikNCmBgYA0KDQoNCg==</div>
 
 
 

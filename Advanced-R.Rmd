@@ -1,6 +1,7 @@
 ---
 title: "Advanced R"
 output:
+  html_notebook:
   html_document:
     df_print: paged
     number_sections: yes
