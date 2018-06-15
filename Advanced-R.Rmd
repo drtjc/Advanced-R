@@ -653,3 +653,60 @@ untracemem(l)
 When doing extensive iteration with data frames it might make sense to first convert to a list using `as.list()`.
 
 ## Unbinding and the garbage collector
+Consider this code:
+```
+x <- 1:3
+```
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/unbinding-1.png")
+```
+```
+x <- 2:4
+```
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/unbinding-2.png")
+```
+```
+x <- rm(x)
+```
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/unbinding-3.png")
+```
+
+We have two unbound objects - how do they get deleted? That's the job of the **garbage collector**, or GC, for short. The garbage collector is run automatically whenever a new R object is created and R needs more memory. If you want to see when that occurs, call `gcinfo(TRUE)`: it will print  message to the console every time the garbage collector runs. There' no need to call `gc()` yourseslf. You can force the garbage collector to run by calling `gc()` to ask R to return memory to your operating system, or for its side-effect of telling you how much memory is currently being usesd:
+```{r}
+gc()
+```
+`lobstr::mem_used()` is a wrapper around `gc()` that just prints the total number of bytes used:
+```{r}
+lobstr::mem_used()
+```
+
+### Memory leaks
+The garbge collector takes care of deleting all objects that do not have bindings. But you are still at risk for a **memory leak**, which occurs when you keep a binding to an object without realising it. In R, the two main causes of memory leaks are formulas and functions because they both capture the enclosing environment.
+```{r}
+f1 <- function() {
+  x <- 1:1e6
+  10
+}
+x <- f1()
+obj_size(x)
+```
+```{r}
+f2 <- function() {
+  x <- 1:1e6
+  a ~ b
+}
+y <- f2()
+obj_size(y)
+```
+```{r}
+f3 <- function() {
+  x <- 1:1e6
+  function() 10
+}
+z <- f3()
+obj_size(z)
+```
+
+
