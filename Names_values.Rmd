@@ -9,11 +9,14 @@ output:
     toc_float: yes
 ---
 
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, results='hold', fig.align='center')
+```
+
 ```{r, echo=FALSE, include=FALSE}
 library(lobstr)
 library(pryr)
 ```
-
 
 # Names and Values
 ## Prerequisites

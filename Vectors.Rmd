@@ -9,13 +9,44 @@ output:
     toc_float: yes
 ---
 
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, results='hold', fig.align='center')
+```
+
 ```{r, echo=FALSE, include=FALSE}
 library(lobstr)
 library(pryr)
+library(knitr)
+library(kableExtra)
+library(magrittr)
+
 ```
 
-
 # Vectors
-fhfhg
+Vectors can be organized by their dimension (1d, 2d, nd) and whether they're all homogeneous or heterogeneous. This gives rise to the five types most often used in data analysis:
 
+Dimension     | Homogeneous   | Heterogeneous
+------------- | ------------- | -------------
+1d            | Atomic vector | List
+2d            | Matrix        | Data frame
+nd            | Array         |
 
+```{r, echo=FALSE}
+d <- c("1d", "2d", "nd")
+ho <- c("Atomic vector", "Matrix", "Array")
+he <- c("List", "Data frame", "")
+dt <- data.frame(Dimension = d, Homogeneous = ho, Heterogeneous = he, stringsAsFactors = FALSE)
+kable(dt) %>%
+  kable_styling(bootstrap_options = c("condensed", "hover"), full_width = FALSE, position = "left")
+```
+
+Note that R has no 0-dimensional, or scalar types. Individual numbers or strings are vectors of length one.
+
+Vectors come in two flavours:
+
+* Atomic vectors
+* Lists
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/summary.png")
+```

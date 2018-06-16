@@ -9,7 +9,7 @@ output:
     toc_float: yes
 ---
 
-```{r global_options, include=FALSE}
+```{r, include=FALSE}
 knitr::opts_chunk$set(tidy=TRUE, results='hold', fig.align='center')
 ```
 
@@ -27,7 +27,7 @@ library(pryr)
 ```{r child_YAML, child = "Names_values.Rmd", cache=TRUE}
 ```
 
-```{r child_YAML, child = "Vectors.Rmd", cache=TRUE}
+```{r child_YAML, child = "Vectors.Rmd"}
 ```
 
 
