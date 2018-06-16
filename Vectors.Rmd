@@ -1,0 +1,21 @@
+---
+title: "Vectors"
+output:
+  html_document:
+    number_sections: yes
+    theme: sandstone
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r, echo=FALSE, include=FALSE}
+library(lobstr)
+library(pryr)
+```
+
+
+# Vectors
+fhfhg
+
+

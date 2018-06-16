@@ -27,5 +27,8 @@ library(pryr)
 ```{r child_YAML, child = "Names_values.Rmd", cache=TRUE}
 ```
 
-dfgadfgafadg
+```{r child_YAML, child = "Vectors.Rmd", cache=TRUE}
+```
+
+
 
