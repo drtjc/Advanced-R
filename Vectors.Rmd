@@ -50,3 +50,13 @@ Vectors come in two flavours:
 ```{r, out.width="200px", echo=FALSE}
 knitr::include_graphics("Images/summary.png")
 ```
+
+They have three common properties:
+
+* Type, `typeof()`, what it is.
+* Length, `length()` how many elementd it contains.
+* Attributes, `attributes()`, additional arbitrary metadata.
+
+All elementd of an atomic vector must be the same type, whereas the elements of a list can have different types.
+
+## Atomic vectors
