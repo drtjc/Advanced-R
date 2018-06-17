@@ -60,3 +60,53 @@ They have three common properties:
 All elementd of an atomic vector must be the same type, whereas the elements of a list can have different types.
 
 ## Atomic vectors
+There are 6 types of atomic vectors:
+
+* Logical
+* Integer
+* Double
+* Character
+* Complex - used for complex arithmetic
+* Raw - intended to hold raw bytes
+
+```{r}
+dbl_var <- c(1, 2.5, 4.5)
+int_var <- c(1L, 6L, 10L)
+log_var <- c(TRUE, FALSE, T, F)
+chr_var <- c("these are","some strings")
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/Atomic.png")
+```
+
+Atomic vectors are always flat, even if you nest with `c()`'s:
+
+```{r}
+c(1, c(2, c(3,4)))
+# the same as
+c(1, 2, 3, 4)
+```
+
+Missing values are specified with `NA`, which is a logical vector of length 1. `NA` will always be coerced to the correct type if used inside `c()`, or you can create `NA`s of the correct type with `NA_real_`, `NA_integer_` and `NA_character_`.
+
+### Types and tests
+Given a vector, you can determine its type with `typeof()`.
+
+Use "is" functions with care. `is.character()`, `is.double()`, `is.integer()` and `is.logical()` are ok. The following are surprising:
+
+* `is.vector()` tests for vectors with no attributes apart from names. Use `is.atomic() || is.list()` to test if an object is actually a vector.
+* `is.atomic()` tests for atomic vectors or `NULL`.
+* `is.numeric()` tests for the numerical-ness of a vector, not whether it's built on top of an integer or double.
+
+```{r}
+null_var <- NULL
+is.atomic(null_var)
+typeof(null_var)
+
+int_var <- c(1L, 6L, 10L)
+typeof(int_var)
+```
+
+
+
