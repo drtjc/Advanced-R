@@ -1,9 +1,9 @@
-v <- c(x=1, y=2, z=3)
-attributes(v)
-is.vector(v)
+is.numeric(1)
+is.numeric(1L)
+is.numeric("1")
 
-attr(v, "t") <- "test"
-attributes(v)
-is.vector(v)
-
-is.atomic(v)
+data = c(1,2,2,3,1,2,3,3,1,2,3,3,1)
+fdata = factor(data)
+fdata
+is.numeric(fdata)
+typeof(fdata)
