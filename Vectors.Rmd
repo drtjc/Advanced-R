@@ -200,7 +200,17 @@ is.list(x)
 str(unlist(x))
 ```
 
+## `NULL`
+`NULL` is a singleton object often used to represent a vector of length 0.
 
-# TO DO - put in mapping between typeof and mode and storage.mode
+```{r}
+typeof(NULL)
+length(NULL)
+```
 
+
+
+
+TO DO - put in mapping between typeof and mode and storage.mode
+hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression
 
