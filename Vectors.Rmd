@@ -339,7 +339,51 @@ as.character(x)
 as.integer(x)
 ```
 
+### Exercises
+1. An early draft used this code to illustrate structure(): `structure(1:5, comment = "my attribute")`. But when you print that object you don’t see the comment attribute. Why?  
+**A**: From the help of comment, `?comment`: the comment attribute is not printed. Also from the help of attributes `?attributes`: Note that some attributes (namely `class`, `comment`, `dim`, `dimnames`, `names`, `row.names` and `tsp`) are treated specially and have restrictions on the values which can be set.
+    ```{r, results='markup'}
+    x <- 1:3  
+    comment(x) <- "Hello"
+    x # comment is not printed to screen
+    attributes(x)
+    attributes(x[1]) # attribute is not retained
+    ```
 
+2. What happens to a factor when you modify its levels?  
+    ```{r}
+    f1 <- factor(letters)
+    levels(f1) <- rev(levels(f1))
+    ```
+**A**: Both the entries and the levels are reversed.
+    ```{r, results='markup'}
+    f1 <- factor(letters)
+    f1
+    levels(f1) <- rev(levels(f1))
+    f1
+    f1[1] # levels are retained
+    ```
+
+3. What does this code do? How do `f2` and `f3` differ from `f1`?  
+    ```{r, results='hide'}
+    f2 <- rev(factor(letters))
+    f3 <- factor(letters, levels = rev(letters))
+    ```
+**A**:
+    ```{r, results='markup'}
+    f2 # only entries are reversed
+    f3 # only levels are reversed
+    ```
+    
+Note that replacing the levels via `levels(x) <- value` is not the same as `attr(x, "levels") <- value`. For the `levels()` function, a `NA` in `value` causes that level to be removed from the levels.
+```{r, results='markup'}
+f1 <- factor(letters[1:3])
+levels(f1) <- c("a", "b", NA)
+f1
+f2 <- factor(letters[1:3])
+attr(f2, "levels") <- c("a", "b", NA)
+f2
+```
 
 
 

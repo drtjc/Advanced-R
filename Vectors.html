@@ -617,6 +617,58 @@ as.integer(x)</code></pre>
 ## Levels: a b
 ## [1] &quot;a&quot; &quot;b&quot; &quot;b&quot; &quot;a&quot;
 ## [1] 1 2 2 1</code></pre>
+</div>
+<div id="exercises-1" class="section level3">
+<h3><span class="header-section-number">1.5.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>An early draft used this code to illustrate structure(): <code>structure(1:5, comment = &quot;my attribute&quot;)</code>. But when you print that object you don’t see the comment attribute. Why?<br />
+<strong>A</strong>: From the help of comment, <code>?comment</code>: the comment attribute is not printed. Also from the help of attributes <code>?attributes</code>: Note that some attributes (namely <code>class</code>, <code>comment</code>, <code>dim</code>, <code>dimnames</code>, <code>names</code>, <code>row.names</code> and <code>tsp</code>) are treated specially and have restrictions on the values which can be set.</p>
+<pre class="r"><code>x &lt;- 1:3
+comment(x) &lt;- &quot;Hello&quot;
+x  # comment is not printed to screen</code></pre>
+<pre><code>## [1] 1 2 3</code></pre>
+<pre class="r"><code>attributes(x)</code></pre>
+<pre><code>## $comment
+## [1] &quot;Hello&quot;</code></pre>
+<pre class="r"><code>attributes(x[1])  # attribute is not retained</code></pre>
+<pre><code>## NULL</code></pre></li>
+<li><p>What happens to a factor when you modify its levels?</p>
+<pre class="r"><code>f1 &lt;- factor(letters)
+levels(f1) &lt;- rev(levels(f1))</code></pre>
+<p><strong>A</strong>: Both the entries and the levels are reversed.</p>
+<pre class="r"><code>f1 &lt;- factor(letters)
+f1</code></pre>
+<pre><code>##  [1] a b c d e f g h i j k l m n o p q r s t u v w x y z
+## Levels: a b c d e f g h i j k l m n o p q r s t u v w x y z</code></pre>
+<pre class="r"><code>levels(f1) &lt;- rev(levels(f1))
+f1</code></pre>
+<pre><code>##  [1] z y x w v u t s r q p o n m l k j i h g f e d c b a
+## Levels: z y x w v u t s r q p o n m l k j i h g f e d c b a</code></pre>
+<pre class="r"><code>f1[1]  # levels are retained</code></pre>
+<pre><code>## [1] z
+## Levels: z y x w v u t s r q p o n m l k j i h g f e d c b a</code></pre></li>
+<li><p>What does this code do? How do <code>f2</code> and <code>f3</code> differ from <code>f1</code>?</p>
+<pre class="r"><code>f2 &lt;- rev(factor(letters))
+f3 &lt;- factor(letters, levels = rev(letters))</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>f2  # only entries are reversed</code></pre>
+<pre><code>##  [1] z y x w v u t s r q p o n m l k j i h g f e d c b a
+## Levels: a b c d e f g h i j k l m n o p q r s t u v w x y z</code></pre>
+<pre class="r"><code>f3  # only levels are reversed</code></pre>
+<pre><code>##  [1] a b c d e f g h i j k l m n o p q r s t u v w x y z
+## Levels: z y x w v u t s r q p o n m l k j i h g f e d c b a</code></pre></li>
+</ol>
+<p>Note that replacing the levels via <code>levels(x) &lt;- value</code> is not the same as <code>attr(x, &quot;levels&quot;) &lt;- value</code>. For the <code>levels()</code> function, a <code>NA</code> in <code>value</code> causes that level to be removed from the levels.</p>
+<pre class="r"><code>f1 &lt;- factor(letters[1:3])
+levels(f1) &lt;- c(&quot;a&quot;, &quot;b&quot;, NA)
+f1</code></pre>
+<pre><code>## [1] a    b    &lt;NA&gt;
+## Levels: a b</code></pre>
+<pre class="r"><code>f2 &lt;- factor(letters[1:3])
+attr(f2, &quot;levels&quot;) &lt;- c(&quot;a&quot;, &quot;b&quot;, NA)
+f2</code></pre>
+<pre><code>## [1] a    b    &lt;NA&gt;
+## Levels: a b &lt;NA&gt;</code></pre>
 <p>TO DO - put in mapping between typeof and mode and storage.mode hierarachy: NULL &lt; raw &lt; logical &lt; integer &lt; double &lt; complex &lt; character &lt; list &lt; expression</p>
 </div>
 </div>
