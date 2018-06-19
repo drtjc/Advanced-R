@@ -246,6 +246,102 @@ c(TRUE, 1L)
 6. Why is the default missing value, `NA`, a logical vector? What’s special about logical vectors? (Hint: think about `c(FALSE, NA_character_)`.)  
 **A**: A logical type can be coerced to any type.
 
+## Attributes
+All objects can have arbitrary additional attributes, used to store additional metadata. Attributes can be thought of as a (unique) named list. Attributes can be accessed individually with `attr()` or all at once with `attributes()`.
+
+```{r}
+a <- 1:3
+attr(a, "x") <- "abcdef"
+attr(a, "y") <- 4:6
+attr(a, "z") <- list(list())
+str(attributes(a))
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/attr.png")
+```
+
+The `structure()` function returns a new object with modified attributes.
+
+```{r}
+structure(1:10, my_attribute = "This is a vector")
+```
+
+By default, most attributes are lost when modifying a vector.
+
+```{r, results='markup'}
+attributes(a)
+attributes(a[1])
+attributes(sum(a))
+```
+
+The only attributes not lost are the three most important ones:
+
+* Names
+
+* Dimensions
+
+* Class
+
+Each of these attributes has a specific accessor function to get and set values, `names()`, `dim()`, and `class()`.
+
+### Names
+You can name a vector in 2 ways:
+
+* When creating it: `x <- c(a = 1, b = 2, c = 3)`.
+
+* By modifying an existing vector:
+    ```{r, results='hide'}
+    x <- 1:3  
+    names(x) <- c("a", "b", "c")
+    x <- setNames(1:3, c("a", "b", "c"))
+    ```
+
+Names don’t have to be unique. However, character subsetting is the most important reason to use names and it is most useful when the names are unique.
+
+Not all elements of a vector need to have a name. Depending on how you create the vector the missing names will either have value `""` or `NA_character_`. If all names are missing, `names()` will return `NULL`. You remove names from an existing vector using `unname(x)` or `names(x) <- NULL`.
+
+### Factors
+Attributes are used to define factors. A factor is a vector that can only contain predefined values, and is used to store categorical data. Factors are built upon integer vectors using two attributes:
+
+* the `class`, "factor", which makes them behave differently from regular integer vectors, and
+
+* the `levels`, which defines the set of allowed values.
+
+```{r, results='markup'}
+x <- factor(c("a", "b", "b", "a"))
+x
+typeof(x)
+attributes(x)
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/factor.png")
+```
+
+Factors are useful when you know the possible values a variable may take, even if you don’t see all values in a given dataset. Using a factor instead of a character vector makes it obvious when some groups contain no observations:
+
+```{r}
+sex_char <- c("m", "m", "m")
+table(sex_char)
+```
+```{r}
+sex_factor <- factor(sex_char, levels = c("m", "f"))
+table(sex_factor)
+```
+
+While factors look like (and often behave like) character vectors, they are actually integers. Be careful when treating them like strings. Some string methods (like `gsub()` and `grepl()`) will coerce factors to strings, while others (like `nchar()`) will throw an error, and still others (like `c()`) will use the underlying integer values. For this reason, it’s usually best to explicitly convert factors to character vectors if you need string-like behaviour.
+
+```{r}
+x <- factor(c("a", "b", "b", "a"))
+x
+as.character(x)
+as.integer(x)
+```
+
+
+
+
 
 TO DO - put in mapping between typeof and mode and storage.mode
 hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression
