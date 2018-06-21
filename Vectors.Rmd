@@ -95,7 +95,7 @@ Given a vector, you can determine its type with `typeof()`.
 
 Use "is" functions with care. `is.character()`, `is.double()`, `is.integer()` and `is.logical()` are ok. The following are surprising:
 
-* `is.vector()` tests for vectors with no attributes apart from names. Use `is.atomic() || is.list()` to test if an object is actually a vector.
+* `is.vector()` tests for vectors with no attributes apart from names (this is probably because matrices and arrays have a dim attribute). Use `is.atomic() || is.list()` to test if an object is actually a vector.
 * `is.atomic()` tests for atomic vectors or `NULL`.
 * `is.numeric()` tests for the numerical-ness of a vector - returns true if the type is an integer or a double, but not a factor. 
 
@@ -539,12 +539,43 @@ dim(l) <- c(2, 2)
 l
 ```
 
+### Determining structure
+Use `class()`, `is.matrix()`, `is.array()` and `str()`.
+
+```{r}
+a <- matrix(1:6, nrow = 2, ncol = 3)
+class(a)
+is.matrix(a) # checks if has dim attribute of length 2
+str(a)
+```
+
+```{r}
+b <- array(1:12, c(2, 3, 2))
+class(b)
+is.array(b)
+str(b)
+```
+
+Note that a data frame is not a matrix.
+
+```{r, results='markup'}
+df <- data.frame(1:2, 3:4)
+df
+dim(df)
+attributes(df) # no dim attribute
+is.matrix(df)
+is.data.frame(df)
+```
+
 ## Exercises
-1. What does `dim()` return when applied to a vector?
+1. What does `dim()` return when applied to a vector?  
+**A**: `NULL`
 
 2. When might you use `NROW()` or `NCOL()`?
+**A**: When subsetting an array or matrix that might return a vector.
 
 3. If `is.matrix(x)` is `TRUE`, what will `is.array(x)` return?
+**A**: `TRUE`. A matrix is a 2d array.
 
 4. How would you describe the following three objects? What makes them different to 1:5?
     ```
@@ -552,7 +583,7 @@ l
     x2 <- array(1:5, c(1, 5, 1))
     x3 <- array(1:5, c(5, 1, 1))
     ```
-
+**A**: They are arrays with a dim attribute.
 
 TO DO - put in mapping between typeof and mode and storage.mode
 hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression

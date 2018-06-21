@@ -341,7 +341,7 @@ c(1, 2, 3, 4)</code></pre>
 <p>Given a vector, you can determine its type with <code>typeof()</code>.</p>
 <p>Use “is” functions with care. <code>is.character()</code>, <code>is.double()</code>, <code>is.integer()</code> and <code>is.logical()</code> are ok. The following are surprising:</p>
 <ul>
-<li><code>is.vector()</code> tests for vectors with no attributes apart from names. Use <code>is.atomic() || is.list()</code> to test if an object is actually a vector.</li>
+<li><code>is.vector()</code> tests for vectors with no attributes apart from names (this is probably because matrices and arrays have a dim attribute). Use <code>is.atomic() || is.list()</code> to test if an object is actually a vector.</li>
 <li><code>is.atomic()</code> tests for atomic vectors or <code>NULL</code>.</li>
 <li><code>is.numeric()</code> tests for the numerical-ness of a vector - returns true if the type is an integer or a double, but not a factor.</li>
 </ul>
@@ -787,22 +787,22 @@ NCOL(a)</code></pre>
 <pre class="r"><code>nrow</code></pre>
 <pre><code>## function (x) 
 ## dim(x)[1L]
-## &lt;bytecode: 0x000000001464fff0&gt;
+## &lt;bytecode: 0x0000000014e40000&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>NROW</code></pre>
 <pre><code>## function (x) 
 ## if (length(d &lt;- dim(x))) d[1L] else length(x)
-## &lt;bytecode: 0x0000000013cb6210&gt;
+## &lt;bytecode: 0x0000000013cb62d0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>ncol</code></pre>
 <pre><code>## function (x) 
 ## dim(x)[2L]
-## &lt;bytecode: 0x00000000180fb3d8&gt;
+## &lt;bytecode: 0x0000000018933360&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>NCOL</code></pre>
 <pre><code>## function (x) 
 ## if (length(d &lt;- dim(x)) &gt; 1L) d[2L] else 1L
-## &lt;bytecode: 0x000000001811d420&gt;
+## &lt;bytecode: 0x0000000018953230&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Dimension attributes are retained when the object is modified:</p>
 <pre class="r"><code>b &lt;- array(1:12, c(2, 3, 2))
@@ -933,17 +933,58 @@ l</code></pre>
 ## [1,] Integer,3 TRUE
 ## [2,] &quot;a&quot;       1</code></pre>
 </div>
+<div id="determining-structure" class="section level3">
+<h3><span class="header-section-number">1.8.5</span> Determining structure</h3>
+<p>Use <code>class()</code>, <code>is.matrix()</code>, <code>is.array()</code> and <code>str()</code>.</p>
+<pre class="r"><code>a &lt;- matrix(1:6, nrow = 2, ncol = 3)
+class(a)
+is.matrix(a)  # checks if has dim attribute of length 2
+str(a)</code></pre>
+<pre><code>## [1] &quot;matrix&quot;
+## [1] TRUE
+##  int [1:2, 1:3] 1 2 3 4 5 6</code></pre>
+<pre class="r"><code>b &lt;- array(1:12, c(2, 3, 2))
+class(b)
+is.array(b)
+str(b)</code></pre>
+<pre><code>## [1] &quot;array&quot;
+## [1] TRUE
+##  int [1:2, 1:3, 1:2] 1 2 3 4 5 6 7 8 9 10 ...</code></pre>
+<p>Note that a data frame is not a matrix.</p>
+<pre class="r"><code>df &lt;- data.frame(1:2, 3:4)
+df</code></pre>
+<pre><code>##   X1.2 X3.4
+## 1    1    3
+## 2    2    4</code></pre>
+<pre class="r"><code>dim(df)</code></pre>
+<pre><code>## [1] 2 2</code></pre>
+<pre class="r"><code>attributes(df)  # no dim attribute</code></pre>
+<pre><code>## $names
+## [1] &quot;X1.2&quot; &quot;X3.4&quot;
+## 
+## $class
+## [1] &quot;data.frame&quot;
+## 
+## $row.names
+## [1] 1 2</code></pre>
+<pre class="r"><code>is.matrix(df)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>is.data.frame(df)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
 </div>
 <div id="exercises-2" class="section level2">
 <h2><span class="header-section-number">1.9</span> Exercises</h2>
 <ol style="list-style-type: decimal">
-<li><p>What does <code>dim()</code> return when applied to a vector?</p></li>
-<li><p>When might you use <code>NROW()</code> or <code>NCOL()</code>?</p></li>
-<li><p>If <code>is.matrix(x)</code> is <code>TRUE</code>, what will <code>is.array(x)</code> return?</p></li>
+<li><p>What does <code>dim()</code> return when applied to a vector?<br />
+<strong>A</strong>: <code>NULL</code></p></li>
+<li><p>When might you use <code>NROW()</code> or <code>NCOL()</code>? <strong>A</strong>: When subsetting an array or matrix that might return a vector.</p></li>
+<li><p>If <code>is.matrix(x)</code> is <code>TRUE</code>, what will <code>is.array(x)</code> return? <strong>A</strong>: <code>TRUE</code>. A matrix is a 2d array.</p></li>
 <li><p>How would you describe the following three objects? What makes them different to 1:5?</p>
 <pre><code>x1 &lt;- array(1:5, c(1, 1, 5))
 x2 &lt;- array(1:5, c(1, 5, 1))
-x3 &lt;- array(1:5, c(5, 1, 1))</code></pre></li>
+x3 &lt;- array(1:5, c(5, 1, 1))</code></pre>
+<p><strong>A</strong>: They are arrays with a dim attribute.</p></li>
 </ol>
 <p>TO DO - put in mapping between typeof and mode and storage.mode hierarachy: NULL &lt; raw &lt; logical &lt; integer &lt; double &lt; complex &lt; character &lt; list &lt; expression</p>
 </div>
