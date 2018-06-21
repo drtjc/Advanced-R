@@ -577,8 +577,9 @@ x &lt;- setNames(1:3, c(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;))</code></pr
 <p>Names don’t have to be unique. However, character subsetting is the most important reason to use names and it is most useful when the names are unique.</p>
 <p>Not all elements of a vector need to have a name. Depending on how you create the vector the missing names will either have value <code>&quot;&quot;</code> or <code>NA_character_</code>. If all names are missing, <code>names()</code> will return <code>NULL</code>. You remove names from an existing vector using <code>unname(x)</code> or <code>names(x) &lt;- NULL</code>.</p>
 </div>
-<div id="factors" class="section level3">
-<h3><span class="header-section-number">1.5.2</span> Factors</h3>
+</div>
+<div id="factors" class="section level2">
+<h2><span class="header-section-number">1.6</span> Factors</h2>
 <p>Attributes are used to define factors. A factor is a vector that can only contain predefined values, and is used to store categorical data. Factors are built upon integer vectors using two attributes:</p>
 <ul>
 <li><p>the <code>class</code>, “factor”, which makes them behave differently from regular integer vectors, and</p></li>
@@ -618,8 +619,8 @@ as.integer(x)</code></pre>
 ## [1] &quot;a&quot; &quot;b&quot; &quot;b&quot; &quot;a&quot;
 ## [1] 1 2 2 1</code></pre>
 </div>
-<div id="exercises-1" class="section level3">
-<h3><span class="header-section-number">1.5.3</span> Exercises</h3>
+<div id="exercises-1" class="section level2">
+<h2><span class="header-section-number">1.7</span> Exercises</h2>
 <ol style="list-style-type: decimal">
 <li><p>An early draft used this code to illustrate structure(): <code>structure(1:5, comment = &quot;my attribute&quot;)</code>. But when you print that object you don’t see the comment attribute. Why?<br />
 <strong>A</strong>: From the help of comment, <code>?comment</code>: the comment attribute is not printed. Also from the help of attributes <code>?attributes</code>: Note that some attributes (namely <code>class</code>, <code>comment</code>, <code>dim</code>, <code>dimnames</code>, <code>names</code>, <code>row.names</code> and <code>tsp</code>) are treated specially and have restrictions on the values which can be set.</p>
@@ -669,8 +670,282 @@ attr(f2, &quot;levels&quot;) &lt;- c(&quot;a&quot;, &quot;b&quot;, NA)
 f2</code></pre>
 <pre><code>## [1] a    b    &lt;NA&gt;
 ## Levels: a b &lt;NA&gt;</code></pre>
-<p>TO DO - put in mapping between typeof and mode and storage.mode hierarachy: NULL &lt; raw &lt; logical &lt; integer &lt; double &lt; complex &lt; character &lt; list &lt; expression</p>
 </div>
+<div id="matrices-and-arrays" class="section level2">
+<h2><span class="header-section-number">1.8</span> Matrices and arrays</h2>
+<p>Adding a <code>dim</code> attribute to an atomic vector allows it to behave like a multi-dimensional array. A special case of the array is the matrix, which has two dimensions.</p>
+<p>Matrices and arrays are created with <code>matrix()</code> and <code>array()</code>, or by using the assignment form of <code>dim()</code>:</p>
+<pre class="r"><code>a &lt;- matrix(1:6, nrow = 2, ncol = 3)
+a
+is.array(a)
+is.matrix(a)</code></pre>
+<pre><code>##      [,1] [,2] [,3]
+## [1,]    1    3    5
+## [2,]    2    4    6
+## [1] TRUE
+## [1] TRUE</code></pre>
+<pre class="r"><code>b &lt;- array(1:12, c(2, 3, 2))
+b
+is.array(b)
+is.matrix(b)</code></pre>
+<pre><code>## , , 1
+## 
+##      [,1] [,2] [,3]
+## [1,]    1    3    5
+## [2,]    2    4    6
+## 
+## , , 2
+## 
+##      [,1] [,2] [,3]
+## [1,]    7    9   11
+## [2,]    8   10   12
+## 
+## [1] TRUE
+## [1] FALSE</code></pre>
+<pre class="r"><code>c &lt;- 1:6
+dim(c) &lt;- c(2, 3)
+c</code></pre>
+<pre><code>##      [,1] [,2] [,3]
+## [1,]    1    3    5
+## [2,]    2    4    6</code></pre>
+<pre class="r"><code>d &lt;- 1:12
+dim(d) &lt;- c(2, 3, 2)
+d</code></pre>
+<pre><code>## , , 1
+## 
+##      [,1] [,2] [,3]
+## [1,]    1    3    5
+## [2,]    2    4    6
+## 
+## , , 2
+## 
+##      [,1] [,2] [,3]
+## [1,]    7    9   11
+## [2,]    8   10   12</code></pre>
+<p><code>length()</code> and <code>names()</code> have high-dimensional generalisations:</p>
+<ul>
+<li><p><code>length()</code> generalises to <code>nrow()</code> and <code>ncol()</code> for matrices, and <code>dim()</code> for arrays.</p></li>
+<li><p><code>names()</code> generalises to <code>rownames()</code> and <code>colnames()</code> for matrices, and <code>dimnames()</code>, a list of character vectors, for arrays.</p></li>
+</ul>
+<div id="length" class="section level3">
+<h3><span class="header-section-number">1.8.1</span> Length</h3>
+<pre class="r"><code>a &lt;- matrix(1:6, nrow = 2, ncol = 3)
+a
+length(a)
+nrow(a)
+ncol(a)
+dim(a)</code></pre>
+<pre><code>##      [,1] [,2] [,3]
+## [1,]    1    3    5
+## [2,]    2    4    6
+## [1] 6
+## [1] 2
+## [1] 3
+## [1] 2 3</code></pre>
+<pre class="r"><code>b &lt;- array(1:12, c(2, 3, 2))
+b
+length(b)
+dim(b)</code></pre>
+<pre><code>## , , 1
+## 
+##      [,1] [,2] [,3]
+## [1,]    1    3    5
+## [2,]    2    4    6
+## 
+## , , 2
+## 
+##      [,1] [,2] [,3]
+## [1,]    7    9   11
+## [2,]    8   10   12
+## 
+## [1] 12
+## [1] 2 3 2</code></pre>
+<pre class="r"><code>a &lt;- matrix(1:6, nrow = 2, ncol = 3)
+dim(a) &lt;- c(3, 2)  # change to 3 x 2
+a</code></pre>
+<pre><code>##      [,1] [,2]
+## [1,]    1    4
+## [2,]    2    5
+## [3,]    3    6</code></pre>
+<pre class="r"><code>dim(a) &lt;- c(1, 6)
+a  # still a matrix</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5] [,6]
+## [1,]    1    2    3    4    5    6</code></pre>
+<pre class="r"><code>dim(a) &lt;- NULL
+a  # now a vector</code></pre>
+<pre><code>## [1] 1 2 3 4 5 6</code></pre>
+<p>Note that <code>NROW</code> and <code>NCOL</code> also return the numbers of rows and columns but treat a vector as a 1-column matrix.</p>
+<pre class="r"><code>nrow(a)
+ncol(a)
+NROW(a)
+NCOL(a)</code></pre>
+<pre><code>## NULL
+## NULL
+## [1] 6
+## [1] 1</code></pre>
+<p>Also note the code:</p>
+<pre class="r"><code>nrow</code></pre>
+<pre><code>## function (x) 
+## dim(x)[1L]
+## &lt;bytecode: 0x000000001464fff0&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>NROW</code></pre>
+<pre><code>## function (x) 
+## if (length(d &lt;- dim(x))) d[1L] else length(x)
+## &lt;bytecode: 0x0000000013cb6210&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>ncol</code></pre>
+<pre><code>## function (x) 
+## dim(x)[2L]
+## &lt;bytecode: 0x00000000180fb3d8&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>NCOL</code></pre>
+<pre><code>## function (x) 
+## if (length(d &lt;- dim(x)) &gt; 1L) d[2L] else 1L
+## &lt;bytecode: 0x000000001811d420&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<p>Dimension attributes are retained when the object is modified:</p>
+<pre class="r"><code>b &lt;- array(1:12, c(2, 3, 2))
+b[, 1:2, ]
+dim(b[, 1:2, ])</code></pre>
+<pre><code>## , , 1
+## 
+##      [,1] [,2]
+## [1,]    1    3
+## [2,]    2    4
+## 
+## , , 2
+## 
+##      [,1] [,2]
+## [1,]    7    9
+## [2,]    8   10
+## 
+## [1] 2 2 2</code></pre>
+</div>
+<div id="names-1" class="section level3">
+<h3><span class="header-section-number">1.8.2</span> Names</h3>
+<pre class="r"><code>a &lt;- matrix(1:6, nrow = 2, ncol = 3)
+rownames(a) &lt;- c(&quot;A&quot;, &quot;B&quot;)
+colnames(a) &lt;- c(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;)
+a</code></pre>
+<pre><code>##   a b c
+## A 1 3 5
+## B 2 4 6</code></pre>
+<pre class="r"><code>names(a)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>rownames(a)</code></pre>
+<pre><code>## [1] &quot;A&quot; &quot;B&quot;</code></pre>
+<pre class="r"><code>colnames(a)</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>dimnames(a)</code></pre>
+<pre><code>## [[1]]
+## [1] &quot;A&quot; &quot;B&quot;
+## 
+## [[2]]
+## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>a %&lt;&gt;% unname()
+dimnames(a) &lt;- list(c(&quot;A&quot;, &quot;B&quot;), c(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;))
+a</code></pre>
+<pre><code>##   a b c
+## A 1 3 5
+## B 2 4 6</code></pre>
+<pre class="r"><code>b &lt;- array(1:12, c(2, 3, 2))
+dimnames(b) &lt;- list(c(&quot;one&quot;, &quot;two&quot;), c(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;), c(&quot;A&quot;, &quot;B&quot;))
+b</code></pre>
+<pre><code>## , , A
+## 
+##     a b c
+## one 1 3 5
+## two 2 4 6
+## 
+## , , B
+## 
+##     a  b  c
+## one 7  9 11
+## two 8 10 12</code></pre>
+<p>Name attributes are retained when the object is modified:</p>
+<pre class="r"><code>c &lt;- b[1:2, 1, ]
+c</code></pre>
+<pre><code>##     A B
+## one 1 7
+## two 2 8</code></pre>
+<pre class="r"><code>dim(c)  # matrix</code></pre>
+<pre><code>## [1] 2 2</code></pre>
+<pre class="r"><code>dimnames(c)  # names are retained</code></pre>
+<pre><code>## [[1]]
+## [1] &quot;one&quot; &quot;two&quot;
+## 
+## [[2]]
+## [1] &quot;A&quot; &quot;B&quot;</code></pre>
+<pre class="r"><code>d &lt;- b[1, 1, ]
+d  # note that d is a vector, not an array or matrix</code></pre>
+<pre><code>## A B 
+## 1 7</code></pre>
+<pre class="r"><code>dim(d)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>dimnames(d)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>names(d)</code></pre>
+<pre><code>## [1] &quot;A&quot; &quot;B&quot;</code></pre>
+<pre class="r"><code>e &lt;- b[1, 1, , drop = FALSE]  # don't drop dimensions
+e  # now an array</code></pre>
+<pre><code>## , , A
+## 
+##     a
+## one 1
+## 
+## , , B
+## 
+##     a
+## one 7</code></pre>
+<pre class="r"><code>dim(e)</code></pre>
+<pre><code>## [1] 1 1 2</code></pre>
+<pre class="r"><code>dimnames(e)</code></pre>
+<pre><code>## [[1]]
+## [1] &quot;one&quot;
+## 
+## [[2]]
+## [1] &quot;a&quot;
+## 
+## [[3]]
+## [1] &quot;A&quot; &quot;B&quot;</code></pre>
+<pre class="r"><code>names(e)</code></pre>
+<pre><code>## NULL</code></pre>
+</div>
+<div id="d-structures" class="section level3">
+<h3><span class="header-section-number">1.8.3</span> 1d structures</h3>
+<pre class="r"><code>str(1:3)  # 1d vector</code></pre>
+<pre><code>##  int [1:3] 1 2 3</code></pre>
+<pre class="r"><code>str(matrix(1:3, ncol = 1))  # column vector</code></pre>
+<pre><code>##  int [1:3, 1] 1 2 3</code></pre>
+<pre class="r"><code>str(matrix(1:3, nrow = 1))  # row vector</code></pre>
+<pre><code>##  int [1, 1:3] 1 2 3</code></pre>
+<pre class="r"><code>str(array(1:3, 3))  # 'array' vector</code></pre>
+<pre><code>##  int [1:3(1d)] 1 2 3</code></pre>
+</div>
+<div id="list-matrices-and-arrays" class="section level3">
+<h3><span class="header-section-number">1.8.4</span> List matrices and arrays</h3>
+<p>While atomic vectors are most commonly turned into matrices, the dimension attribute can also be set on lists to make list-matrices or list-arrays:</p>
+<pre class="r"><code>l &lt;- list(1:3, &quot;a&quot;, TRUE, 1)
+dim(l) &lt;- c(2, 2)
+l</code></pre>
+<pre><code>##      [,1]      [,2]
+## [1,] Integer,3 TRUE
+## [2,] &quot;a&quot;       1</code></pre>
+</div>
+</div>
+<div id="exercises-2" class="section level2">
+<h2><span class="header-section-number">1.9</span> Exercises</h2>
+<ol style="list-style-type: decimal">
+<li><p>What does <code>dim()</code> return when applied to a vector?</p></li>
+<li><p>When might you use <code>NROW()</code> or <code>NCOL()</code>?</p></li>
+<li><p>If <code>is.matrix(x)</code> is <code>TRUE</code>, what will <code>is.array(x)</code> return?</p></li>
+<li><p>How would you describe the following three objects? What makes them different to 1:5?</p>
+<pre><code>x1 &lt;- array(1:5, c(1, 1, 5))
+x2 &lt;- array(1:5, c(1, 5, 1))
+x3 &lt;- array(1:5, c(5, 1, 1))</code></pre></li>
+</ol>
+<p>TO DO - put in mapping between typeof and mode and storage.mode hierarachy: NULL &lt; raw &lt; logical &lt; integer &lt; double &lt; complex &lt; character &lt; list &lt; expression</p>
 </div>
 </div>
 

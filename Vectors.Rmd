@@ -301,7 +301,7 @@ Names don’t have to be unique. However, character subsetting is the most impor
 
 Not all elements of a vector need to have a name. Depending on how you create the vector the missing names will either have value `""` or `NA_character_`. If all names are missing, `names()` will return `NULL`. You remove names from an existing vector using `unname(x)` or `names(x) <- NULL`.
 
-### Factors
+## Factors
 Attributes are used to define factors. A factor is a vector that can only contain predefined values, and is used to store categorical data. Factors are built upon integer vectors using two attributes:
 
 * the `class`, "factor", which makes them behave differently from regular integer vectors, and
@@ -339,7 +339,7 @@ as.character(x)
 as.integer(x)
 ```
 
-### Exercises
+## Exercises
 1. An early draft used this code to illustrate structure(): `structure(1:5, comment = "my attribute")`. But when you print that object you don’t see the comment attribute. Why?  
 **A**: From the help of comment, `?comment`: the comment attribute is not printed. Also from the help of attributes `?attributes`: Note that some attributes (namely `class`, `comment`, `dim`, `dimnames`, `names`, `row.names` and `tsp`) are treated specially and have restrictions on the values which can be set.
     ```{r, results='markup'}
@@ -385,6 +385,173 @@ attr(f2, "levels") <- c("a", "b", NA)
 f2
 ```
 
+
+## Matrices and arrays
+Adding a `dim` attribute to an atomic vector allows it to behave like a multi-dimensional array. A special case of the array is the matrix, which has two dimensions.
+
+Matrices and arrays are created with `matrix()` and `array()`, or by using the assignment form of `dim()`:
+```{r}
+a <- matrix(1:6, nrow = 2, ncol = 3)
+a
+is.array(a)
+is.matrix(a)
+```
+
+```{r}
+b <- array(1:12, c(2, 3, 2))
+b
+is.array(b)
+is.matrix(b)
+```
+
+```{r}
+c <- 1:6
+dim(c) <- c(2, 3)
+c
+```
+
+```{r}
+d <- 1:12
+dim(d) <- c(2, 3, 2)
+d
+```
+
+`length()` and `names()` have high-dimensional generalisations:
+
+* `length()` generalises to `nrow()` and `ncol()` for matrices, and `dim()` for arrays.
+
+* `names()` generalises to `rownames()` and `colnames()` for matrices, and `dimnames()`, a list of character vectors, for arrays.
+
+### Length
+```{r}
+a <- matrix(1:6, nrow = 2, ncol = 3)
+a
+length(a)
+nrow(a)
+ncol(a)
+dim(a)
+```
+
+```{r}
+b <- array(1:12, c(2, 3, 2))
+b
+length(b)
+dim(b)
+```
+
+```{r, results='markup'}
+a <- matrix(1:6, nrow = 2, ncol = 3)
+dim(a) <- c(3,2) # change to 3 x 2
+a
+dim(a) <- c(1, 6)
+a # still a matrix
+dim(a) <- NULL
+a # now a vector
+```
+
+Note that `NROW` and `NCOL` also return the numbers of rows and columns but treat a vector as a 1-column matrix.
+
+```{r}
+nrow(a)
+ncol(a)
+NROW(a)
+NCOL(a)
+```
+
+Also note the code:
+
+```{r, results='markup'}
+nrow
+NROW
+ncol
+NCOL
+```
+
+Dimension attributes are retained when the object is modified:
+
+```{r}
+b <- array(1:12, c(2, 3, 2))
+b[, 1:2, ]
+dim(b[, 1:2, ])
+```
+
+
+### Names
+```{r, results='markup'}
+a <- matrix(1:6, nrow = 2, ncol = 3)
+rownames(a) <- c("A", "B")
+colnames(a) <- c("a", "b", "c")
+a
+names(a)
+rownames(a)
+colnames(a)
+dimnames(a)
+a %<>% unname()
+dimnames(a) <- list(c("A", "B"), c("a", "b", "c"))
+a
+```
+
+```{r}
+b <- array(1:12, c(2, 3, 2))
+dimnames(b) <- list(c("one", "two"), c("a", "b", "c"), c("A", "B"))
+b
+```
+
+Name attributes are retained when the object is modified:
+
+```{r, results='markup'}
+c <- b[1:2, 1, ]
+c
+dim(c) # matrix
+dimnames(c) # names are retained
+```
+
+```{r, results='markup'}
+d <- b[1, 1, ]
+d # note that d is a vector, not an array or matrix
+dim(d)
+dimnames(d)
+names(d)
+```
+
+```{r, results='markup'}
+e <- b[1, 1, , drop = FALSE] # don't drop dimensions
+e # now an array
+dim(e)
+dimnames(e)
+names(e)
+```
+
+### 1d structures
+```{r, results='markup'}
+str(1:3)                   # 1d vector
+str(matrix(1:3, ncol = 1)) # column vector
+str(matrix(1:3, nrow = 1)) # row vector
+str(array(1:3, 3))         # "array" vector
+```
+
+### List matrices and arrays
+While atomic vectors are most commonly turned into matrices, the dimension attribute can also be set on lists to make list-matrices or list-arrays:
+
+```{r}
+l <- list(1:3, "a", TRUE, 1.0)
+dim(l) <- c(2, 2)
+l
+```
+
+## Exercises
+1. What does `dim()` return when applied to a vector?
+
+2. When might you use `NROW()` or `NCOL()`?
+
+3. If `is.matrix(x)` is `TRUE`, what will `is.array(x)` return?
+
+4. How would you describe the following three objects? What makes them different to 1:5?
+    ```
+    x1 <- array(1:5, c(1, 1, 5))
+    x2 <- array(1:5, c(1, 5, 1))
+    x3 <- array(1:5, c(5, 1, 1))
+    ```
 
 
 TO DO - put in mapping between typeof and mode and storage.mode
