@@ -19,7 +19,7 @@ library(pryr)
 library(knitr)
 library(kableExtra)
 library(magrittr)
-
+library(dplyr)
 ```
 
 # Vectors
@@ -30,15 +30,6 @@ Dimension     | Homogeneous   | Heterogeneous
 1d            | Atomic vector | List
 2d            | Matrix        | Data frame
 nd            | Array         |
-
-```{r, echo=FALSE}
-d <- c("1d", "2d", "nd")
-ho <- c("Atomic vector", "Matrix", "Array")
-he <- c("List", "Data frame", "")
-dt <- data.frame(Dimension = d, Homogeneous = ho, Heterogeneous = he, stringsAsFactors = FALSE)
-kable(dt) %>%
-  kable_styling(bootstrap_options = c("condensed", "hover"), full_width = FALSE, position = "left")
-```
 
 Note that R has no 0-dimensional, or scalar types. Individual numbers or strings are vectors of length one.
 
@@ -567,7 +558,7 @@ is.matrix(df)
 is.data.frame(df)
 ```
 
-## Exercises
+### Exercises
 1. What does `dim()` return when applied to a vector?  
 **A**: `NULL`
 
@@ -584,6 +575,124 @@ is.data.frame(df)
     x3 <- array(1:5, c(5, 1, 1))
     ```
 **A**: They are arrays with a dim attribute.
+
+## Data frames
+Under the hood, a data frame is a list of equal-length vectors. This makes it a 2-dimensional structure, so it shares properties of both the matrix and the list.This means that a data frame has `names()`, `colnames()`, and `rownames()`, although `names()` and `colnames()` are the same thing. The `length()` of a data frame is the length of the underlying list and so is the same as `ncol()`; `nrow()` gives the number of rows. As described in subsetting, you can subset a data frame like a 1d structure (where it behaves like a list), or a 2d structure (where it behaves like a matrix).
+
+### Creation
+You create a data frame using `data.frame()`, which takes named vectors as input. Beware `data.frame()`’s default behaviour which turns strings into factors. Use `stringsAsFactors = FALSE` to suppress this behaviour:
+
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = c("a", "b", "c"), stringsAsFactors = FALSE)
+str(df)
+names(df)
+colnames(df)
+rownames(df)
+length(df)
+ncol(df)
+nrow(df)
+attributes(df)
+```
+
+### Testing and coercion
+Because a `data.frame` is an S3 class, its type reflects the underlying vector used to build it: the list. To check if an object is a data frame, use `is.data.frame`():
+
+```{r, results='markup'}
+typeof(df)
+class(df)
+is.list(df)
+is.data.frame(df)
+```
+
+You can coerce an object to a data frame with `as.data.frame()`:
+
+* A vector will create a one-column data frame.
+
+* A list will create one column for each element; it’s an error if they’re not all the same length.
+
+* A matrix will create a data frame with the same number of columns and rows as the matrix.
+
+* Arrays with more than two dimensions are converted to matrices by ‘flattening’ all dimensions after the first and creating suitable column labels.
+
+```{r, results='markup'}
+a <- array(1:12, c(2, 3, 2))
+a
+df <- as.data.frame(a)
+df
+```
+
+### Combining data frames
+You can combine data frames using `cbind()` and `rbind()`:
+
+```{r, results='markup'}
+df1 <- data.frame(x = 1:3, y = 4:6)
+df2 <- data.frame(z = 7:9)
+cbind(df1, df2)
+df3 <- data.frame(x = 7, y = 8)
+rbind(df1, df3)
+```
+
+When combining column-wise, the number of rows must match, but row names need not match: 
+
+```{r, results='markup'}
+df1 <- data.frame(x = 1:3, y = 4:6)
+df2 <- data.frame(z = 7:9)
+rownames(df1) <- c("a", "b", "C")
+rownames(df2) <- c("d", "e", "f")
+cbind(df1, df2)
+rownames(df1) <- NULL
+cbind(df1, df2)
+```
+
+When combining row-wise, both the number and names of columns must match. Use `dplyr::bind_rows()`, `data.table::rbindlist()`, or similar to combine data frames that don’t have the same columns.
+
+```{r}
+bind_rows(data.frame(x = 1:3), data.frame(y = 1:4))
+```
+
+### List and matrix columns
+Since a data frame is a list of vectors, it is possible for a data frame to have a column that is a list. This is a powerful technique because a list can contain any other R object. This means that you can have a column of data frames, or model objects, or even functions!
+
+```{r}
+df <- data.frame(x = 1:3)
+df$y <- list(1:2, 1:3, 1:4)
+df
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/data-frame-list.png")
+```
+
+However, when a list is given to data.frame(), it tries to put each item of the list into its own column, so this fails:
+
+```{r, error=TRUE, tidy=FALSE, cache=FALSE}
+data.frame(x = 1:3, y = list(1:2, 1:3, 1:4))
+```
+
+A workaround is to use `I()`, which causes `data.frame()` to treat the list as one unit. `()` adds the AsIs class to its input
+
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = I(list(1:2, 1:3, 1:4)))
+df
+str(df)
+attributes(df$y)
+```
+
+Similarly, it’s also possible to have a column of a data frame that’s a matrix or array, as long as the number of rows matches the data frame:
+
+```{r}
+dfm <- data.frame(x = 1:3 * 10, y = I(matrix(1:9, nrow = 3)))
+str(dfm)
+```
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/data-frame-matrix.png")
+```
+
+Use list and array columns with caution. Many functions that work with data frames assume that all columns are atomic vectors.
+
+
+
 
 TO DO - put in mapping between typeof and mode and storage.mode
 hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression

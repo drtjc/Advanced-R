@@ -1,15 +1,6 @@
 library(lobstr)
 library(magrittr)
 
-f1 <- factor("a")
-f2 <- factor("b")
-c(f1, f2)
-unlist(list(f1, f2))
-
-combine(f1, f2)
-combine(list(f1, f2))
-
-
 
 a <- matrix(1:6, nrow = 2, ncol = 3)
 class(a)
@@ -28,3 +19,30 @@ attributes(df)
 is.matrix(df)
 is.data.frame(df)
 
+
+
+
+
+
+
+
+
+# f1 <- factor("a")
+# f2 <- factor("b")
+# c(f1, f2)
+# unlist(list(f1, f2))
+# 
+# combine(f1, f2)
+# combine(list(f1, f2))
+
+
+
+
+# ```{r, echo=FALSE}
+# d <- c("1d", "2d", "nd")
+# ho <- c("Atomic vector", "Matrix", "Array")
+# he <- c("List", "Data frame", "")
+# dt <- data.frame(Dimension = d, Homogeneous = ho, Heterogeneous = he, stringsAsFactors = FALSE)
+# kable(dt) %>%
+#   kable_styling(bootstrap_options = c("condensed", "hover"), full_width = FALSE, position = "left")
+# ```
