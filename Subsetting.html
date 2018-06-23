@@ -290,6 +290,67 @@ str(l)</code></pre>
 <pre><code>## List of 1
 ##  $ : num 1</code></pre>
 </div>
+<div id="matrices-and-arrays" class="section level2">
+<h2><span class="header-section-number">1.3</span> Matrices and arrays</h2>
+<p>You can subset higher-dimensional structures in three ways:</p>
+<ul>
+<li>With multiple vectors.</li>
+<li>With a single vector.</li>
+<li>With a matrix.</li>
+</ul>
+<p>The most common way of subsetting matrices (2d) and arrays (&gt;2d) is a simple generalisation of 1d subsetting: you supply a 1d index for each dimension, separated by a comma. Blank subsetting is now useful because it lets you keep all rows or all columns.</p>
+<pre class="r"><code>a &lt;- matrix(1:9, nrow = 3)
+colnames(a) &lt;- c(&quot;A&quot;, &quot;B&quot;, &quot;C&quot;)
+a</code></pre>
+<pre><code>##      A B C
+## [1,] 1 4 7
+## [2,] 2 5 8
+## [3,] 3 6 9</code></pre>
+<pre class="r"><code>a[1:2, ]</code></pre>
+<pre><code>##      A B C
+## [1,] 1 4 7
+## [2,] 2 5 8</code></pre>
+<pre class="r"><code>a[c(TRUE, FALSE, TRUE), c(&quot;B&quot;, &quot;A&quot;)]</code></pre>
+<pre><code>##      B A
+## [1,] 4 1
+## [2,] 6 3</code></pre>
+<p>By default, <code>[</code> will simplify the results to the lowest possible dimensionality. See simplifying vs. preserving to learn how to avoid this.</p>
+<pre class="r"><code>str(a)
+class(a)
+class(a[1:2, ])
+class(a[1, 1])
+class(a[1, 1, drop = FALSE])
+dim(a[1, 1, drop = FALSE])</code></pre>
+<pre><code>##  int [1:3, 1:3] 1 2 3 4 5 6 7 8 9
+##  - attr(*, &quot;dimnames&quot;)=List of 2
+##   ..$ : NULL
+##   ..$ : chr [1:3] &quot;A&quot; &quot;B&quot; &quot;C&quot;
+## [1] &quot;matrix&quot;
+## [1] &quot;matrix&quot;
+## [1] &quot;integer&quot;
+## [1] &quot;matrix&quot;
+## [1] 1 1</code></pre>
+<p>Because matrices and arrays are implemented as vectors with special attributes, you can subset them with a single vector. In that case, they will behave like a vector. Arrays in R are stored in column-major order:</p>
+<pre class="r"><code>(vals &lt;- outer(1:5, 1:5, FUN = &quot;paste&quot;, sep = &quot;,&quot;))</code></pre>
+<pre><code>##      [,1]  [,2]  [,3]  [,4]  [,5] 
+## [1,] &quot;1,1&quot; &quot;1,2&quot; &quot;1,3&quot; &quot;1,4&quot; &quot;1,5&quot;
+## [2,] &quot;2,1&quot; &quot;2,2&quot; &quot;2,3&quot; &quot;2,4&quot; &quot;2,5&quot;
+## [3,] &quot;3,1&quot; &quot;3,2&quot; &quot;3,3&quot; &quot;3,4&quot; &quot;3,5&quot;
+## [4,] &quot;4,1&quot; &quot;4,2&quot; &quot;4,3&quot; &quot;4,4&quot; &quot;4,5&quot;
+## [5,] &quot;5,1&quot; &quot;5,2&quot; &quot;5,3&quot; &quot;5,4&quot; &quot;5,5&quot;</code></pre>
+<pre class="r"><code>vals[5]</code></pre>
+<pre><code>## [1] &quot;5,1&quot;</code></pre>
+<pre class="r"><code>vals[c(4, 15)]</code></pre>
+<pre><code>## [1] &quot;4,1&quot; &quot;5,3&quot;</code></pre>
+<p>You can also subset higher-dimensional data structures with an integer matrix (or, if named, a character matrix). Each row in the matrix specifies the location of one value, where each column corresponds to a dimension in the array being subsetted. This means that you use a 2 column matrix to subset a matrix, a 3 column matrix to subset a 3d array, and so on. The result is a vector of values:</p>
+<pre class="r"><code>select &lt;- matrix(ncol = 2, byrow = TRUE, c(1, 1, 3, 1, 2, 4))
+vals[select]</code></pre>
+<pre><code>## [1] &quot;1,1&quot; &quot;3,1&quot; &quot;2,4&quot;</code></pre>
+</div>
+<div id="data-frames" class="section level2">
+<h2><span class="header-section-number">1.4</span> Data frames</h2>
+<p>Data frames possess the characteristics of both lists and matrices: if you subset with a single vector, they behave like lists; if you subset with two vectors, they behave like matrices.</p>
+</div>
 </div>
 
 

@@ -90,8 +90,55 @@ str(l)
 str(l[1])
 ```
 
+## Matrices and arrays
+You can subset higher-dimensional structures in three ways:
 
+* With multiple vectors.
+* With a single vector.
+* With a matrix.
 
+The most common way of subsetting matrices (2d) and arrays (>2d) is a simple generalisation of 1d subsetting: you supply a 1d index for each dimension, separated by a comma. Blank subsetting is now useful because it lets you keep all rows or all columns.
+
+```{r, results='markup'}
+a <- matrix(1:9, nrow = 3)
+colnames(a) <- c("A", "B", "C")
+a
+a[1:2, ]
+a[c(TRUE, FALSE, TRUE), c("B", "A")]
+```
+
+By default, `[` will simplify the results to the lowest possible dimensionality. See simplifying vs. preserving to learn how to avoid this.
+
+```{r}
+str(a)
+class(a)
+class(a[1:2, ])
+class(a[1, 1])
+class(a[1, 1, drop = FALSE])
+dim(a[1, 1, drop = FALSE])
+```
+
+Because matrices and arrays are implemented as vectors with special attributes, you can subset them with a single vector. In that case, they will behave like a vector. Arrays in R are stored in column-major order:
+
+```{r, results='markup'}
+(vals <- outer(1:5, 1:5, FUN = "paste", sep = ","))
+vals[5]
+vals[c(4, 15)]
+```
+
+You can also subset higher-dimensional data structures with an integer matrix (or, if named, a character matrix). Each row in the matrix specifies the location of one value, where each column corresponds to a dimension in the array being subsetted. This means that you use a 2 column matrix to subset a matrix, a 3 column matrix to subset a 3d array, and so on. The result is a vector of values:
+
+```{r}
+select <- matrix(ncol = 2, byrow = TRUE, c(
+  1, 1,
+  3, 1,
+  2, 4
+))
+vals[select]
+```
+
+## Data frames
+Data frames possess the characteristics of both lists and matrices: if you subset with a single vector, they behave like lists; if you subset with two vectors, they behave like matrices.
 
 
 
