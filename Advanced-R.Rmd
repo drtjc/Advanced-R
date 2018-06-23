@@ -27,8 +27,10 @@ library(pryr)
 ```{r child_YAML, child = "Names_values.Rmd", cache=TRUE}
 ```
 
-```{r child_YAML, child = "Vectors.Rmd"}
+```{r child_YAML, child = "Vectors.Rmd", cache=TRUE}
 ```
 
+```{r child_YAML, child = "Subsetting.Rmd"}
+```
 
 
