@@ -93,6 +93,9 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -349,7 +352,274 @@ vals[select]</code></pre>
 </div>
 <div id="data-frames" class="section level2">
 <h2><span class="header-section-number">1.4</span> Data frames</h2>
-<p>Data frames possess the characteristics of both lists and matrices: if you subset with a single vector, they behave like lists; if you subset with two vectors, they behave like matrices.</p>
+<p>Data frames possess the characteristics of both lists and matrices: if you subset with a single vector, they behave like lists; if you subset with two vectors, they behave like matrices. We use the following data frame for examples:</p>
+<pre class="r"><code>df &lt;- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
+str(df)</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  3 variables:
+##  $ x: int  1 2 3
+##  $ y: int  3 2 1
+##  $ z: chr  &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<div id="as-a-list" class="section level3">
+<h3><span class="header-section-number">1.4.1</span> As a list</h3>
+<pre class="r"><code>(df[1])  # subsetting a list with [ always return a list</code></pre>
+<pre><code>##   x
+## 1 1
+## 2 2
+## 3 3</code></pre>
+<pre class="r"><code>is.data.frame(df[1])  # of 1 column - 1:3</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>ncol(df[1])</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>is.list(df[1])  # of one vector - 1:3</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>length(df[1])  # a list of one item - 1:3</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>df[[1]]  # use [[ or $ to access a single item</code></pre>
+<pre><code>## [1] 1 2 3</code></pre>
+<pre class="r"><code>df[1][1]</code></pre>
+<pre><code>##   x
+## 1 1
+## 2 2
+## 3 3</code></pre>
+<pre class="r"><code>identical(df[1], df[1][1])  # TRUE since df[1] is a list of only one item</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>df[c(&quot;x&quot;, &quot;y&quot;)]  # select multiple columns</code></pre>
+<pre><code>##   x y
+## 1 1 3
+## 2 2 2
+## 3 3 1</code></pre>
+<pre class="r"><code>df[T]  # T is recycled 3 times </code></pre>
+<pre><code>##   x y z
+## 1 1 3 a
+## 2 2 2 b
+## 3 3 1 c</code></pre>
+<pre class="r"><code>identical(df, df[T])  # data frame</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>df[]  # same as df, df[T]</code></pre>
+<pre><code>##   x y z
+## 1 1 3 a
+## 2 2 2 b
+## 3 3 1 c</code></pre>
+</div>
+<div id="as-a-matrix" class="section level3">
+<h3><span class="header-section-number">1.4.2</span> As a matrix</h3>
+<pre class="r"><code>df[1, ]</code></pre>
+<pre><code>##   x y z
+## 1 1 3 a</code></pre>
+<pre class="r"><code>str(df[1, ])  # still a data frame</code></pre>
+<pre><code>## 'data.frame':    1 obs. of  3 variables:
+##  $ x: int 1
+##  $ y: int 3
+##  $ z: chr &quot;a&quot;</code></pre>
+<pre class="r"><code>df[, 1]  # matrix subsetting simplifies by default</code></pre>
+<pre><code>## [1] 1 2 3</code></pre>
+<pre class="r"><code>str(df[, 1])  # now an int vector</code></pre>
+<pre><code>##  int [1:3] 1 2 3</code></pre>
+<pre class="r"><code>df[, 1, drop = FALSE]</code></pre>
+<pre><code>##   x
+## 1 1
+## 2 2
+## 3 3</code></pre>
+<pre class="r"><code>str(df[, 1, drop = FALSE])  # still a data frame</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  1 variable:
+##  $ x: int  1 2 3</code></pre>
+<pre class="r"><code>df[1:2, 2:3]</code></pre>
+<pre><code>##   y z
+## 1 3 a
+## 2 2 b</code></pre>
+</div>
+<div id="as-a-list-and-matrix" class="section level3">
+<h3><span class="header-section-number">1.4.3</span> As a list and matrix</h3>
+<p>Data frames can be subsetted as a list, but using a matrix argument!</p>
+<pre class="r"><code>idx &lt;- matrix(c(T, F, T, F, F, T, T, T, F), ncol = 3)
+idx</code></pre>
+<pre><code>##       [,1]  [,2]  [,3]
+## [1,]  TRUE FALSE  TRUE
+## [2,] FALSE FALSE  TRUE
+## [3,]  TRUE  TRUE FALSE</code></pre>
+<pre class="r"><code>df[idx]  # returns a vector</code></pre>
+<pre><code>## [1] &quot;1&quot; &quot;3&quot; &quot;1&quot; &quot;a&quot; &quot;b&quot;</code></pre>
+<p>This can be used to unlist a data frame:</p>
+<pre class="r"><code>df[matrix(T)]  # T is recycled 9 times </code></pre>
+<pre><code>## [1] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;3&quot; &quot;2&quot; &quot;1&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>attributes(df[matrix(T)])</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>unlist(df)</code></pre>
+<pre><code>##  x1  x2  x3  y1  y2  y3  z1  z2  z3 
+## &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;3&quot; &quot;2&quot; &quot;1&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>attributes(unlist(df))  # retains names</code></pre>
+<pre><code>## $names
+## [1] &quot;x1&quot; &quot;x2&quot; &quot;x3&quot; &quot;y1&quot; &quot;y2&quot; &quot;y3&quot; &quot;z1&quot; &quot;z2&quot; &quot;z3&quot;</code></pre>
+<pre class="r"><code>unlist(df, use.names = FALSE)</code></pre>
+<pre><code>## [1] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;3&quot; &quot;2&quot; &quot;1&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>identical(df[matrix(T)], unlist(df, use.names = FALSE))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>List-matrix subsetting does not retain factor information:</p>
+<pre class="r"><code>df &lt;- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = TRUE)
+str(df)</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  3 variables:
+##  $ x: int  1 2 3
+##  $ y: int  3 2 1
+##  $ z: Factor w/ 3 levels &quot;a&quot;,&quot;b&quot;,&quot;c&quot;: 1 2 3</code></pre>
+<pre class="r"><code>df[1, 3]</code></pre>
+<pre><code>## [1] a
+## Levels: a b c</code></pre>
+<pre class="r"><code>str(df[1, 3])</code></pre>
+<pre><code>##  Factor w/ 3 levels &quot;a&quot;,&quot;b&quot;,&quot;c&quot;: 1</code></pre>
+<pre class="r"><code>idx &lt;- matrix(c(F, F, T, F, F, F, F, F, F), byrow = TRUE, nrow = 3)
+idx</code></pre>
+<pre><code>##       [,1]  [,2]  [,3]
+## [1,] FALSE FALSE  TRUE
+## [2,] FALSE FALSE FALSE
+## [3,] FALSE FALSE FALSE</code></pre>
+<pre class="r"><code>df[idx]</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>str(df[idx])</code></pre>
+<pre><code>##  chr &quot;a&quot;</code></pre>
+<p><code>unlist()</code> also uses the underlying integers for factors:</p>
+<pre class="r"><code>df &lt;- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = TRUE)
+str(df)</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  3 variables:
+##  $ x: int  1 2 3
+##  $ y: int  3 2 1
+##  $ z: Factor w/ 3 levels &quot;a&quot;,&quot;b&quot;,&quot;c&quot;: 1 2 3</code></pre>
+<pre class="r"><code>df[matrix(T)]  # coerced to chr</code></pre>
+<pre><code>## [1] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;3&quot; &quot;2&quot; &quot;1&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>unlist(df, use.names = FALSE)  # int</code></pre>
+<pre><code>## [1] 1 2 3 3 2 1 1 2 3</code></pre>
+</div>
+<div id="lists-vs.data-frames" class="section level3">
+<h3><span class="header-section-number">1.4.4</span> Lists vs. data frames</h3>
+<p>There are differeces in how vector subsetting behaves:</p>
+<pre class="r"><code>df &lt;- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
+str(df)</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  3 variables:
+##  $ x: int  1 2 3
+##  $ y: int  3 2 1
+##  $ z: chr  &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>l &lt;- list(x = 1:3, y = 3:1, z = letters[1:3])
+str(l)</code></pre>
+<pre><code>## List of 3
+##  $ x: int [1:3] 1 2 3
+##  $ y: int [1:3] 3 2 1
+##  $ z: chr [1:3] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>df[1, ]</code></pre>
+<pre><code>##   x y z
+## 1 1 3 a</code></pre>
+<pre class="r"><code>l[1, ]  # error</code></pre>
+<pre><code>## Error in l[1, ]: incorrect number of dimensions</code></pre>
+<pre class="r"><code>str(df[1])  # data frame</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  1 variable:
+##  $ x: int  1 2 3</code></pre>
+<pre class="r"><code>str(l[1])  # list</code></pre>
+<pre><code>## List of 1
+##  $ x: int [1:3] 1 2 3</code></pre>
+<pre class="r"><code>str(df[[1]])  # int vector</code></pre>
+<pre><code>##  int [1:3] 1 2 3</code></pre>
+<pre class="r"><code>str(l[[1]])  # int vector</code></pre>
+<pre><code>##  int [1:3] 1 2 3</code></pre>
+<pre class="r"><code>identical(l[[1]], df[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>idx &lt;- matrix(c(T, F, T, F, F, T, T, T, F), ncol = 3)
+idx</code></pre>
+<pre><code>##       [,1]  [,2]  [,3]
+## [1,]  TRUE FALSE  TRUE
+## [2,] FALSE FALSE  TRUE
+## [3,]  TRUE  TRUE FALSE</code></pre>
+<pre class="r"><code>str(df[idx])  # returns a vector</code></pre>
+<pre><code>##  chr [1:5] &quot;1&quot; &quot;3&quot; &quot;1&quot; &quot;a&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code>str(l[idx])  # returns list containg 1st and 3rd elements, and 3 NAs for the remaining 3 Ts</code></pre>
+<pre><code>## List of 5
+##  $ x : int [1:3] 1 2 3
+##  $ z : chr [1:3] &quot;a&quot; &quot;b&quot; &quot;c&quot;
+##  $ NA: NULL
+##  $ NA: NULL
+##  $ NA: NULL</code></pre>
+<pre class="r"><code>l[c(T, F, T)]  # return list of 1st and 3rd elements</code></pre>
+<pre><code>## $x
+## [1] 1 2 3
+## 
+## $z
+## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>l[T]  # recycled 3 times </code></pre>
+<pre><code>## $x
+## [1] 1 2 3
+## 
+## $y
+## [1] 3 2 1
+## 
+## $z
+## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>identical(l, l[T])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>l[]  # same as l, l[T]</code></pre>
+<pre><code>## $x
+## [1] 1 2 3
+## 
+## $y
+## [1] 3 2 1
+## 
+## $z
+## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>l[matrix(T)]  # no difference to l[T], l[], l</code></pre>
+<pre><code>## $x
+## [1] 1 2 3
+## 
+## $y
+## [1] 3 2 1
+## 
+## $z
+## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+</div>
+<div id="more-complicated-data-frames" class="section level3">
+<h3><span class="header-section-number">1.4.5</span> More complicated data frames</h3>
+<pre class="r"><code>df &lt;- data.frame(x = 1:3, y = 3:1)
+df$z &lt;- list(4:5, 4:6, 4:7)
+df</code></pre>
+<pre><code>##   x y          z
+## 1 1 3       4, 5
+## 2 2 2    4, 5, 6
+## 3 3 1 4, 5, 6, 7</code></pre>
+<pre class="r"><code>str(df[matrix(T)])</code></pre>
+<pre><code>## List of 9
+##  $ : int 1
+##  $ : int 2
+##  $ : int 3
+##  $ : int 3
+##  $ : int 2
+##  $ : int 1
+##  $ : int [1:2] 4 5
+##  $ : int [1:3] 4 5 6
+##  $ : int [1:4] 4 5 6 7</code></pre>
+<pre class="r"><code>str(unlist(df, use.names = FALSE, recursive = FALSE))</code></pre>
+<pre><code>## List of 9
+##  $ : int 1
+##  $ : int 2
+##  $ : int 3
+##  $ : int 3
+##  $ : int 2
+##  $ : int 1
+##  $ : int [1:2] 4 5
+##  $ : int [1:3] 4 5 6
+##  $ : int [1:4] 4 5 6 7</code></pre>
+<pre class="r"><code>str(unlist(df, use.names = FALSE, recursive = TRUE))</code></pre>
+<pre><code>##  int [1:15] 1 2 3 3 2 1 4 5 4 5 ...</code></pre>
+<pre class="r"><code>str(df[3])</code></pre>
+<pre><code>## 'data.frame':    3 obs. of  1 variable:
+##  $ z:List of 3
+##   ..$ : int  4 5
+##   ..$ : int  4 5 6
+##   ..$ : int  4 5 6 7</code></pre>
+<pre class="r"><code>purrr::vec_depth(df[3])</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code>str(df[[3]])</code></pre>
+<pre><code>## List of 3
+##  $ : int [1:2] 4 5
+##  $ : int [1:3] 4 5 6
+##  $ : int [1:4] 4 5 6 7</code></pre>
+<pre class="r"><code>purrr::vec_depth(df[[3]])</code></pre>
+<pre><code>## [1] 2</code></pre>
+</div>
 </div>
 </div>
 

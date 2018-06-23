@@ -138,8 +138,118 @@ vals[select]
 ```
 
 ## Data frames
-Data frames possess the characteristics of both lists and matrices: if you subset with a single vector, they behave like lists; if you subset with two vectors, they behave like matrices.
+Data frames possess the characteristics of both lists and matrices: if you subset with a single vector, they behave like lists; if you subset with two vectors, they behave like matrices. We use the following data frame for examples:
 
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
+str(df)
+```
 
+### As a list
+```{r, results='markup'}
+(df[1]) # subsetting a list with [ always return a list
+is.data.frame(df[1]) # of 1 column - 1:3
+ncol(df[1])
+is.list(df[1]) # of one vector - 1:3
+length(df[1]) # a list of one item - 1:3
+df[[1]] # use [[ or $ to access a single item
+df[1][1]
+identical(df[1], df[1][1]) # TRUE since df[1] is a list of only one item
+df[c("x", "y")] # select multiple columns
+df[T] # T is recycled 3 times 
+identical(df, df[T]) # data frame
+df[] # same as df, df[T]
+```
 
+### As a matrix
+```{r, results='markup'}
+df[1, ]
+str(df[1, ]) # still a data frame
+df[, 1] # matrix subsetting simplifies by default
+str(df[, 1]) # now an int vector
+df[, 1, drop = FALSE]
+str(df[, 1, drop = FALSE]) # still a data frame
+df[1:2, 2:3]
+```
 
+### As a list and matrix
+Data frames can be subsetted as a list, but using a matrix argument!
+```{r, results='markup'}
+idx <- matrix(c(T, F, T, F, F, T, T, T, F), ncol = 3)
+idx
+df[idx] # returns a vector
+```
+This can be used to unlist a data frame:
+```{r, results='markup'}
+df[matrix(T)] # T is recycled 9 times 
+attributes(df[matrix(T)])
+unlist(df) 
+attributes(unlist(df)) # retains names
+unlist(df, use.names = FALSE)
+identical(df[matrix(T)], unlist(df, use.names = FALSE))
+```
+List-matrix subsetting does not retain factor information:
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = TRUE)
+str(df)
+df[1,3]
+str(df[1,3])
+idx <- matrix(c(F, F, T, F, F, F, F, F, F), byrow = TRUE, nrow = 3)
+idx
+df[idx]
+str(df[idx])
+
+```
+`unlist()` also uses the underlying integers for factors:
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = TRUE)
+str(df)
+df[matrix(T)] # coerced to chr
+unlist(df, use.names = FALSE) # int
+```
+
+### Lists vs. data frames
+There are differeces in how vector subsetting behaves:
+```{r, results='markup', error=TRUE}
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
+str(df)
+l <- list(x = 1:3, y = 3:1, z = letters[1:3])
+str(l)
+
+df[1, ]
+l[1, ] # error
+
+str(df[1]) # data frame
+str(l[1]) # list
+
+str(df[[1]]) # int vector
+str(l[[1]]) # int vector
+identical(l[[1]], df[[1]])
+
+idx <- matrix(c(T, F, T, F, F, T, T, T, F), ncol = 3)
+idx
+str(df[idx]) # returns a vector
+str(l[idx]) # returns list containg 1st and 3rd elements, and 3 NAs for the remaining 3 Ts
+
+l[c(T, F, T)] # return list of 1st and 3rd elements
+l[T] # recycled 3 times 
+identical(l, l[T])
+l[] # same as l, l[T]
+l[matrix(T)] # no difference to l[T], l[], l
+```
+
+### More complicated data frames
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = 3:1)
+df$z <- list(4:5, 4:6, 4:7)
+df
+str(df[matrix(T)])
+str(unlist(df, use.names = FALSE, recursive = FALSE))
+str(unlist(df, use.names = FALSE, recursive = TRUE))
+str(df[3])
+purrr::vec_depth(df[3])
+str(df[[3]])
+purrr::vec_depth(df[[3]])
+```
+
+## Preserving dimensionality
