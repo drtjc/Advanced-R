@@ -223,8 +223,8 @@ div.tocify {
 </div>
 
 
-<div id="subsetting" class="section level1">
-<h1><span class="header-section-number">1</span> Subsetting</h1>
+<div id="subsetting---multiple-elements" class="section level1">
+<h1><span class="header-section-number">1</span> Subsetting - multiple elements</h1>
 <div id="atomic-vectors" class="section level2">
 <h2><span class="header-section-number">1.1</span> Atomic vectors</h2>
 <p>Let’s explore the different types of subsetting with a simple vector, <code>x</code>.</p>
@@ -260,7 +260,7 @@ x[c(TRUE, FALSE, TRUE, FALSE)]</code></pre>
 <p>A missing value in the index always yields a missing value in the output.</p>
 <pre class="r"><code>x[c(TRUE, TRUE, NA, FALSE)]</code></pre>
 <pre><code>## [1] 2.1 4.2  NA</code></pre></li>
-<li><p><strong>Nothing</strong> returns the original vector. This is not useful for vectors but is very useful for matrices, data frames, and arrays. It can also be useful in conjunction with assignment.</p>
+<li><p><strong>Nothing</strong> returns the original vector. This is not useful for vectors but is very useful for matrices, data frames, and arrays. It can also be useful in conjunction with assignment. Keeps all attributes whereas normally all attributed except <code>class</code>, <code>names</code>, <code>dim</code> and <code>dimnames</code> are dropped.</p>
 <pre class="r"><code>x[]</code></pre>
 <pre><code>## [1] 2.1 4.2 3.3 5.4</code></pre></li>
 <li><p><em>Character vectors</em> (if the vector is named) to return elements with matching names.</p>
@@ -620,6 +620,122 @@ df</code></pre>
 <pre class="r"><code>purrr::vec_depth(df[[3]])</code></pre>
 <pre><code>## [1] 2</code></pre>
 </div>
+</div>
+<div id="preserving-dimensionality" class="section level2">
+<h2><span class="header-section-number">1.5</span> Preserving dimensionality</h2>
+<p>By default, any subsetting 2d data structures with a single number, single name, or a logical vector containing a single <code>TRUE</code> will simplify the returned output as described below. To preserve the original dimensionality, you must use <code>drop = FALSE</code>.</p>
+<ul>
+<li><p>For matrices and arrays, any dimensions with length 1 will be dropped:</p>
+<pre class="r"><code>m &lt;- matrix(1:4, nrow = 2)
+str(m[1, ])
+str(m[1, , drop = FALSE])</code></pre>
+<pre><code>##  int [1:2] 1 3
+##  int [1, 1:2] 1 3</code></pre></li>
+<li><p>Data frames with a single column will return just that column:</p>
+<pre class="r"><code>df &lt;- data.frame(a = 1:2, b = 1:2)
+str(df[, &quot;a&quot;])
+str(df[, &quot;a&quot;, drop = FALSE])</code></pre>
+<pre><code>##  int [1:2] 1 2
+## 'data.frame':    2 obs. of  1 variable:
+##  $ a: int  1 2</code></pre></li>
+<li><p>Factor subsetting also has a <code>drop</code> argument, but the meaning it rather different. It controls whether or not levels are preserved (not the dimensionality), and it defaults to <code>FALSE</code> (levels are preserved, not simplified by default).</p>
+<pre class="r"><code>z &lt;- factor(c(&quot;a&quot;, &quot;b&quot;))
+z[1]
+z[1, drop = TRUE]</code></pre>
+<pre><code>## [1] a
+## Levels: a b
+## [1] a
+## Levels: a</code></pre>
+<pre class="r"><code>df &lt;- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = TRUE)
+f &lt;- df[1:2, 3, drop = TRUE]
+str(f)</code></pre>
+<pre><code>##  Factor w/ 3 levels &quot;a&quot;,&quot;b&quot;,&quot;c&quot;: 1 2</code></pre>
+<pre class="r"><code>is.factor(f)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>f[, drop = TRUE]</code></pre>
+<pre><code>## [1] a b
+## Levels: a b</code></pre>
+<pre class="r"><code>droplevels(f)</code></pre>
+<pre><code>## [1] a b
+## Levels: a b</code></pre></li>
+</ul>
+</div>
+<div id="exercises" class="section level2">
+<h2><span class="header-section-number">1.6</span> Exercises</h2>
+<ol style="list-style-type: decimal">
+<li><p>Fix each of the following common data frame subsetting errors:</p>
+<pre class="r"><code># mtcars[mtcars$cyl = 4, ]
+mtcars[mtcars$cyl == 4, ]
+
+# mtcars[-1:4, ]
+mtcars[-(1:4), ]
+
+# mtcars[mtcars$cyl &lt;= 5]
+mtcars[mtcars$cyl &lt;= 5, ]
+
+# mtcars[mtcars$cyl == 4 | 6, ]
+mtcars[mtcars$cyl == 4 | mtcars$cyl == 6, ]</code></pre></li>
+<li><p>Why does <code>x &lt;- 1:5; x[NA]</code> yield five missing values?<br />
+<strong>A</strong>: <code>NA</code> is of class logical so gets recycled.</p>
+<pre class="r"><code>x &lt;- 1:5
+x[NA]</code></pre>
+<pre><code>## [1] NA NA NA NA NA</code></pre>
+<pre class="r"><code>class(NA)</code></pre>
+<pre><code>## [1] &quot;logical&quot;</code></pre>
+<pre class="r"><code>x[NA_integer_]</code></pre>
+<pre><code>## [1] NA</code></pre>
+<pre class="r"><code>class(NA_integer_)</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre></li>
+<li><p>What does <code>upper.tri()</code> return? How does subsetting a matrix with it work? Do we need any additional subsetting rules to describe its behaviour?</p>
+<pre class="r"><code>(x &lt;- outer(1:5, 1:5, FUN = &quot;*&quot;))</code></pre>
+<pre><code>##      [,1] [,2] [,3] [,4] [,5]
+## [1,]    1    2    3    4    5
+## [2,]    2    4    6    8   10
+## [3,]    3    6    9   12   15
+## [4,]    4    8   12   16   20
+## [5,]    5   10   15   20   25</code></pre>
+<pre class="r"><code>upper.tri(x)</code></pre>
+<pre><code>##       [,1]  [,2]  [,3]  [,4]  [,5]
+## [1,] FALSE  TRUE  TRUE  TRUE  TRUE
+## [2,] FALSE FALSE  TRUE  TRUE  TRUE
+## [3,] FALSE FALSE FALSE  TRUE  TRUE
+## [4,] FALSE FALSE FALSE FALSE  TRUE
+## [5,] FALSE FALSE FALSE FALSE FALSE</code></pre>
+<pre class="r"><code>x[upper.tri(x)]</code></pre>
+<pre><code>##  [1]  2  3  6  4  8 12  5 10 15 20</code></pre>
+<p><strong>A</strong>: Returns a matrix of logicals the same size of a given matrix with entries <code>TRUE</code> in the lower or upper triangle. No, see above for subsetting with logical matrices.</p></li>
+<li><p>Why does <code>mtcars[1:20]</code> return an error? How does it differ from the similar <code>mtcars[1:20, ]</code>?<br />
+<strong>A</strong>: <code>mtcars[1:20]</code> tries to return 20 columns, there are only 11. <code>mtcars[1:20, ]</code> returns the first 20 rows of all columns.</p></li>
+<li><p>Implement your own function that extracts the diagonal entries from a matrix (it should behave like <code>diag(x)</code> where x is a matrix).<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>m &lt;- matrix(1:9, ncol = 3)
+m</code></pre>
+<pre><code>##      [,1] [,2] [,3]
+## [1,]    1    4    7
+## [2,]    2    5    8
+## [3,]    3    6    9</code></pre>
+<pre class="r"><code>m[row(m) == col(m)]</code></pre>
+<pre><code>## [1] 1 5 9</code></pre>
+<pre class="r"><code>m &lt;- matrix(1:10, ncol = 2)
+m</code></pre>
+<pre><code>##      [,1] [,2]
+## [1,]    1    6
+## [2,]    2    7
+## [3,]    3    8
+## [4,]    4    9
+## [5,]    5   10</code></pre>
+<pre class="r"><code>m[row(m) == col(m)]</code></pre>
+<pre><code>## [1] 1 7</code></pre>
+<pre class="r"><code>m &lt;- 4
+# convert to matrix
+m[row(as.matrix(m)) == col(as.matrix(m))]</code></pre>
+<pre><code>## [1] 4</code></pre></li>
+<li><p>What <code>does df[is.na(df)] &lt;- 0</code> do? How does it work?<br />
+<strong>A</strong>: For a data frame, <code>is.na()</code> returns a logical matrix indicating where <code>NA</code>s are. Hence <code>df[is.na(df)] &lt;- 0</code> replaces all <code>NA</code>s with <code>0</code>s.</p></li>
+</ol>
+</div>
+<div id="subsetting---single-elements" class="section level2">
+<h2><span class="header-section-number">1.7</span> Subsetting - single elements</h2>
 </div>
 </div>
 

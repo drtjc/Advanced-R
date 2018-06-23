@@ -3,26 +3,36 @@ library(magrittr)
 library(tidyverse)
 library(purrr)
 
-df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
-str(df)
 
-str(df[matrix(T)])
 
-df[matrix(T)]
 
-unlist(df, use.names = FALSE)
 
-df <- data.frame(x = 1:3, y = 3:1)
-df$z <- list(4:5, 4:6, 4:7)
-df
-str(df[matrix(T)])
-str(unlist(df, use.names = FALSE, recursive = FALSE))
-str(unlist(df, use.names = FALSE, recursive = TRUE))
 
-str(df[3])
-str(df[[3]])
-purrr::vec_depth(df[3])
-purrr::vec_depth(df[[3]])
+
+v <- list(a = 1, b = 2)
+v
+v[[1]] # drops name
+v[1] # doesn't drop name
+
+
+x <- NULL
+x <- 1:2
+str(x) # int vector 1:2
+x <- NULL
+x[1] <- 1:2 # gives warning
+str(x) # int vector 1
+x <- NULL
+x[[1]] <- 1:2
+str(x) # list of 1 int vector - 1:2
+
+x <- NULL
+x[1] <- 1L
+str(x)
+
+x <- NULL
+x <- 1L
+x
+str(x)
 
 
 
