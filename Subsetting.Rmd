@@ -81,6 +81,14 @@ A missing value in the index always yields a missing value in the output.
     z[c("a", "d")]
     ```
 
+## Lists
+Subsetting a list works in the same way as subsetting an atomic vector. Using [ will always return a list; `[[` and `$`, as described below, let you pull out the components of the list.
+
+```{r, results='markup'}
+l <- list(1, 2)
+str(l)
+str(l[1])
+```
 
 
 
