@@ -24,3 +24,6 @@ library(magrittr)
 # kable(dt) %>%
 #   kable_styling(bootstrap_options = c("condensed", "hover"), full_width = FALSE, position = "left")
 # ```
+
+# TO DO - put in mapping between typeof and mode and storage.mode
+# hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression

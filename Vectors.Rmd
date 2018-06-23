@@ -737,6 +737,4 @@ Use list and array columns with caution. Many functions that work with data fram
     ncol(df)
     ```
 
-TO DO - put in mapping between typeof and mode and storage.mode
-hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression
 
