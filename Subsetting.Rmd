@@ -20,6 +20,7 @@ library(knitr)
 library(kableExtra)
 library(magrittr)
 library(dplyr)
+library(tidyverse)
 ```
 
 # Subsetting - multiple elements
@@ -374,7 +375,7 @@ x <- c(a = 1, b = 2)
 y <- c(c = 2, b = 4)
 l <- list(u = x, v = y)
 str(l)
-str(l[1]) # keeps column andvector element names
+str(l[1]) # keeps column and vector element names
 str(l[[1]]) # drops column name, keeps vector element names
 ```
 
@@ -424,6 +425,7 @@ str(m) # I is ignored and vector element names aren't retained
 ```
 
 ### Data frame
+In general, names are kept if the extracted part is still a data frame:
 ```{r, results='markup'}
 df <- data.frame(a = 1:2, b = 3:4)
 row.names(df) <- c("x", "y")
@@ -458,9 +460,9 @@ df
 str(df)
 
 df[1]
-str(df[1]) # keeps column/row and vector element names
+str(df[1]) # data frame - keeps column/row and vector element names
 
-df[[1]] # vector of 1. keeps vector element names
+df[[1]] # vector - keeps vector element names
 
 df[1, ]
 str(df[1, ]) # keeps column/row and vector element names
@@ -476,6 +478,76 @@ idx <- matrix(c(T, F, F, T), ncol = 2)
 str(df[idx]) # drops column/row names and vector element names - int vec
 ```
 
+## Subsetting and assignment
+All subsetting operators can be combined with assignment to modify selected values of the input vector. This is mostly useful when conditionally modifying vectors:
+```{r}
+df <- data.frame(a = c(1, 10, NA))
+df$a[df$a < 5] <- 0
+df$a
+```
 
+Subsetting with nothing can be useful in conjunction with assignment because it will preserve the original object class and structure.
 
+```{r, results='markup'}
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
+df <- map(df, as.character)
+str(df)
+df <- data.frame(x = 1:3, y = 3:1, z = letters[1:3], stringsAsFactors = FALSE)
+df[] <- map(df, as.character)
+str(df)
+```
+
+With lists, you can use `[[` + assignment + `NULL` to remove components from a list. To add a literal `NULL` to a list, use `[` and `list(NULL)`:
+```{r, results='markup'}
+x <- list(a = 1, b = 2)
+x[["b"]] <- NULL
+str(x)
+y <- list(a = 1)
+y["b"] <- list(NULL)
+str(y)
+```
+
+When subsetting and assigning to a `NULL` object, `[[` creates a list:
+```{r, results='markup'}
+x <- NULL
+x <- 1:2
+str(x) # int vector 1:2
+x <- NULL
+x[1] <- 1:2 # gives warning
+str(x) # int vector 1
+x <- NULL
+x[1:2] <- 1:2 # gives warning
+str(x) # int vector 1
+x <- NULL
+x[[1]] <- 1:2
+str(x) # list of 1 int vector - 1:2
+
+```
+
+## Exercises
+
+1. How would you randomly permute the columns of a data frame? Can you simultaneously permute the rows and columns in one step?  
+**A**: 
+```{r, results='markup'}
+head(iris[sample(ncol(iris))]) # permute rows
+head(iris[sample(nrow(iris)), sample(ncol(iris))]) # permute both at the same time
+```
+
+2. How would you select a random sample of `m` rows from a data frame? What if the sample had to be contiguous (i.e., with an initial row, a final row, and every row in between)?   
+**A**: 
+```{r, results='markup'}
+m=4
+iris[sample(nrow(iris), m),]
+
+# Blockversion
+start <- sample(nrow(iris) - m + 1, 1)
+end <- start + m - 1
+iris[start:end, ]
+```
+
+3. How could you put the columns in a data frame in alphabetical order?  
+**A**:
+```{r}
+head(iris[sort(names(iris))])
+```
 
