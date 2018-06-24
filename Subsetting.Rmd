@@ -528,26 +528,26 @@ str(x) # list of 1 int vector - 1:2
 
 1. How would you randomly permute the columns of a data frame? Can you simultaneously permute the rows and columns in one step?  
 **A**: 
-```{r, results='markup'}
-head(iris[sample(ncol(iris))]) # permute rows
-head(iris[sample(nrow(iris)), sample(ncol(iris))]) # permute both at the same time
-```
+    ```{r, results='markup'}
+    head(iris[sample(ncol(iris))]) # permute rows
+    head(iris[sample(nrow(iris)), sample(ncol(iris))]) # permute both at the same time
+    ```
 
 2. How would you select a random sample of `m` rows from a data frame? What if the sample had to be contiguous (i.e., with an initial row, a final row, and every row in between)?   
 **A**: 
-```{r, results='markup'}
-m=4
-iris[sample(nrow(iris), m),]
-
-# Blockversion
-start <- sample(nrow(iris) - m + 1, 1)
-end <- start + m - 1
-iris[start:end, ]
-```
+    ```{r, results='markup'}
+    m=4
+    iris[sample(nrow(iris), m),]
+    
+    # Blockversion
+    start <- sample(nrow(iris) - m + 1, 1)
+    end <- start + m - 1
+    iris[start:end, ]
+    ```
 
 3. How could you put the columns in a data frame in alphabetical order?  
 **A**:
-```{r}
-head(iris[sort(names(iris))])
-```
+    ```{r}
+    head(iris[sort(names(iris))])
+    ```
 
