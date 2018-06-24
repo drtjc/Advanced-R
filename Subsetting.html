@@ -93,9 +93,6 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
-.html-widget {
-  margin-bottom: 20px;
-}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -709,12 +706,7 @@ x[NA]</code></pre>
 <li><p>Implement your own function that extracts the diagonal entries from a matrix (it should behave like <code>diag(x)</code> where x is a matrix).<br />
 <strong>A</strong>:</p>
 <pre class="r"><code>m &lt;- matrix(1:9, ncol = 3)
-m</code></pre>
-<pre><code>##      [,1] [,2] [,3]
-## [1,]    1    4    7
-## [2,]    2    5    8
-## [3,]    3    6    9</code></pre>
-<pre class="r"><code>m[row(m) == col(m)]</code></pre>
+m[row(m) == col(m)]</code></pre>
 <pre><code>## [1] 1 5 9</code></pre>
 <pre class="r"><code>m &lt;- matrix(1:10, ncol = 2)
 m</code></pre>
@@ -736,6 +728,207 @@ m[row(as.matrix(m)) == col(as.matrix(m))]</code></pre>
 </div>
 <div id="subsetting---single-elements" class="section level2">
 <h2><span class="header-section-number">1.7</span> Subsetting - single elements</h2>
+<p>There are two other subsetting operators: <code>[[</code> and <code>$</code>. <code>[[</code> is used for extracting single values, and <code>$</code> is a useful shorthand for <code>[[</code> combined with character subsetting. <code>[[</code> is most important working with lists because subsetting a list with <code>[</code> always returns a smaller list.</p>
+<pre class="r"><code>x &lt;- list(1:3, &quot;a&quot;, 4:5)
+str(x[1])  # list of 1 element - 1:3
+str(x[[1]])  # int vector - 1:3</code></pre>
+<pre><code>## List of 1
+##  $ : int [1:3] 1 2 3
+##  int [1:3] 1 2 3</code></pre>
+<p>Both <code>[[</code> and <code>$</code> select a single element of the list. The main difference is that <code>$</code> does not allow computed indices, whereas <code>[[</code> does. <code>x$name</code> is equivalent to <code>x[[&quot;name&quot;, exact = FALSE]]</code>.</p>
+<p>Note that <code>[[</code> drops names whereas <code>[</code> doesn’t (but see matrix examples below which seem somewhat inconsistent).</p>
+<div id="named-vector" class="section level3">
+<h3><span class="header-section-number">1.7.1</span> Named vector</h3>
+<pre class="r"><code>v &lt;- c(a = 1, b = 2)
+v</code></pre>
+<pre><code>## a b 
+## 1 2</code></pre>
+<pre class="r"><code>v[1]  # keeps name</code></pre>
+<pre><code>## a 
+## 1</code></pre>
+<pre class="r"><code>v[[1]]  # drops name</code></pre>
+<pre><code>## [1] 1</code></pre>
+</div>
+<div id="list" class="section level3">
+<h3><span class="header-section-number">1.7.2</span> List</h3>
+<pre class="r"><code>l &lt;- list(a = 1:2, b = 3:4)
+str(l)</code></pre>
+<pre><code>## List of 2
+##  $ a: int [1:2] 1 2
+##  $ b: int [1:2] 3 4</code></pre>
+<pre class="r"><code>str(l[1])  # keeps name</code></pre>
+<pre><code>## List of 1
+##  $ a: int [1:2] 1 2</code></pre>
+<pre class="r"><code>str(l[[1]])  # drops name</code></pre>
+<pre><code>##  int [1:2] 1 2</code></pre>
+</div>
+<div id="list-with-named-vector-inputs" class="section level3">
+<h3><span class="header-section-number">1.7.3</span> List with named vector inputs</h3>
+<pre class="r"><code>x &lt;- c(a = 1, b = 2)
+y &lt;- c(c = 2, b = 4)
+l &lt;- list(u = x, v = y)
+str(l)</code></pre>
+<pre><code>## List of 2
+##  $ u: Named num [1:2] 1 2
+##   ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;a&quot; &quot;b&quot;
+##  $ v: Named num [1:2] 2 4
+##   ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;c&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code>str(l[1])  # keeps column andvector element names</code></pre>
+<pre><code>## List of 1
+##  $ u: Named num [1:2] 1 2
+##   ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;a&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code>str(l[[1]])  # drops column name, keeps vector element names</code></pre>
+<pre><code>##  Named num [1:2] 1 2
+##  - attr(*, &quot;names&quot;)= chr [1:2] &quot;a&quot; &quot;b&quot;</code></pre>
+</div>
+<div id="matrix" class="section level3">
+<h3><span class="header-section-number">1.7.4</span> Matrix</h3>
+<pre class="r"><code>m &lt;- matrix(1:4, nrow = 2)
+colnames(m) &lt;- c(&quot;a&quot;, &quot;b&quot;)
+rownames(m) &lt;- c(&quot;x&quot;, &quot;y&quot;)
+m</code></pre>
+<pre><code>##   a b
+## x 1 3
+## y 2 4</code></pre>
+<pre class="r"><code>m[1]  # first element of vector - drops name</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>m[[1]]  # first element of vector - drops name</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>m[1, ]  # keeps col names</code></pre>
+<pre><code>## a b 
+## 1 3</code></pre>
+<pre class="r"><code>m[, 1]  # keeps row names</code></pre>
+<pre><code>## x y 
+## 1 2</code></pre>
+<pre class="r"><code>m[]  # keeps all names</code></pre>
+<pre><code>##   a b
+## x 1 3
+## y 2 4</code></pre>
+<pre class="r"><code>m[1, 1]  # first element of vector - drops name # but see next set of examples</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>m[1, 1, drop = FALSE]  # keeps all names - still a matrix</code></pre>
+<pre><code>##   a
+## x 1</code></pre>
+<pre class="r"><code>m[[1, 1]]  # first element of vector - drops name</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>idx &lt;- matrix(c(T, F, F, T), ncol = 2)
+m[idx]  # vector - drops names</code></pre>
+<pre><code>## [1] 1 4</code></pre>
+<p>The behaviour of <code>m[1, 1]</code> differs if only one of colnames or rownames has been set.</p>
+<pre class="r"><code>m &lt;- matrix(1:4, nrow = 2)
+rownames(m) &lt;- c(&quot;x&quot;, &quot;y&quot;)
+m[1, 1]  # first element of vector - but now keeps row name</code></pre>
+<pre><code>## x 
+## 1</code></pre>
+<pre class="r"><code>rownames(m) &lt;- NULL
+colnames(m) &lt;- c(&quot;a&quot;, &quot;b&quot;)
+m[1, 1]  # first element of vector - but now keeps col name</code></pre>
+<pre><code>## a 
+## 1</code></pre>
+</div>
+<div id="matrix-with-named-vector-inputs" class="section level3">
+<h3><span class="header-section-number">1.7.5</span> Matrix with named vector inputs</h3>
+<p>Matrices ignore the names of vector inputs:</p>
+<pre class="r"><code>x &lt;- c(a = 1, b = 2, c = 3, d = 4)
+m &lt;- matrix(I(x), nrow = 2)
+colnames(m) &lt;- c(&quot;x&quot;, &quot;y&quot;)
+str(m)  # I is ignored and vector element names aren't retained</code></pre>
+<pre><code>##  num [1:2, 1:2] 1 2 3 4
+##  - attr(*, &quot;dimnames&quot;)=List of 2
+##   ..$ : NULL
+##   ..$ : chr [1:2] &quot;x&quot; &quot;y&quot;</code></pre>
+</div>
+<div id="data-frame" class="section level3">
+<h3><span class="header-section-number">1.7.6</span> Data frame</h3>
+<pre class="r"><code>df &lt;- data.frame(a = 1:2, b = 3:4)
+row.names(df) &lt;- c(&quot;x&quot;, &quot;y&quot;)
+df</code></pre>
+<pre><code>##   a b
+## x 1 3
+## y 2 4</code></pre>
+<pre class="r"><code>df[1]  # keeps column/row names - data frame</code></pre>
+<pre><code>##   a
+## x 1
+## y 2</code></pre>
+<pre class="r"><code>df[[1]]  # drops column/row names - int vec</code></pre>
+<pre><code>## [1] 1 2</code></pre>
+<pre class="r"><code>df[1, ]  # keeps column/row names</code></pre>
+<pre><code>##   a b
+## x 1 3</code></pre>
+<pre class="r"><code>df[, 1]  # drops names - int vec</code></pre>
+<pre><code>## [1] 1 2</code></pre>
+<pre class="r"><code>df[, 1, drop = FALSE]  # keeps column/row names</code></pre>
+<pre><code>##   a
+## x 1
+## y 2</code></pre>
+<pre class="r"><code>df[]  # keeps column/row names</code></pre>
+<pre><code>##   a b
+## x 1 3
+## y 2 4</code></pre>
+<pre class="r"><code>df[1, 1]  # drops name - int vec of 1 element</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>df[1, 1, drop = FALSE]  # keeps column/row names - data frame</code></pre>
+<pre><code>##   a
+## x 1</code></pre>
+<pre class="r"><code>df[[1, 1]]  # drops column/row names - int vec of 1 element </code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>idx &lt;- matrix(c(T, F, F, T), ncol = 2)
+df[idx]  # drops column/row names - int vec</code></pre>
+<pre><code>## [1] 1 4</code></pre>
+</div>
+<div id="data-frame-with-named-vector-inputs" class="section level3">
+<h3><span class="header-section-number">1.7.7</span> Data frame with named vector inputs</h3>
+<pre class="r"><code>x &lt;- c(a = 1, b = 2)
+y &lt;- c(c = 3, b = 4)
+# use I to protect names on vector inputs - otherwise they are removed
+df &lt;- data.frame(x = I(x), y = I(y))
+row.names(df) &lt;- c(&quot;u&quot;, &quot;v&quot;)
+df</code></pre>
+<pre><code>##   x y
+## u 1 3
+## v 2 4</code></pre>
+<pre class="r"><code>str(df)</code></pre>
+<pre><code>## 'data.frame':    2 obs. of  2 variables:
+##  $ x: 'AsIs' Named num  1 2
+##   ..- attr(*, &quot;names&quot;)= chr  &quot;a&quot; &quot;b&quot;
+##  $ y: 'AsIs' Named num  3 4
+##   ..- attr(*, &quot;names&quot;)= chr  &quot;c&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code>df[1]</code></pre>
+<pre><code>##   x
+## u 1
+## v 2</code></pre>
+<pre class="r"><code>str(df[1])  # keeps column/row and vector element names</code></pre>
+<pre><code>## 'data.frame':    2 obs. of  1 variable:
+##  $ x: 'AsIs' Named num  1 2
+##   ..- attr(*, &quot;names&quot;)= chr  &quot;a&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code>df[[1]]  # vector of 1. keeps vector element names</code></pre>
+<pre><code>## a b 
+## 1 2</code></pre>
+<pre class="r"><code>df[1, ]</code></pre>
+<pre><code>##   x y
+## u 1 3</code></pre>
+<pre class="r"><code>str(df[1, ])  # keeps column/row and vector element names</code></pre>
+<pre><code>## 'data.frame':    1 obs. of  2 variables:
+##  $ x: 'AsIs' Named num 1
+##   ..- attr(*, &quot;names&quot;)= chr &quot;a&quot;
+##  $ y: 'AsIs' Named num 3
+##   ..- attr(*, &quot;names&quot;)= chr &quot;c&quot;</code></pre>
+<pre class="r"><code>df[1, 1]  # vector of 1, keeps vector element name</code></pre>
+<pre><code>## a 
+## 1</code></pre>
+<pre class="r"><code>df[1, 1, drop = FALSE]</code></pre>
+<pre><code>##   x
+## u 1</code></pre>
+<pre class="r"><code>str(df[1, 1, drop = FALSE])  # data frame, keeps column/row and vector element name</code></pre>
+<pre><code>## 'data.frame':    1 obs. of  1 variable:
+##  $ x: 'AsIs' Named num 1
+##   ..- attr(*, &quot;names&quot;)= chr &quot;a&quot;</code></pre>
+<pre class="r"><code>df[[1, 1]]  # vector of 1, drops vector element name</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>idx &lt;- matrix(c(T, F, F, T), ncol = 2)
+str(df[idx])  # drops column/row names and vector element names - int vec</code></pre>
+<pre><code>##  num [1:2] 1 4</code></pre>
+</div>
 </div>
 </div>
 

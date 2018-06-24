@@ -7,12 +7,82 @@ library(purrr)
 
 
 
+m <- matrix(1:4, nrow = 1)
+colnames(m) <- c("a", "b", "c", "d")
+#colnames(m) <- c("a", "b")
+#rownames(m) <- c("x", "y")
+rownames(m) <- c("x")
+m
+
+m[1] # first element of vector - drops name
+m[[1]] # first element of vector - drops name
+
+m[1, ] # keeps col names
+m[, 1] # keeps row names
 
 
-v <- list(a = 1, b = 2)
-v
-v[[1]] # drops name
-v[1] # doesn't drop name
+
+
+m <- matrix(1:4, ncol = 1)
+rownames(m) <- c("a", "b", "c", "d")
+#colnames(m) <- c("a", "b")
+#rownames(m) <- c("x", "y")
+colnames(m) <- c("x")
+m
+
+m[1] # first element of vector - drops name
+m[[1]] # first element of vector - drops name
+
+m[1, ] # keeps col names
+m[, 1] # keeps row names
+
+
+
+
+
+
+
+
+l <- list()
+str(l[0])
+str(l[5])
+str(l[NA])
+
+
+l <- list(a = 1:2, b = 3:4)
+str(l[0])
+str(l[5])
+str(l[NA])
+
+
+df <- data.frame(1:2, 3:4)
+str(df[0])
+str(df[5])
+str(df[-5])
+str(df[NA])
+
+m <- matrix(c(1,2,3,4), nrow = 2)
+m
+str(m[0])
+str(m[5])
+str(m[-5])
+str(m[NA_character_])
+
+
+
+g <- logical(0)
+str(g[0])
+str(g[5])
+str(g[NA])
+
+g <- c(T, F)
+str(g[0])
+str(g[5])
+str(g[NA])
+
+
+
+
 
 
 x <- NULL

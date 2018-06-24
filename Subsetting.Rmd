@@ -327,7 +327,6 @@ By default, any subsetting 2d data structures with a single number, single name,
 **A**:
     ```{r, results='markup'}
     m <- matrix(1:9, ncol = 3)
-    m
     m[row(m) == col(m)]
     m <- matrix(1:10, ncol = 2)
     m
@@ -341,5 +340,142 @@ By default, any subsetting 2d data structures with a single number, single name,
 **A**: For a data frame, `is.na()` returns a logical matrix indicating where `NA`s are. Hence `df[is.na(df)] <- 0` replaces all `NA`s with `0`s.
 
 ## Subsetting - single elements
+There are two other subsetting operators: `[[` and `$`. `[[` is used for extracting single values, and `$` is a useful shorthand for `[[` combined with character subsetting. `[[` is most important working with lists because subsetting a list with `[` always returns a smaller list.
+
+```{r}
+x <- list(1:3, "a", 4:5)
+str(x[1]) # list of 1 element - 1:3
+str(x[[1]]) # int vector - 1:3
+```
+
+Both `[[` and `$` select a single element of the list. The main difference is that `$` does not allow computed indices, whereas `[[` does. `x$name` is equivalent to `x[["name", exact = FALSE]]`.
+
+Note that `[[` drops names whereas `[` doesn't (but see matrix examples below which seem somewhat inconsistent).
+
+### Named vector
+```{r, results='markup'}
+v <- c(a = 1, b = 2)
+v
+v[1] # keeps name
+v[[1]] # drops name
+```
+
+### List
+```{r, results='markup'}
+l <- list(a = 1:2, b = 3:4)
+str(l)
+str(l[1]) # keeps name
+str(l[[1]]) # drops name
+```
+
+### List with named vector inputs
+```{r, results='markup'}
+x <- c(a = 1, b = 2)
+y <- c(c = 2, b = 4)
+l <- list(u = x, v = y)
+str(l)
+str(l[1]) # keeps column andvector element names
+str(l[[1]]) # drops column name, keeps vector element names
+```
+
+### Matrix
+```{r, results='markup'}
+m <- matrix(1:4, nrow = 2)
+colnames(m) <- c("a", "b")
+rownames(m) <- c("x", "y")
+m
+
+m[1] # first element of vector - drops name
+m[[1]] # first element of vector - drops name
+
+m[1, ] # keeps col names
+m[, 1] # keeps row names
+
+m[] # keeps all names
+
+m[1, 1] # first element of vector - drops name # but see next set of examples
+m[1, 1, drop = FALSE] # keeps all names - still a matrix
+
+m[[1, 1]] # first element of vector - drops name
+
+idx <- matrix(c(T, F, F, T), ncol = 2)
+m[idx] # vector - drops names
+```
+
+The behaviour of `m[1, 1]` differs if only one of colnames or rownames has been set.
+
+```{r, results='markup'}
+m <- matrix(1:4, nrow = 2)
+rownames(m) <- c("x", "y")
+m[1, 1] # first element of vector - but now keeps row name
+
+rownames(m) <- NULL
+colnames(m) <- c("a", "b")
+m[1, 1] # first element of vector - but now keeps col name
+```
+
+### Matrix with named vector inputs
+Matrices ignore the names of vector inputs:
+```{r, results='markup'}
+x <- c(a = 1, b = 2, c = 3, d = 4)
+m <- matrix(I(x), nrow = 2)
+colnames(m) <- c("x", "y")
+str(m) # I is ignored and vector element names aren't retained
+```
+
+### Data frame
+```{r, results='markup'}
+df <- data.frame(a = 1:2, b = 3:4)
+row.names(df) <- c("x", "y")
+df
+
+df[1] # keeps column/row names - data frame
+df[[1]] # drops column/row names - int vec
+
+df[1, ] # keeps column/row names
+df[ , 1] # drops names - int vec
+df[ , 1, drop = FALSE]  # keeps column/row names
+df[] # keeps column/row names
+
+
+df[1, 1] # drops name - int vec of 1 element
+df[1, 1, drop = FALSE] # keeps column/row names - data frame
+
+df[[1, 1]] # drops column/row names - int vec of 1 element 
+
+idx <- matrix(c(T, F, F, T), ncol = 2)
+df[idx] # drops column/row names - int vec
+```
+
+### Data frame with named vector inputs
+```{r, results='markup'}
+x <- c(a = 1, b = 2)
+y <- c(c = 3, b = 4)
+# use I to protect names on vector inputs - otherwise they are removed
+df <- data.frame(x = I(x), y = I(y))
+row.names(df) <- c("u", "v")
+df
+str(df)
+
+df[1]
+str(df[1]) # keeps column/row and vector element names
+
+df[[1]] # vector of 1. keeps vector element names
+
+df[1, ]
+str(df[1, ]) # keeps column/row and vector element names
+
+df[1, 1] # vector of 1, keeps vector element name
+
+df[1, 1, drop = FALSE]
+str(df[1, 1, drop = FALSE]) # data frame, keeps column/row and vector element name
+
+df[[1, 1]] # vector of 1, drops vector element name
+
+idx <- matrix(c(T, F, F, T), ncol = 2)
+str(df[idx]) # drops column/row names and vector element names - int vec
+```
+
+
 
 
