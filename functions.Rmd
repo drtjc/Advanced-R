@@ -24,3 +24,122 @@ library(tidyverse)
 ```
 
 # Functions
+The most important thing to understand about R is that functions are objects in their own right, a language property often called “first-class functions”. You can work with them exactly the same way you work with any other type of object. 
+
+## Function components
+All R functions have three parts:
+
+* The `formals()`, the list of arguments that control how you call the function.
+
+* The `body()`, the code inside the function.
+
+* The `environment()`, which determines how the function finds values associated with names.
+
+When you print a function in R, it shows you these three important components. If the environment isn’t displayed, it means that the function was created in the global environment.
+
+```{r}
+f <- function(x) {
+  # A comment
+  x ^ 2
+}
+f
+formals(f)
+body(f)
+environment(f)
+```
+
+Like all objects in R, functions can also possess any number of additional `attributes()`. One attribute used by base R is “srcref”, short for source reference, which points to the source code used to create the function. Unlike `body()`, this contains code comments and other formatting. You can also add attributes to a function. For example, you can set the `class()` and add a custom `print()` method.
+
+```{r}
+attributes(f)
+```
+
+The assignment forms of `body()`, `formals()`, and `environment()` can also be used to modify functions.
+
+```{r}
+formals(f) <- alist(x = , y = 5 * 2) # alist allows tags without values. Values are not evaluated
+f
+body(f) <- expression(x ^ 3 + y)
+f
+f(2)
+```
+
+## Primitive functions
+There is one exception to the rule that functions have three components. Primitive functions, like `sum()`, call C code directly with `.Primitive()` and contain no R code. Therefore their `formals()`, `body()`, and `environment()` are all `NULL`:
+
+```{r}
+sum
+formals(sum)
+body(sum)
+environment(sum)
+```
+
+Primitive functions are only found in the base package. The chief advantage of primitive functions is that they can truly modify objects in place
+
+## Exercises
+1. What function allows you to tell if an object is a function? What function allows you to tell if a function is a primitive function?  
+**A**: 
+    ```{r, results='hold'}  
+    f <- function(x) x ^ 2
+    is.function(f)
+    is.function(sum)
+    is.primitive(f)
+    is.primitive(sum)
+    ```
+
+2. This code makes a list of all functions in the base package. Use it to answer the following questions:
+    ```{r}
+    objs <- mget(ls("package:base"), inherits = TRUE)
+    funs <- Filter(is.function, objs)
+    ```
+
+    Which base function has the most arguments?
+    ```{r}
+    f_arg_length <- funs %>% map_int(~ length(formals(.)))
+    f_arg_length[which.max(f_arg_length)]
+    ```
+
+    How many base functions have no arguments? What’s special about those functions?
+    ```{r}
+    # functions without arguments
+    f_arg_length <- funs %>% map_int(~ length(formals(.)))
+    f_arg_length[which.max(f_arg_length)]
+    sum(f_arg_length == 0) 
+    
+    # all primitive functions return NULL for formals, but so do other functions with no arguments
+    f_arg_NULL <- funs %>% map_lgl(~ is.null(formals(.)))
+    sum(f_arg_NULL) 
+    
+    f_arg_0 <- funs %>% map_lgl(~ !is.null(formals(.)) && length(formals(.)) == 0)
+    sum(f_arg_0) #0 - non-primitive functions with no arguments return NULL for a formal
+    
+    f_arg_primitve <- funs %>% map_lgl(~ is.primitive(.))
+    sum(f_arg_primitve) # number of primitive functions
+    
+    f_arg_NULL_not_primitive <- funs %>% map_lgl(~ is.null(formals(.)) && !is.primitive(.))
+    sum(f_arg_NULL_not_primitive) # number of non-primitive functions with no arguments
+    
+    # non-primitve functions with no arguments
+    str(funs[which(f_arg_NULL_not_primitive)])
+    ```
+
+    How could you adapt the code to find all primitive functions?
+    ```{r}
+    objs <- mget(ls("package:base"), inherits = TRUE)
+    funs <- Filter(is.primitive, objs)
+    length(funs)
+    ```
+
+3. What are the three important components of a function?  
+**A**: The `formals()`, `body()` and `environment()`. 
+
+4. When does printing a function not show what environment it was created in?  
+**A**: When the function was created in the global environment.
+
+
+## Lexical scoping
+
+
+
+
+# DO RECURSIVE SUBSETTING
