@@ -270,7 +270,25 @@ This behaviour can be quite annoying. If you make a spelling mistake in your cod
 One way to detect this problem is to use `codetools::findGlobals()`. This function lists all the external dependencies (unbound symbols) within a function:
 
 ```{r}
+f <- function() x + 1
+codetools::findGlobals(f)
+```
 
+Another way to try and solve the problem would be to manually change the environment of the function to the `emptyenv()`, an environment which contains nothing:
+
+```{r, error=TRUE}
+environment(f) <- emptyenv()
+f()
+```
+
+Both of these approaches reveal why this undesirable behaviour exists: R relies on lexical scoping to find everything, even the `+` operator.
+
+## Exercises
+1. What does the following code return? Why? What does each of the three `c`s mean?
+
+```{r}
+c <- 10
+c(c = c)
 ```
 
 

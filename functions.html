@@ -494,6 +494,26 @@ f()</code></pre>
 <pre class="r"><code>x &lt;- 20
 f()</code></pre>
 <pre><code>## [1] 20</code></pre>
+<p>This behaviour can be quite annoying. If you make a spelling mistake in your code, you won’t get an error when you create the function, and you might not even get one when you run the function, depending on what variables are defined in the global environment.</p>
+<p>One way to detect this problem is to use <code>codetools::findGlobals()</code>. This function lists all the external dependencies (unbound symbols) within a function:</p>
+<pre class="r"><code>f &lt;- function() x + 1
+codetools::findGlobals(f)</code></pre>
+<pre><code>## [1] &quot;+&quot; &quot;x&quot;</code></pre>
+<p>Another way to try and solve the problem would be to manually change the environment of the function to the <code>emptyenv()</code>, an environment which contains nothing:</p>
+<pre class="r"><code>environment(f) &lt;- emptyenv()
+f()</code></pre>
+<pre><code>## Error in x + 1: could not find function &quot;+&quot;</code></pre>
+<p>Both of these approaches reveal why this undesirable behaviour exists: R relies on lexical scoping to find everything, even the <code>+</code> operator.</p>
+</div>
+<div id="exercises-1" class="section level2">
+<h2><span class="header-section-number">1.6</span> Exercises</h2>
+<ol style="list-style-type: decimal">
+<li>What does the following code return? Why? What does each of the three <code>c</code>s mean?</li>
+</ol>
+<pre class="r"><code>c &lt;- 10
+c(c = c)</code></pre>
+<pre><code>##  c 
+## 10</code></pre>
 </div>
 </div>
 <div id="do-recursive-subsetting" class="section level1">
