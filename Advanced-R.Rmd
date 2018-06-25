@@ -33,6 +33,6 @@ library(pryr)
 ```{r child_YAML, child = "Subsetting.Rmd", cache=TRUE}
 ```
 
-```{r child_YAML, child = "functions.Rmd"}
+```{r child_YAML, child = "functions.Rmd", results='markup'}
 ```
 

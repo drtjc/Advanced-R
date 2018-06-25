@@ -382,6 +382,119 @@ length(funs)</code></pre>
 <strong>A</strong>: When the function was created in the global environment.</p></li>
 </ol>
 </div>
+<div id="lexical-scoping" class="section level2">
+<h2><span class="header-section-number">1.4</span> Lexical scoping</h2>
+<p>In Names and values, we discussed assignment, the act of binding a name to a value. Scoping works in the opposite direction: how do you find the value associated with a given name in a given context?</p>
+<p>For example, what will the following code return, 10 or 20?</p>
+<pre class="r"><code>x &lt;- 10
+f &lt;- function() {
+    x &lt;- 20
+    x
+}
+
+f()</code></pre>
+<pre><code>## [1] 20</code></pre>
+<p>There are four primary rules that define R’s lexical scoping:</p>
+<ul>
+<li>Name masking</li>
+<li>Functions vs. variables</li>
+<li>A fresh start</li>
+<li>Dynamic lookup</li>
+</ul>
+<div id="name-masking" class="section level3">
+<h3><span class="header-section-number">1.4.1</span> Name masking</h3>
+<p>The following example illustrates the most basic principle of lexical scoping: names in defined inside a function override names defined outside of it.</p>
+<pre class="r"><code>x &lt;- 10
+y &lt;- 20
+f &lt;- function() {
+    x &lt;- 1
+    y &lt;- 2
+    c(x, y)
+}
+f()</code></pre>
+<pre><code>## [1] 1 2</code></pre>
+<p>If a name isn’t defined inside a function, R will look one level up.</p>
+<pre class="r"><code>x &lt;- 2
+g &lt;- function() {
+    y &lt;- 1
+    c(x, y)
+}
+g()</code></pre>
+<pre><code>## [1] 2 1</code></pre>
+<p>The same rules apply if a function is defined inside another function: look inside the current function, then where that function was defined, and so on, all the way up to the global environment, and then on to other loaded packages.</p>
+<pre class="r"><code>x &lt;- 1
+h &lt;- function() {
+    y &lt;- 2
+    i &lt;- function() {
+        z &lt;- 3
+        c(x, y, z)
+    }
+    i()
+}
+h()</code></pre>
+<pre><code>## [1] 1 2 3</code></pre>
+<p>The same rules apply to closures, functions created by other functions. The following function, <code>j()</code>, returns a function.</p>
+<pre class="r"><code>j &lt;- function(x) {
+    y &lt;- 2
+    function() {
+        c(x, y)
+    }
+}
+k &lt;- j(1)
+k()</code></pre>
+<pre><code>## [1] 1 2</code></pre>
+<p>This seems a little magical: how does R know what the value of <code>y</code>is after <code>j()</code> has returned? It works because <code>k</code> preserves the environment in which it was defined and because the environment includes the value of <code>y</code>.</p>
+</div>
+<div id="functions-vs.variables" class="section level3">
+<h3><span class="header-section-number">1.4.2</span> Functions vs. variables</h3>
+<p>The same principles apply regardless of the type of associated value — functions are found in the same way as variables:</p>
+<pre class="r"><code>l &lt;- function(x) x + 1
+m &lt;- function() {
+    l &lt;- function(x) x * 2
+    l(10)
+}
+m()</code></pre>
+<pre><code>## [1] 20</code></pre>
+<p>There is one small tweak to the rule for functions. If you are using a name in a context where it’s obvious that you want a function (e.g., f(3)), R will ignore objects that are not functions while it is searching. In the following example n takes on a different value depending on whether R is looking for a function or a variable.</p>
+<pre class="r"><code>n &lt;- function(x) x/2
+o &lt;- function() {
+    n &lt;- 10
+    n(n)
+}
+o()</code></pre>
+<pre><code>## [1] 5</code></pre>
+<p>However, using the same name for functions and other objects will make for confusing code, and is best avoided.</p>
+</div>
+<div id="a-fresh-start" class="section level3">
+<h3><span class="header-section-number">1.4.3</span> A fresh start</h3>
+<p>What happens to the values in between invocations of a function?</p>
+<pre class="r"><code>j &lt;- function() {
+    if (!exists(&quot;a&quot;)) {
+        a &lt;- 1
+    } else {
+        a &lt;- a + 1
+    }
+    a
+}
+
+j()</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>j()</code></pre>
+<pre><code>## [1] 1</code></pre>
+<p><code>j()</code> returns the same value, 1, every time it is called. This is because every time a function is called, a new environment is created to host its execution. A function has no way to tell what happened the last time it was run; each invocation is completely independent. (We’ll see some ways to get around this in mutable state.)</p>
+</div>
+</div>
+<div id="dynamic-lookup" class="section level2">
+<h2><span class="header-section-number">1.5</span> Dynamic lookup</h2>
+<p>Lexical scoping determines where to look for values, not when to look for them. R looks for values when the function is run, not when it’s created. This means that the output of a function can be different depending on objects outside its environment:</p>
+<pre class="r"><code>f &lt;- function() x
+x &lt;- 15
+f()</code></pre>
+<pre><code>## [1] 15</code></pre>
+<pre class="r"><code>x &lt;- 20
+f()</code></pre>
+<pre><code>## [1] 20</code></pre>
+</div>
 </div>
 <div id="do-recursive-subsetting" class="section level1">
 <h1><span class="header-section-number">2</span> DO RECURSIVE SUBSETTING</h1>

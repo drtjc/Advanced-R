@@ -2606,6 +2606,192 @@ iris[start:end, ]</code></pre>
 </div>
 <div id="functions" class="section level1">
 <h1><span class="header-section-number">4</span> Functions</h1>
+<p>The most important thing to understand about R is that functions are objects in their own right, a language property often called “first-class functions”. You can work with them exactly the same way you work with any other type of object.</p>
+<div id="function-components" class="section level2">
+<h2><span class="header-section-number">4.1</span> Function components</h2>
+<p>All R functions have three parts:</p>
+<ul>
+<li><p>The <code>formals()</code>, the list of arguments that control how you call the function.</p></li>
+<li><p>The <code>body()</code>, the code inside the function.</p></li>
+<li><p>The <code>environment()</code>, which determines how the function finds values associated with names.</p></li>
+</ul>
+<p>When you print a function in R, it shows you these three important components. If the environment isn’t displayed, it means that the function was created in the global environment.</p>
+<pre class="r"><code>f &lt;- function(x) {
+    # A comment
+    x^2
+}
+f</code></pre>
+<pre><code>## function(x) {
+##     # A comment
+##     x^2
+## }</code></pre>
+<pre class="r"><code>formals(f)</code></pre>
+<pre><code>## $x</code></pre>
+<pre class="r"><code>body(f)</code></pre>
+<pre><code>## {
+##     x^2
+## }</code></pre>
+<pre class="r"><code>environment(f)</code></pre>
+<pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre>
+<p>Like all objects in R, functions can also possess any number of additional <code>attributes()</code>. One attribute used by base R is “srcref”, short for source reference, which points to the source code used to create the function. Unlike <code>body()</code>, this contains code comments and other formatting. You can also add attributes to a function. For example, you can set the <code>class()</code> and add a custom <code>print()</code> method.</p>
+<pre class="r"><code>attributes(f)</code></pre>
+<pre><code>## $srcref
+## function(x) {
+##     # A comment
+##     x^2
+## }</code></pre>
+<p>The assignment forms of <code>body()</code>, <code>formals()</code>, and <code>environment()</code> can also be used to modify functions.</p>
+<pre class="r"><code>formals(f) &lt;- alist(x = , y = 5 * 2)  # alist allows tags without values. Values are not evaluated
+f</code></pre>
+<pre><code>## function (x, y = 5 * 2) 
+## {
+##     x^2
+## }</code></pre>
+<pre class="r"><code>body(f) &lt;- expression(x^3 + y)
+f</code></pre>
+<pre><code>## function (x, y = 5 * 2) 
+## x^3 + y</code></pre>
+<pre class="r"><code>f(2)</code></pre>
+<pre><code>## [1] 18</code></pre>
+</div>
+<div id="primitive-functions" class="section level2">
+<h2><span class="header-section-number">4.2</span> Primitive functions</h2>
+<p>There is one exception to the rule that functions have three components. Primitive functions, like <code>sum()</code>, call C code directly with <code>.Primitive()</code> and contain no R code. Therefore their <code>formals()</code>, <code>body()</code>, and <code>environment()</code> are all <code>NULL</code>:</p>
+<pre class="r"><code>sum</code></pre>
+<pre><code>## function (..., na.rm = FALSE)  .Primitive(&quot;sum&quot;)</code></pre>
+<pre class="r"><code>formals(sum)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>body(sum)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>environment(sum)</code></pre>
+<pre><code>## NULL</code></pre>
+<p>Primitive functions are only found in the base package. The chief advantage of primitive functions is that they can truly modify objects in place</p>
+</div>
+<div id="exercises-10" class="section level2">
+<h2><span class="header-section-number">4.3</span> Exercises</h2>
+<ol style="list-style-type: decimal">
+<li><p>What function allows you to tell if an object is a function? What function allows you to tell if a function is a primitive function?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>f &lt;- function(x) x^2
+is.function(f)
+is.function(sum)
+is.primitive(f)
+is.primitive(sum)</code></pre>
+<pre><code>## [1] TRUE
+## [1] TRUE
+## [1] FALSE
+## [1] TRUE</code></pre></li>
+<li><p>This code makes a list of all functions in the base package. Use it to answer the following questions:</p>
+<pre class="r"><code>objs &lt;- mget(ls(&quot;package:base&quot;), inherits = TRUE)
+funs &lt;- Filter(is.function, objs)</code></pre>
+<p>Which base function has the most arguments?</p>
+<pre class="r"><code>f_arg_length &lt;- funs %&gt;% map_int(~length(formals(.)))
+f_arg_length[which.max(f_arg_length)]</code></pre>
+<pre><code>## scan 
+##   22</code></pre>
+<p>How many base functions have no arguments? What’s special about those functions?</p>
+<pre class="r"><code># functions without arguments
+f_arg_length &lt;- funs %&gt;% map_int(~length(formals(.)))
+f_arg_length[which.max(f_arg_length)]</code></pre>
+<pre><code>## scan 
+##   22</code></pre>
+<pre class="r"><code>sum(f_arg_length == 0)</code></pre>
+<pre><code>## [1] 221</code></pre>
+<pre class="r"><code># all primitive functions return NULL for formals, but so do other functions
+# with no arguments
+f_arg_NULL &lt;- funs %&gt;% map_lgl(~is.null(formals(.)))
+sum(f_arg_NULL)</code></pre>
+<pre><code>## [1] 221</code></pre>
+<pre class="r"><code>f_arg_0 &lt;- funs %&gt;% map_lgl(~!is.null(formals(.)) &amp;&amp; length(formals(.)) == 0)
+sum(f_arg_0)  #0 - non-primitive functions with no arguments return NULL for a formal</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>f_arg_primitve &lt;- funs %&gt;% map_lgl(~is.primitive(.))
+sum(f_arg_primitve)  # number of primitive functions</code></pre>
+<pre><code>## [1] 180</code></pre>
+<pre class="r"><code>f_arg_NULL_not_primitive &lt;- funs %&gt;% map_lgl(~is.null(formals(.)) &amp;&amp; !is.primitive(.))
+sum(f_arg_NULL_not_primitive)  # number of non-primitive functions with no arguments</code></pre>
+<pre><code>## [1] 41</code></pre>
+<pre class="r"><code># non-primitve functions with no arguments
+str(funs[which(f_arg_NULL_not_primitive)])</code></pre>
+<pre><code>## List of 41
+##  $ closeAllConnections     :function ()  
+##  $ contributors            :function ()  
+##  $ Cstack_info             :function ()  
+##  $ date                    :function ()  
+##  $ default.stringsAsFactors:function ()  
+##  $ extSoftVersion          :function ()  
+##  $ getAllConnections       :function ()  
+##  $ geterrmessage           :function ()  
+##  $ getLoadedDLLs           :function ()  
+##  $ getRversion             :function ()  
+##  $ getTaskCallbackNames    :function ()  
+##  $ getwd                   :function ()  
+##  $ iconvlist               :function ()  
+##  $ is.R                    :function ()  
+##  $ l10n_info               :function ()  
+##  $ La_library              :function ()  
+##  $ La_version              :function ()  
+##  $ libcurlVersion          :function ()  
+##  $ licence                 :function ()  
+##  $ license                 :function ()  
+##  $ loadedNamespaces        :function ()  
+##  $ loadingNamespaceInfo    :function ()  
+##  $ memory.profile          :function ()  
+##  $ pcre_config             :function ()  
+##  $ R.Version               :function ()  
+##  $ search                  :function ()  
+##  $ searchpaths             :function ()  
+##  $ stderr                  :function ()  
+##  $ stdin                   :function ()  
+##  $ stdout                  :function ()  
+##  $ sys.calls               :function ()  
+##  $ Sys.Date                :function ()  
+##  $ sys.frames              :function ()  
+##  $ Sys.getpid              :function ()  
+##  $ Sys.info                :function ()  
+##  $ Sys.localeconv          :function ()  
+##  $ sys.nframe              :function ()  
+##  $ sys.on.exit             :function ()  
+##  $ sys.parents             :function ()  
+##  $ sys.status              :function ()  
+##  $ Sys.time                :function ()</code></pre>
+<p>How could you adapt the code to find all primitive functions?</p>
+<pre class="r"><code>objs &lt;- mget(ls(&quot;package:base&quot;), inherits = TRUE)
+funs &lt;- Filter(is.primitive, objs)
+length(funs)</code></pre>
+<pre><code>## [1] 180</code></pre></li>
+<li><p>What are the three important components of a function?<br />
+<strong>A</strong>: The <code>formals()</code>, <code>body()</code> and <code>environment()</code>.</p></li>
+<li><p>When does printing a function not show what environment it was created in?<br />
+<strong>A</strong>: When the function was created in the global environment.</p></li>
+</ol>
+</div>
+<div id="lexical-scoping" class="section level2">
+<h2><span class="header-section-number">4.4</span> Lexical scoping</h2>
+<p>In Names and values, we discussed assignment, the act of binding a name to a value. Scoping works in the opposite direction: how do you find the value associated with a given name in a given context?</p>
+<p>For example, what will the following code return, 10 or 20?</p>
+<pre class="r"><code>x &lt;- 10
+f &lt;- function() {
+    x &lt;- 20
+    x
+}
+
+f()</code></pre>
+<pre><code>## [1] 20</code></pre>
+<p>There are four primary rules that define R’s lexical scoping:</p>
+<ul>
+<li>Name masking</li>
+<li>Functions vs. variables</li>
+<li>A fresh start</li>
+<li>Dynamic lookup</li>
+</ul>
+<div id="name-masking" class="section level3">
+<h3><span class="header-section-number">4.4.1</span> Name masking</h3>
+</div>
+</div>
+</div>
+<div id="do-recursive-subsetting" class="section level1">
+<h1><span class="header-section-number">5</span> DO RECURSIVE SUBSETTING</h1>
 </div>
 <div class="footnotes">
 <hr />
