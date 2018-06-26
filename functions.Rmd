@@ -284,12 +284,175 @@ f()
 Both of these approaches reveal why this undesirable behaviour exists: R relies on lexical scoping to find everything, even the `+` operator.
 
 ## Exercises
-1. What does the following code return? Why? What does each of the three `c`s mean?
+1. What does the following code return? Why? What does each of the three `c`s mean?  
+**A**:
+    ```{r}
+    c <- 10
+    c(c = c)
+    ```
+    
+    Same as:
+    ```{r}
+    a <- 10
+    c(b = a)
+    ```
+    
+    Note these below:
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) 3 
+    f(a <- 1) # not guaranteed to evaluate because of lazy evaluation
+    a # a is still NULL
+    f(a = 1) # this is a inside the function
+    a # a is still NULL
+    ```
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) a + 1 
+    f(a <- 1) # evaluates because a argument of function is evaluated in the function
+    a # a is 1
+    f(a = 2) # returns 3
+    a # a is still 1
+    ```
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) a
+    f(a <- 1) # does not display return value
+    withVisible(f(a <- 1))$visible
+    a # 1
+    ```
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) (a) 
+    f(a <- 1) # return value is displayed
+    a # 1
+    ```
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) a 
+    f((a <- 1)) # return value is displayed
+    a # 1
+    ```
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) a 
+    f((a = 1)) # same as f(a <- 1) but with return value displayed
+    a # 1
+    ```
+    ```{r, results='hold'}
+    # normal usage
+    a <- NULL
+    f <- function(a) a 
+    f(a = 1) 
+    a #NULL
+    ```
+    ```{r, results='hold'}
+    a <- NULL
+    f <- function(a) a 
+    f(a = a <- 1) # does not display return value
+    a #1
+    ```
+    
+2. What are the four principles that govern how R looks for values?  
+**A**: name masking, functions vs. variables. a fresh start, dynamic lookup
+
+3. What does the following function return?
+    ```{r}
+    f <- function(x) {
+      f <- function(x) {
+        f <- function(x) {
+          x ^ 2
+        }
+        f(x) + 1
+      }
+      f(x) * 2
+    }
+    f(10)
+    ```
+
+## Lazy evaluation
+In R, function arguments are lazily evaluated, which means that they’re only evaluated if they’re accessed. For example, this code doesn’t generate an error because x is never used:
+```{r}
+f <- function(x) {
+  10
+}
+f(stop("This is an error!"))
+```
+
+One place that this laziness is useful is in if statements. For example, in the code block below, the second competent of the `if` statement `(x > 0)` will only be evaluated if the first `(!is.null(x))` is true. If it wasn’t, the statement would return an error because `NULL > 0` is a logical vector of length 0 and not a valid input to if.
+```{r}
+x <- NULL
+if (!is.null(x) && x > 0) {
+
+}
+```
+
+### Forcing evaluation
+If you want to ensure that an argument is eagerly evaluated, use `force()`:
+```{r, error=TRUE}
+f <- function(x) {
+  force(x)
+  10
+}
+f(stop("This is an error!"))
+```
+
+The definition of `force()` is simple:
+```{r}
+force
+```
+
+However, it’s better to use `force(x)` than just `x`, even though they do the same thing: `force()` provides a clear signal that you’re deliberately forcing evaluation.
+
+It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.
 
 ```{r}
-c <- 10
-c(c = c)
+g <- function(x) {
+  function() {
+    x
+  }
+}
 ```
+
+There’s a subtle bug in the definition of this function: the value of `x` is captured not when you call `g()`, but when you call the function that `g()` returns:
+```{r}
+x <- 10
+g1 <- g(x)
+
+x <- 20
+g1()
+```
+
+And even more confusingly this only happens once. Once you have called the function returned by `g()`, the value is locked in:
+```{r}
+x <- 30
+g1()
+```
+
+We can avoid this problem by forcing `x`:
+```{r}
+g <- function(x) {
+  force(x)
+  
+  function() {
+    x
+  }
+}
+
+x <- 10
+g1 <- g(x)
+
+x <- 20
+g1()
+```
+
+### Promises
+
+
+
+
+
+
 
 
 
