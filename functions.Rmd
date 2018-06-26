@@ -21,6 +21,7 @@ library(kableExtra)
 library(magrittr)
 library(dplyr)
 library(tidyverse)
+library(rlang)
 ```
 
 # Functions
@@ -64,7 +65,7 @@ f
 f(2)
 ```
 
-## Primitive functions
+### Primitive functions
 There is one exception to the rule that functions have three components. Primitive functions, like `sum()`, call C code directly with `.Primitive()` and contain no R code. Therefore their `formals()`, `body()`, and `environment()` are all `NULL`:
 
 ```{r}
@@ -76,7 +77,7 @@ environment(sum)
 
 Primitive functions are only found in the base package. The chief advantage of primitive functions is that they can truly modify objects in place
 
-## Exercises
+### Exercises
 1. What function allows you to tell if an object is a function? What function allows you to tell if a function is a primitive function?  
 **A**: 
     ```{r, results='hold'}  
@@ -253,7 +254,7 @@ j()
 
 `j()` returns the same value, 1, every time it is called. This is because every time a function is called, a new environment is created to host its execution. A function has no way to tell what happened the last time it was run; each invocation is completely independent. (We’ll see some ways to get around this in mutable state.)
 
-## Dynamic lookup
+### Dynamic lookup
 Lexical scoping determines where to look for values, not when to look for them. R looks for values when the function is run, not when it’s created. This means that the output of a function can be different depending on objects outside its environment:
 
 ```{r}
@@ -283,7 +284,7 @@ f()
 
 Both of these approaches reveal why this undesirable behaviour exists: R relies on lexical scoping to find everything, even the `+` operator.
 
-## Exercises
+### Exercises
 1. What does the following code return? Why? What does each of the three `c`s mean?  
 **A**:
     ```{r}
@@ -447,10 +448,90 @@ g1()
 ```
 
 ### Promises
+Lazy evaluation is powered by a data structure called a promise, or (less commonly) a thunk. A promise has two components:
+
+* The expression, like `x + y` which gives rise to the delayed computation.
+* The environment where the expression should be evaluated.
+
+The first time a promise is accessed the expression is evaluated in the environment where it was created. This value is cached, so that subsequent access to the evaluated promise does not recompute the value. The following code only computes `runif(1)` once:
+
+```{r}
+j <- function(x) { 
+  c(x, x, x)  
+}
+
+j(runif(1))
+```
 
 
+You can also create promises “by hand” using `delayedAssign()`:
 
+```{r}
 
+delayedAssign("x", {print("Executing code"); runif(1)})
+x
+x
+```
+
+### Default arguments
+Thanks to lazy evaluation, defaults value can be defined in terms of other arguments, or even in terms of variables defined later in the function:
+```{r}
+g <- function(x = 1, y = x * 2, z = a + b) {
+  a <- 10
+  b <- 100
+  
+  c(x, y, z)
+}
+
+g()
+```
+
+Not usually recommend because it makes requires that you know exactly *when* default arguments are evaluated in order to predict *what* they will evaluate to.
+
+The evaluation environment is slightly different for default and user supplied arguments, as default arguments are evaluated inside the function. This means that seemingly identical calls can yield different results. It’s easiest to see this with an extreme example:
+```{r}
+f <- function(x = ls()) {
+  a <- 1
+  x
+}
+
+# ls() evaluated inside f:
+f()
+
+# ls() evaluated in global environment:
+f(ls())
+```
+
+### Missing arguments
+If an argument has a default, you can determine if the value comes from the user or the default with `missing()`:
+```{r}
+i <- function(x = 10) {
+  list(missing(x), x)
+}
+str(i())
+str(i(10))
+```
+
+A problem with missing arguments is that when you look at the function definition, there’s no way to tell that z is optional.
+```{r, eval=FALSE}
+my_fun <- function(x, y, z) {
+  if (missing(z)) {
+    z <- default_z(x, y)
+  }
+}
+```
+
+Better to use a default value of `NULL`. 
+
+```{r}
+my_fun <- function(x, y, z = NULL) {
+  if (is.null(z)) {
+    z <- default_z(x, y)
+  }
+}
+```
+
+### Exercises
 
 
 

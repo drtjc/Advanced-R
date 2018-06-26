@@ -4,11 +4,27 @@ library(tidyverse)
 library(purrr)
 library(pryr)
 
-c <- 10
-c(c = c)
+y <- 10
+f1 <- function(x = {y <- 1; 2}, y = 0) {
+  x + y
+}
+f1()
+y
 
 
-NULL > 0
+
+
+a <- NULL
+f <- function(a) (a) 
+f(a = a <- 1) # evaluated outside of function
+a #1
+
+a <- NULL
+f <- function(a = a <- 1) (a) # default value evaluated inside function
+f()
+a # NULL
+
+
 
 
 

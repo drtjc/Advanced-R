@@ -269,9 +269,8 @@ f</code></pre>
 ## x^3 + y</code></pre>
 <pre class="r"><code>f(2)</code></pre>
 <pre><code>## [1] 18</code></pre>
-</div>
-<div id="primitive-functions" class="section level2">
-<h2><span class="header-section-number">1.2</span> Primitive functions</h2>
+<div id="primitive-functions" class="section level3">
+<h3><span class="header-section-number">1.1.1</span> Primitive functions</h3>
 <p>There is one exception to the rule that functions have three components. Primitive functions, like <code>sum()</code>, call C code directly with <code>.Primitive()</code> and contain no R code. Therefore their <code>formals()</code>, <code>body()</code>, and <code>environment()</code> are all <code>NULL</code>:</p>
 <pre class="r"><code>sum</code></pre>
 <pre><code>## function (..., na.rm = FALSE)  .Primitive(&quot;sum&quot;)</code></pre>
@@ -283,8 +282,8 @@ f</code></pre>
 <pre><code>## NULL</code></pre>
 <p>Primitive functions are only found in the base package. The chief advantage of primitive functions is that they can truly modify objects in place</p>
 </div>
-<div id="exercises" class="section level2">
-<h2><span class="header-section-number">1.3</span> Exercises</h2>
+<div id="exercises" class="section level3">
+<h3><span class="header-section-number">1.1.2</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>What function allows you to tell if an object is a function? What function allows you to tell if a function is a primitive function?<br />
 <strong>A</strong>:</p>
@@ -382,8 +381,9 @@ length(funs)</code></pre>
 <strong>A</strong>: When the function was created in the global environment.</p></li>
 </ol>
 </div>
+</div>
 <div id="lexical-scoping" class="section level2">
-<h2><span class="header-section-number">1.4</span> Lexical scoping</h2>
+<h2><span class="header-section-number">1.2</span> Lexical scoping</h2>
 <p>In Names and values, we discussed assignment, the act of binding a name to a value. Scoping works in the opposite direction: how do you find the value associated with a given name in a given context?</p>
 <p>For example, what will the following code return, 10 or 20?</p>
 <pre class="r"><code>x &lt;- 10
@@ -402,7 +402,7 @@ f()</code></pre>
 <li>Dynamic lookup</li>
 </ul>
 <div id="name-masking" class="section level3">
-<h3><span class="header-section-number">1.4.1</span> Name masking</h3>
+<h3><span class="header-section-number">1.2.1</span> Name masking</h3>
 <p>The following example illustrates the most basic principle of lexical scoping: names in defined inside a function override names defined outside of it.</p>
 <pre class="r"><code>x &lt;- 10
 y &lt;- 20
@@ -446,7 +446,7 @@ k()</code></pre>
 <p>This seems a little magical: how does R know what the value of <code>y</code>is after <code>j()</code> has returned? It works because <code>k</code> preserves the environment in which it was defined and because the environment includes the value of <code>y</code>.</p>
 </div>
 <div id="functions-vs.variables" class="section level3">
-<h3><span class="header-section-number">1.4.2</span> Functions vs. variables</h3>
+<h3><span class="header-section-number">1.2.2</span> Functions vs. variables</h3>
 <p>The same principles apply regardless of the type of associated value — functions are found in the same way as variables:</p>
 <pre class="r"><code>l &lt;- function(x) x + 1
 m &lt;- function() {
@@ -466,7 +466,7 @@ o()</code></pre>
 <p>However, using the same name for functions and other objects will make for confusing code, and is best avoided.</p>
 </div>
 <div id="a-fresh-start" class="section level3">
-<h3><span class="header-section-number">1.4.3</span> A fresh start</h3>
+<h3><span class="header-section-number">1.2.3</span> A fresh start</h3>
 <p>What happens to the values in between invocations of a function?</p>
 <pre class="r"><code>j &lt;- function() {
     if (!exists(&quot;a&quot;)) {
@@ -483,9 +483,8 @@ j()</code></pre>
 <pre><code>## [1] 1</code></pre>
 <p><code>j()</code> returns the same value, 1, every time it is called. This is because every time a function is called, a new environment is created to host its execution. A function has no way to tell what happened the last time it was run; each invocation is completely independent. (We’ll see some ways to get around this in mutable state.)</p>
 </div>
-</div>
-<div id="dynamic-lookup" class="section level2">
-<h2><span class="header-section-number">1.5</span> Dynamic lookup</h2>
+<div id="dynamic-lookup" class="section level3">
+<h3><span class="header-section-number">1.2.4</span> Dynamic lookup</h3>
 <p>Lexical scoping determines where to look for values, not when to look for them. R looks for values when the function is run, not when it’s created. This means that the output of a function can be different depending on objects outside its environment:</p>
 <pre class="r"><code>f &lt;- function() x
 x &lt;- 15
@@ -505,8 +504,8 @@ f()</code></pre>
 <pre><code>## Error in x + 1: could not find function &quot;+&quot;</code></pre>
 <p>Both of these approaches reveal why this undesirable behaviour exists: R relies on lexical scoping to find everything, even the <code>+</code> operator.</p>
 </div>
-<div id="exercises-1" class="section level2">
-<h2><span class="header-section-number">1.6</span> Exercises</h2>
+<div id="exercises-1" class="section level3">
+<h3><span class="header-section-number">1.2.5</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>What does the following code return? Why? What does each of the three <code>c</code>s mean?<br />
 <strong>A</strong>:</p>
@@ -593,8 +592,9 @@ f(10)</code></pre>
 <pre><code>## [1] 202</code></pre></li>
 </ol>
 </div>
+</div>
 <div id="lazy-evaluation" class="section level2">
-<h2><span class="header-section-number">1.7</span> Lazy evaluation</h2>
+<h2><span class="header-section-number">1.3</span> Lazy evaluation</h2>
 <p>In R, function arguments are lazily evaluated, which means that they’re only evaluated if they’re accessed. For example, this code doesn’t generate an error because x is never used:</p>
 <pre class="r"><code>f &lt;- function(x) {
     10
@@ -606,6 +606,8 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 if (!is.null(x) &amp;&amp; x &gt; 0) {
     
 }</code></pre>
+<div id="forcing-evaluation" class="section level3">
+<h3><span class="header-section-number">1.3.1</span> Forcing evaluation</h3>
 <p>If you want to ensure that an argument is eagerly evaluated, use <code>force()</code>:</p>
 <pre class="r"><code>f &lt;- function(x) {
     force(x)
@@ -617,7 +619,7 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x00000000135f17b8&gt;
+## &lt;bytecode: 0x00000000124118a8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>However, it’s better to use <code>force(x)</code> than just <code>x</code>, even though they do the same thing: <code>force()</code> provides a clear signal that you’re deliberately forcing evaluation.</p>
 <p>It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.</p>
@@ -652,6 +654,71 @@ g1 &lt;- g(x)
 x &lt;- 20
 g1()</code></pre>
 <pre><code>## [1] 10</code></pre>
+</div>
+<div id="promises" class="section level3">
+<h3><span class="header-section-number">1.3.2</span> Promises</h3>
+<p>Lazy evaluation is powered by a data structure called a promise, or (less commonly) a thunk. A promise has two components:</p>
+<ul>
+<li>The expression, like <code>x + y</code> which gives rise to the delayed computation.</li>
+<li>The environment where the expression should be evaluated.</li>
+</ul>
+<p>The first time a promise is accessed the expression is evaluated in the environment where it was created. This value is cached, so that subsequent access to the evaluated promise does not recompute the value. The following code only computes <code>runif(1)</code> once:</p>
+<pre class="r"><code>j &lt;- function(x) {
+    c(x, x, x)
+}
+
+j(runif(1))</code></pre>
+<pre><code>## [1] 0.6649399 0.6649399 0.6649399</code></pre>
+<p>You can also create promises “by hand” using <code>delayedAssign()</code>:</p>
+<pre class="r"><code>delayedAssign(&quot;x&quot;, {
+    print(&quot;Executing code&quot;)
+    runif(1)
+})
+x</code></pre>
+<pre><code>## [1] &quot;Executing code&quot;</code></pre>
+<pre><code>## [1] 0.3970978</code></pre>
+<pre class="r"><code>x</code></pre>
+<pre><code>## [1] 0.3970978</code></pre>
+</div>
+<div id="default-arguments" class="section level3">
+<h3><span class="header-section-number">1.3.3</span> Default arguments</h3>
+<p>Thanks to lazy evaluation, defaults value can be defined in terms of other arguments, or even in terms of variables defined later in the function:</p>
+<pre class="r"><code>g &lt;- function(x = 1, y = x * 2, z = a + b) {
+    a &lt;- 10
+    b &lt;- 100
+    
+    c(x, y, z)
+}
+
+g()</code></pre>
+<pre><code>## [1]   1   2 110</code></pre>
+<p>Not usually recommend because it makes requires that you know exactly <em>when</em> default arguments are evaluated in order to predict <em>what</em> they will evaluate to.</p>
+<p>The evaluation environment is slightly different for default and user supplied arguments, as default arguments are evaluated inside the function. This means that seemingly identical calls can yield different results. It’s easiest to see this with an extreme example:</p>
+<pre class="r"><code>f &lt;- function(x = ls()) {
+    a &lt;- 1
+    x
+}
+
+# ls() evaluated inside f:
+f()</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;x&quot;</code></pre>
+<pre class="r"><code># ls() evaluated in global environment:
+f(ls())</code></pre>
+<pre><code>##  [1] &quot;a&quot;                        &quot;c&quot;                       
+##  [3] &quot;f&quot;                        &quot;f_arg_0&quot;                 
+##  [5] &quot;f_arg_length&quot;             &quot;f_arg_NULL&quot;              
+##  [7] &quot;f_arg_NULL_not_primitive&quot; &quot;f_arg_primitve&quot;          
+##  [9] &quot;funs&quot;                     &quot;g&quot;                       
+## [11] &quot;g1&quot;                       &quot;h&quot;                       
+## [13] &quot;j&quot;                        &quot;k&quot;                       
+## [15] &quot;l&quot;                        &quot;m&quot;                       
+## [17] &quot;n&quot;                        &quot;o&quot;                       
+## [19] &quot;objs&quot;                     &quot;x&quot;                       
+## [21] &quot;y&quot;</code></pre>
+</div>
+<div id="missing-arguments" class="section level3">
+<h3><span class="header-section-number">1.3.4</span> Missing arguments</h3>
+</div>
 </div>
 </div>
 <div id="do-recursive-subsetting" class="section level1">
