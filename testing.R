@@ -4,14 +4,37 @@ library(tidyverse)
 library(purrr)
 library(pryr)
 
-y <- 10
-f1 <- function(x = {y <- 1; 2}, y = 0) {
-  x + y
+
+
+
+range("Sturges")
+range("tom")
+
+
+
+
+
+show_time <- function(x = stop("Error!")) {
+  stop <- function(...) Sys.time()
+  print(x)
 }
-f1()
-y
+show_time()
 
 
+
+
+
+
+f <- function(x = y <- {print("y1"); 1}, z = y <- {print("y2"); 2}) {
+  x + z
+}
+f()
+
+
+
+
+
+{print("x"); 1} + {print("y"); 2} 
 
 
 a <- NULL

@@ -532,6 +532,60 @@ my_fun <- function(x, y, z = NULL) {
 ```
 
 ### Exercises
+1. What does this function return? Why? Which principle does it illustrate?  
+    ```{r, tidy=FALSE}
+    y <- 10
+    f <- function(x = {y <- 1; 2}, y = 0) {
+      x + y
+    }
+    f() #3
+    y # 10
+    ```
+**A**: the default values for `x` and `y` are evaluated inside the function. The evaluation of `x` leads to `y`, inside the function, being assigned `1`; `x` is assigned `2`. Illustrates lazy evaluation. Note:
+    ```{r, tidy=FALSE}
+    f <- function(x = y <- {print("y1"); 1}, y = {print("y2"); 2}) {
+      x + y
+    }
+    f() # 2: prints y1
+    # it appears that the 2nd function argument marks y as a promise,
+    # then y is evaluated as part of the evaluation of x
+    # and is cached, and that value used when y is added to x
+    ```
+    
+    ```{r, tidy=FALSE}
+    f <- function(x = y <- {print("y1"); 1}, y = {print("y2"); 2}) {
+      y + x
+    }
+    f() # 3: prints y2 and then y1
+    ```
+
+2. What does this function return? Why? Which principle does it illustrate?
+    ```{r}
+    f <- function(x = z) {
+      z <- 100
+      x
+    }
+    f()
+    ```
+**A**: it returns `100` and illustrates lazy evaluation.
+
+3. In `hist()`, the default value of `xlim` is `range(breaks)`, the default value for breaks is `"Sturges"`, and
+    ```{r}
+    range("Sturges")    
+    ```
+Explain how `hist()` works to get a correct xlim value.  
+**A**: `range(breaks)` is evaluated lazily.
+
+4. Explain why this function works. Why is it confusing?
+    ```{r}
+    show_time <- function(x = stop("Error!")) {
+      stop <- function(...) Sys.time()
+      print(x)
+    }
+    show_time()
+    ```
+**A**: `x` is not evaluated until `print(x)`, at which point the function `stop()` has been reassigned to `Sys.time()`.
+
 
 
 
