@@ -586,7 +586,7 @@ Explain how `hist()` works to get a correct xlim value.
     ```
 **A**: `x` is not evaluated until `print(x)`, at which point the function `stop()` has been reassigned to `Sys.time()`.
 
-
+## `...` (dot-dot-dot)
 
 
 

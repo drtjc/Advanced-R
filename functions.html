@@ -619,7 +619,7 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x00000000135f1960&gt;
+## &lt;bytecode: 0x0000000005e916d0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>However, it’s better to use <code>force(x)</code> than just <code>x</code>, even though they do the same thing: <code>force()</code> provides a clear signal that you’re deliberately forcing evaluation.</p>
 <p>It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.</p>
@@ -668,7 +668,7 @@ g1()</code></pre>
 }
 
 j(runif(1))</code></pre>
-<pre><code>## [1] 0.5755548 0.5755548 0.5755548</code></pre>
+<pre><code>## [1] 0.5132685 0.5132685 0.5132685</code></pre>
 <p>You can also create promises “by hand” using <code>delayedAssign()</code>:</p>
 <pre class="r"><code>delayedAssign(&quot;x&quot;, {
     print(&quot;Executing code&quot;)
@@ -676,9 +676,9 @@ j(runif(1))</code></pre>
 })
 x</code></pre>
 <pre><code>## [1] &quot;Executing code&quot;</code></pre>
-<pre><code>## [1] 0.4182998</code></pre>
+<pre><code>## [1] 0.4666066</code></pre>
 <pre class="r"><code>x</code></pre>
-<pre><code>## [1] 0.4182998</code></pre>
+<pre><code>## [1] 0.4666066</code></pre>
 </div>
 <div id="default-arguments" class="section level3">
 <h3><span class="header-section-number">1.3.3</span> Default arguments</h3>
@@ -791,10 +791,13 @@ f()</code></pre>
     print(x)
 }
 show_time()</code></pre>
-<pre><code>## [1] &quot;2018-06-27 21:52:53 -05&quot;</code></pre>
+<pre><code>## [1] &quot;2018-06-27 22:24:24 -05&quot;</code></pre>
 <p><strong>A</strong>: <code>x</code> is not evaluated until <code>print(x)</code>, at which point the function <code>stop()</code> has been reassigned to <code>Sys.time()</code>.</p></li>
 </ol>
 </div>
+</div>
+<div id="dot-dot-dot" class="section level2">
+<h2><span class="header-section-number">1.4</span> <code>...</code> (dot-dot-dot)</h2>
 </div>
 </div>
 <div id="do-recursive-subsetting" class="section level1">

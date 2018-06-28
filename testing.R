@@ -3,9 +3,11 @@ library(magrittr)
 library(tidyverse)
 library(purrr)
 library(pryr)
+library(rlang)
 
 
 
+?list2
 
 range("Sturges")
 range("tom")
