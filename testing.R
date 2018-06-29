@@ -6,6 +6,16 @@ library(pryr)
 library(rlang)
 
 
+`(` <- function(e1) {
+  "hi!"
+}
+replicate(5, (1 + 2))
+rm("(")
+
+
+
+
+
 
 x <- c(a = 1, b = 2, c = 3)
 names(x)
