@@ -619,7 +619,7 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x0000000005e916d0&gt;
+## &lt;bytecode: 0x00000000136d17c0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>However, it’s better to use <code>force(x)</code> than just <code>x</code>, even though they do the same thing: <code>force()</code> provides a clear signal that you’re deliberately forcing evaluation.</p>
 <p>It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.</p>
@@ -668,7 +668,7 @@ g1()</code></pre>
 }
 
 j(runif(1))</code></pre>
-<pre><code>## [1] 0.5132685 0.5132685 0.5132685</code></pre>
+<pre><code>## [1] 0.5274904 0.5274904 0.5274904</code></pre>
 <p>You can also create promises “by hand” using <code>delayedAssign()</code>:</p>
 <pre class="r"><code>delayedAssign(&quot;x&quot;, {
     print(&quot;Executing code&quot;)
@@ -676,9 +676,9 @@ j(runif(1))</code></pre>
 })
 x</code></pre>
 <pre><code>## [1] &quot;Executing code&quot;</code></pre>
-<pre><code>## [1] 0.4666066</code></pre>
+<pre><code>## [1] 0.7023618</code></pre>
 <pre class="r"><code>x</code></pre>
-<pre><code>## [1] 0.4666066</code></pre>
+<pre><code>## [1] 0.7023618</code></pre>
 </div>
 <div id="default-arguments" class="section level3">
 <h3><span class="header-section-number">1.3.3</span> Default arguments</h3>
@@ -791,13 +791,129 @@ f()</code></pre>
     print(x)
 }
 show_time()</code></pre>
-<pre><code>## [1] &quot;2018-06-27 22:24:24 -05&quot;</code></pre>
+<pre><code>## [1] &quot;2018-06-28 22:05:18 -05&quot;</code></pre>
 <p><strong>A</strong>: <code>x</code> is not evaluated until <code>print(x)</code>, at which point the function <code>stop()</code> has been reassigned to <code>Sys.time()</code>.</p></li>
 </ol>
 </div>
 </div>
 <div id="dot-dot-dot" class="section level2">
 <h2><span class="header-section-number">1.4</span> <code>...</code> (dot-dot-dot)</h2>
+<p>Functions can have a special argument <code>...</code>. If a function has this argument, it can take any number of additional arguments.</p>
+<p>Inside a function, you can use <code>...</code> to pass those additional arguments on to another function:</p>
+<pre class="r"><code>f &lt;- function(x, ...) {
+    g(...)
+}
+
+g &lt;- function(y, z) {
+    list(y = y, z = z)
+}
+
+str(f(x = 1, y = 2, z = 3))</code></pre>
+<pre><code>## List of 2
+##  $ y: num 2
+##  $ z: num 3</code></pre>
+<p>it’s possible (but rarely useful) to refer to elements of <code>...</code> by their position, using a special form:</p>
+<pre class="r"><code>f &lt;- function(...) {
+    list(first = ..1, third = ..3)
+}
+str(f(1, 2, 3))</code></pre>
+<pre><code>## List of 2
+##  $ first: num 1
+##  $ third: num 3</code></pre>
+<p>More often useful is <code>list(...)</code>, which evaluates the arguments are stores in a list:</p>
+<pre class="r"><code>f &lt;- function(...) {
+    list(...)
+}
+str(f(a = 1, b = 2))</code></pre>
+<pre><code>## List of 2
+##  $ a: num 1
+##  $ b: num 2</code></pre>
+<p>Named arguments passed in <code>...</code> can be referred to by name.</p>
+<pre class="r"><code>g &lt;- function(...) {
+    f &lt;- function(..., x = 0) {
+        c(x, ...)
+    }
+    f(...)
+}
+g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
+<pre><code>## [1] 1 2 3</code></pre>
+<pre class="r"><code>g(1, 2, 3)  # returns 0, 1, 2, 3</code></pre>
+<pre><code>## [1] 0 1 2 3</code></pre>
+<p>There are two primary uses of <code>...</code>, both of which we’ll come back to later in the book:</p>
+<ul>
+<li>If your function takes a function as an argument, you want some way to pass on additional arguments to that function.</li>
+<li>If your function is an S3 generic, you need some way to allow methods to take arbitrary extra arguments.</li>
+</ul>
+<p>Using <code>...</code> comes with two downsides:</p>
+<ul>
+<li>When you use it to pass arguments on to another function, you have to carefully explain to the user where those arguments go.</li>
+<li><p>Any misspelled arguments will not raise an error. This makes it easy for typos to go unnoticed:</p>
+<pre class="r"><code>sum</code></pre>
+<pre><code>## function (..., na.rm = FALSE)  .Primitive(&quot;sum&quot;)</code></pre>
+<pre class="r"><code>sum(1, 2, NA, na_rm = TRUE)</code></pre>
+<pre><code>## [1] NA</code></pre></li>
+</ul>
+<div id="exercises-3" class="section level3">
+<h3><span class="header-section-number">1.4.1</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Explain the following results:</p>
+<pre class="r"><code>sum(1, 2, 3)</code></pre>
+<pre><code>## [1] 6</code></pre>
+<pre class="r"><code>mean(1, 2, 3)</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>sum(1, 2, 3, na.omit = TRUE)</code></pre>
+<pre><code>## [1] 7</code></pre>
+<pre class="r"><code>mean(1, 2, 3, na.omit = TRUE)</code></pre>
+<pre><code>## [1] 1</code></pre>
+<p><strong>A </strong>: <code>sum()</code> is a primitve function which just takes <code>...</code> as an argument. <code>mean()</code> is a S3 generic that takes an object as the first argument.</p>
+<pre class="r"><code>sum</code></pre>
+<pre><code>## function (..., na.rm = FALSE)  .Primitive(&quot;sum&quot;)</code></pre>
+<pre class="r"><code>mean</code></pre>
+<pre><code>## function (x, ...) 
+## UseMethod(&quot;mean&quot;)
+## &lt;bytecode: 0x000000001432d228&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>methods(mean)  # first argument of mean(1, 2, 3) is a double - hence mean.default is used</code></pre>
+<pre><code>## [1] mean.Date     mean.default  mean.difftime mean.POSIXct  mean.POSIXlt 
+## see '?methods' for accessing help and source code</code></pre>
+<pre class="r"><code>mean(c(1, 2, 3))</code></pre>
+<pre><code>## [1] 2</code></pre>
+<p><code>na.omit = TRUE</code> in <code>sum()</code> evaluates to <code>1</code>.</p></li>
+<li><p>In the following call, explain how to find the documentation for the named arguments in the following function call:</p>
+<pre class="r"><code>plot(1:10, col = &quot;red&quot;, pch = 20, xlab = &quot;x&quot;, col.lab = &quot;blue&quot;)</code></pre>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAAdVBMVEUAAAAAADoAAGYAAP8AOpAAOv8AZpAAZrYAZv86AAA6AP86kNs6kP9mAABmAP9mOv9mZjpmtv+QOgCQOv+QkDqQ29uQ2/+2ZgC2Zv+2/7a2///bkDrbkP/btmbb////AAD/tmb/tv//25D/2////7b//9v////1FHiXAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAXcElEQVR4nO3dDXfTRoCGUUPoppTCbmAXs4TFhoL//09cy3YcOzE0eiNZnpl7z+nJx2lSTa08npElebYCIDKbegMASiWgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQhddkBnAIMZPlGD/8YBTf1/G6jL4I0a+hcOaYQnDKBZAgoQElCAkIAChMoL6Hx/9Pa6/w8LKDCcwgJ6++AVsL4NFVBgOEUF9PvrR+cQvPzc6zcIKDCckgL68/1xMX+8XX/96mufXyGgwHBKCujyUS67pN70+RUCCgynpIDOHy/Y15PQXodBBRQYTkEBXU833zz65m2/NbyAAsMpKKDr2ebj5fqy38tIAgoMR0ABQgUF1BIeuCwFBdSLSMBlKSmgp09jejwr/Q0BBYZTUkBPnkjf71IkAQX+xaLztH+1pIBui3nsxcdev0FAgd9b7Dzl3y0qoIe3YnIzEWAMFQd05XZ2wJgWix4FLS+gPZzjLaCAqgjoHQEFehLQXxNQ4LcE9NcEFPi9ul9EehYBBX5PQH9JQIF/UeuJ9M8noMBwCgroieuQer+tnIACwxFQgFBBAT31rsYCCkynpIBu5qC97l73iIACwykqoF1Be95+6QEBBYZTVkC7VXyvt/B4SECB4RQW0NXt7MQ7yz2dgALDKS2g60X8c6agAgoMp7SAPnMKKqDAcIoL6PMIKDAcAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASECBS7boTL0RvyKgwAVb7Ey9HacJKHDBBPSCCCgUZbG46IIKKHC5BPSSCCgURUAviYBCUQT0kggolOWi+ymgwCUT0AsioFCYC86ngALEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEig3ocrZ23fenBBQYTmEBvV1X8+Xn1ern+9nWTb+fF1BgOEUFdJfNFx9X89ksKqiAAsMpKqB32Xz1f+t/vq42E9JuPvp0AgrPsuhMvRGXo6SALrfZ/P563dA3+2/1moIKKDzHYmfq7bgUJQV0vp12dgXdzzvn/V5IElB4DgE9VlBAf77fzTvXn+yrebuL6hMJKDzDYqGgRwoK6I+3u+X6vqSrbg3/m4OgsxPG2jpogIA+IKDAUwnoAwUF1BIeJiagDxQU0P2LSMv7k5cOW/oUAgrPoZ/HSgro7jSmzUWcTmOCCQjosZICur9+c38i/dKJ9HBW8nmkpIB2LyNtL+Xcp9SlnMB0igro/c1Edil1MxFgQoUF9N6t29kBEys2oBkBBYYjoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAYWCLTpTb0TDBBTKtdiZejuaJaBQLgGdmIBCsRYLBZ2WgEKxBHRqAgrFEtCpCSgUS0CnJqBQLv2cmIBCuQR0YgIKBZPPaQkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQKiwgP54+/Lz5pPb2dqLj31/XkCB4ZQV0Plstgnocrazy+mTCSgwnKICOt/NOvf97D0JFVBgOCUF9Pvr2ex61a3jd1PPn+/7zkEFlDEtOlNvBGdUUkDXE9Cb7uPttqOd9Vz0TZ9fIaCMaLEz9XZwNgUFdD3fvN59vJ92zmevvvb4HQLKiAS0OQUFdL1yv9l9vI/mbb81vIAynsVCQVtTZkCv999c/i6gsxPG2joQ0PYUFND10v3N7qOAcoEEtD1nCeinqzt/Puc3z3fhnB8t4R0D5UIIaHvGD+iXq2N5Q5e7sz6/v96u5Vf3s9Inb5yAMh79bM7YAf3nr6tHel49tNed9rmZg96/cjTveSa9gDIiAW3O2AH98KCY79Zf/tFn0X2oO5N+s2TfdbO7IqnXBFRAGZV8tmbkgH57nMt1Um9WoU1Bj1z/+w8dbZyAAoMZOaCfTizY3z3npaT5cT/7plhAgeGMHNAPV38/+he+5Gv4Tncl/Fav19+3BBQYzsgBfXdiuf4tfxnp2QQUGI6AAoTKW8I/i4ACwyntRaRnElBgOJOcxvR4VnouAgoMZ4oT6ac7BCqgwIBGvxb+3eNLOXu/l+ZwBBQYzvg3E/n0IJ/THQBdCSgwpJJuZzcAAQWGU9ANlYcgoMBwBBQgJKAAIQEFCAkoQEhAAUICChAa/XZ2J7mdHVABAQUIjRzQU+9qLKBAHc5xM5Hp7l73iIACwxn/RaR3k95+6QEBBYYzfkDXq/jp3sLjIQEFhnOG05i+XJ14Z7mJCCgwnHOcB/rucqagAgoM5xwBvaApqIACw3ElEkBIQAFCAgoQElCAkIAChAQUIHSWgB5dzdndX8TNRIAKCChASEABQo6BAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoRGDui7q5NciQRUQEABQiMHtLvwXUCBOo1+DHQ9B/176P9ETkCB4Yz/ItLRrZimJqDAcMYP6HoV/8fXof8jKQEFhnOG05i+XF3dDP0fSQkoMJxznAf67nKmoALakkVn6o2gaucI6AVNQQW0IYudqbeDirkSiVoJKKMTUCq1WCgoYxNQKiWgjE9AqZSAMj4BpVICyvgElFrpJ6MTUGoloIxOQKmWfDI2AQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUIlRvQH29nb3r/kIACwxFQgJCAAoQKCui6mKe8/Nxn4wR0MovO1BsBgxJQzmOxM/V2wIAKCuhqKaAFE1AqVFJAN3PQV1/vv3AMtByLhYJSn6ICulrNZ7MXH7efPiGgpyasY24dvyag1KiwgK6+v57tuimgRRFQalRaQFc/3++W8ZbwRRFQalRcQFer2/U88kZAS6OfVKjAgG6W8dcCWhgBpUIlBnSzjH/5vwJaFvmkPkUGdLuMnwkoMKlCA7pZxgsoMKlSA7o5JVRAgSmVG9CIgALDEVCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQEtBGLTpTbwQUTkDbtNiZejugaALaJgGFAQhokxYLBYXnE9AmCSgMQUCbJKAwBAFtkoDCEAS0TfoJAxDQNgkoDEBAGyWf8HwCChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKECgvo99ez2ezV1/3XP9/PXn7u8fMCCgynrIDOZ1vXd98QUGA6RQX0rp/3k9BqArroTL0RQD8lBbRbv9+sP97eF7SWgC52pt4OoI+SAjqfvfi4+WSdzV1BBRSYTkEBXcdyf+xzvitoJQFdLBQUClRQQH+83Szgt3YF/X1AZyeMtXXPIqBQpFID2hX0WkCBKRUb0O446BtLeGBCBQX08Bjo9svZTSUB9SISFKmggHanLx1MQbuzml78j4ACkykpoN15oG8Ovl5uDmpWEVAn0kOJSgro5gz6w2X8sp6AAgUqKqCbgh7OQbs5qYACEykroN0rR2+OvnEroMBUCgvocwkoMBwBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBPWXRGXlTgOIJ6AmLnbG3BiibgJ4goMBTCOhji4WCAk8goI8JKPAkAvqYgAJPIqCPCSjwJAJ6gn4CTyGgJwgo8BQCeop8Ak8goAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoACh5gIKMJzBGzX0LxzS1P+zgboM3qihf2EjGji60MAQWxhjA0OccowN/N8dRQO7ZQNDbGGMDQxRQMvTwG7ZwBBbGGMDQxTQ8jSwWzYwxBbG2MAQBbQ8DeyWDQyxhTE2MEQBLU8Du2UDQ2xhjA0MUUDL08Bu2cAQWxhjA0MU0PI0sFs2MMQWxtjAEAW0PA3slg0MsYUxNjBEAS1PA7tlA0NsYYwNDFFAy9PAbtnAEFsYYwNDFNDyNLBbNjDEFsbYwBAFtDwN7JYNDLGFMTYwRAEtTwO7ZQNDbGGMDQxRQMvTwG7ZwBBbGGMDQxTQ8jSwWzYwxBbG2MAQBbQ8DeyWDQyxhTE2MEQBLU8Du2UDQ2xhjA0MUUDL08Bu2cAQWxhjA0MUUIACCShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIKEBJQgJCAAoQEFCAkoAAhAQUICShASEABQgIa+P56tvbi49TbMbb1OG+m3oYxLbuHseohbvfU66k3Yyw/3r78fPhVN9g3590EAe1t+zh1Dh+9CnUDrbgu27jU/DD+fH+3p9b5MK7Hd/DYzXdjPe/ERkD7uu9nxX96G/Nq//I6+37OZq++Tr0x45jf76lVPo7zw7/A22n+KgW0r9u7ZcK85sXRarfArfIPr9M9D27CuX88q7Pc7aDdUCt8qt/Mr/fj6p4Pu8dzeea/SgHt6WBde1vlfnlnO9OuNqC3+4nnstYp6PzumaHKYzHbFcT+D3B+183198+5iBfQnpb3T3DdU2B1++Wd7vjSf9c7vvXw7v7MDj6ty3w/rtvqJtmbp/f/uD8Guv767tPzDlZAezp8eOb1BqYb581tveNbz1NqPvyycRTQyh7I7sDLzcGLSAeP5/rTM64oBPQZ5pVOXVabvfBNhX93e8vq5mSP7Z/rK5xj33a9PAjowbzm+LX5sQlobr1sqPPg2WYnXA+t4oBuhrY9zafWIW6WudcHH6tzHNCb+++e8elCQHP1HVna286tKw5oN8DbKU57Oaf7M+6q7OdhQA+Ppp11YSigsfMeazmr3QK37oD+VwOn884rPgv0QUDvoymgRVj3s9Y/vLtjE/UGdLt43wzy3CcOntH9ifS1HQLd+mVAz7jbCmhoWfHEZb4bWuUB3R1/OfOJg+cz342xG2yVIzQDLVfN/dx3s96AdnHZH3+p9Gy0gyeG2zqvFRDQYs3r3CM37k+pqzug+xcAKz2l6fjMnhqnoF6FL1S3Jqr0sNnq8K4MWzXG5egMikoDejgRq/Op8CCgS+eBlqO7CrfGv7idJgJ6cEWugJbKlUhFqvZFh50mAnp4DkWlx0CPl/A1DvGna+ELtH6oqu7ngTrnLVv7u/dUez7acnb4IlKNQzxcrLsbUyEqfTI/qeaA3t0/cnMeaJWT7P2pWofnbFXlMKDuB1qI5fH6ttrAdGoO6OGRikpPqDi4536dQzx6ucgd6Ytw/zYzAlq4ZdVx6dxfC1/nEL0nUnkO3xFJQAs3P/t85dwe3La9Mg9OWPKunAAlEVCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSgACEBBQgJKEBIQAFCAgoQElCAkIAChAQUICSglOyfv66uPm8++3B19XHijaE9AkrRvlxd/X34Ec5JQCnbbub57uqPr1NvCu0RUMr27erqz9XqkwU8UxBQCte1c1tRODcBpXTvrv78cPdSEpyVgFK6L1drN1NvBU0SUIr3wQKeiQgoxfskoExEQCndN0t4piKglO7D1R//6SxQJiGgFO7Levr5zXVITEJAKds/f3WzT1fCMwkBpWzba5DWGfU6EucnoBTt7hqkT15HYgICStH21yC5mwgTEFBKdn8XO/ezYwICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChASUICQgAKEBBQgJKAAIQEFCAkoQEhAAUICChD6f4Hczcp+aUh1AAAAAElFTkSuQmCC" width="672" style="display: block; margin: auto;" /> <strong>A</strong>:</p>
+<pre class="r"><code>plot</code></pre>
+<pre><code>## function (x, y, ...) 
+## UseMethod(&quot;plot&quot;)
+## &lt;bytecode: 0x00000000143b0798&gt;
+## &lt;environment: namespace:graphics&gt;</code></pre>
+<pre class="r"><code>methods(plot)</code></pre>
+<pre><code>##  [1] plot,ANY-method        plot,color-method      plot.acf*             
+##  [4] plot.ACF*              plot.augPred*          plot.compareFits*     
+##  [7] plot.data.frame*       plot.decomposed.ts*    plot.default          
+## [10] plot.dendrogram*       plot.density*          plot.ecdf             
+## [13] plot.factor*           plot.formula*          plot.function         
+## [16] plot.ggplot*           plot.gls*              plot.gtable*          
+## [19] plot.hclust*           plot.histogram*        plot.HoltWinters*     
+## [22] plot.intervals.lmList* plot.irt*              plot.isoreg*          
+## [25] plot.lm*               plot.lme*              plot.lmList*          
+## [28] plot.medpolish*        plot.mlm*              plot.nffGroupedData*  
+## [31] plot.nfnGroupedData*   plot.nls*              plot.nmGroupedData*   
+## [34] plot.pdMat*            plot.poly*             plot.poly.parallel*   
+## [37] plot.ppr*              plot.prcomp*           plot.princomp*        
+## [40] plot.profile.nls*      plot.psych*            plot.R6*              
+## [43] plot.ranef.lme*        plot.ranef.lmList*     plot.raster*          
+## [46] plot.residuals*        plot.shingle*          plot.simulate.lme*    
+## [49] plot.spec*             plot.stepfun           plot.stl*             
+## [52] plot.table*            plot.trellis*          plot.ts               
+## [55] plot.tskernel*         plot.TukeyHSD*         plot.Variogram*       
+## see '?methods' for accessing help and source code</code></pre>
+<pre class="r"><code>`?`(plot.default)</code></pre></li>
+<li><p>Why does <code>plot(1:10, col = &quot;red&quot;)</code> only colour the points, not the axes or labels? Read the source code of <code>plot.default()</code> to find out.</p>
+<pre class="r"><code>plot(1:10, col = &quot;red&quot;)</code></pre>
+<p><img src="data:image/png;base64,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" width="672" style="display: block; margin: auto;" /> <strong>A</strong>: <code>col</code> is passed to several functions - <code>Axis()</code>, <code>box()</code>, <code>plot.window()</code> and <code>title()</code>. All these functions pass <code>col</code> as part of an <code>...</code> argument to <code>par()</code>, whose help page specifies <code>col</code> as a <em>specification for the default plotting color</em>.</p></li>
+</ol>
+</div>
 </div>
 </div>
 <div id="do-recursive-subsetting" class="section level1">

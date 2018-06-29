@@ -16,6 +16,7 @@ range("tom")
 
 
 
+
 show_time <- function(x = stop("Error!")) {
   stop <- function(...) Sys.time()
   print(x)
