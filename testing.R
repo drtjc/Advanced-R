@@ -7,49 +7,30 @@ library(rlang)
 
 
 
-?list2
+x <- c(a = 1, b = 2, c = 3)
+names(x)
 
-range("Sturges")
-range("tom")
+names(x)[2] <- "two"
+names(x)
 
-
-
-
-
-
-show_time <- function(x = stop("Error!")) {
-  stop <- function(...) Sys.time()
-  print(x)
-}
-show_time()
+`*tmp*` <- x
+x <- `names<-`(`*tmp*`, `[<-`(names(`*tmp*`), 2, "two"))
+x
+rm(`*tmp*`)
 
 
+y <- matrix(1:4, nrow = 2)
+`[<-`(y, 1, 2, 5)
 
 
-
-
-f <- function(x = y <- {print("y1"); 1}, z = y <- {print("y2"); 2}) {
-  x + z
-}
-f()
+tt <- `[<-`(names(`*tmp*`), 2, "two")
+`names<-`(`*tmp*`, tt)
 
 
 
-
-
-{print("x"); 1} + {print("y"); 2} 
-
-
-a <- NULL
-f <- function(a) (a) 
-f(a = a <- 1) # evaluated outside of function
-a #1
-
-a <- NULL
-f <- function(a = a <- 1) (a) # default value evaluated inside function
-f()
-a # NULL
-
+v <- c(1,2)
+v
+`[`(v, 1)
 
 
 

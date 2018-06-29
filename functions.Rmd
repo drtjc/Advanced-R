@@ -684,6 +684,72 @@ Using `...` comes with two downsides:
     ```
 **A**: `col` is passed to several functions - `Axis()`, `box()`, `plot.window()` and `title()`. All these functions pass `col` as part of an `...` argument to `par()`, whose help page specifies `col` as a *specification for the default plotting color*.
 
+## Exiting a function
+Most functions exit in one of two ways: either returning a value, indicating successful completion, or throwing an error, indicating failure. This section describes return values (implicit vs. explicit; visible vs. invisible), briefly discusses errors, and introduces exit handlers, which allow you to run code when a function exits, regardless of how it exits.
+
+### Implicit vs. explict returns
+There are two ways that a function can return a value:
+
+* Implicitly, where the last evaluated expression becomes the return value:
+    ```{r}
+      f <- function(x) {
+      if (x < 10) {
+        0
+      } else {
+        10
+      }
+    }
+    f(5)
+    f(15)
+    ```
+
+* Explicitly, by calling `return()`:
+    ```{r}
+    f <- function(x) {
+      if (x < 10) {
+        return(0)
+      } else {
+        return(10)
+      }
+    }
+    ```
+
+### Invisible values
+Most functions return visibly: calling the function in an interactive context causes the result to be automatically printed.
+```{r}
+f1 <- function() 1
+f1()
+```
+
+However, it’s also possible to return an `invisible()` value, which is not automatically printed.
+```{r}
+f2 <- function() invisible(1)
+f2()
+```
+
+You can verify that the value exists either by explicitly printing it or by wrapping in parentheses:
+```{r}
+print(f2())
+(f2())
+```
+
+Alternatively, use `withVisible()` to return the value and a visibility flag:
+```{r}
+str(withVisible(f2()))
+```
+
+The most common function that returns invisibly is `<-`:
+```{r}
+a <- 2
+(a <- 2)
+```
+
+And this is what makes it possible to chain assignment:
+```{r}
+a <- b <- c <- d <- 2
+```
+
+In general, any function called primarily for its side effects (like `<-`, `print()`, or `plot()`) should return an invisible value (typically the value of the first argument).
 
 
 
