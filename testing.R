@@ -6,7 +6,9 @@ library(pryr)
 library(rlang)
 
 
-NULL <- 1
+
+
+
 
 # f1 <- factor("a")
 # f2 <- factor("b")

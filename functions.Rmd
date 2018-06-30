@@ -970,5 +970,63 @@ Finally, there are a bunch of language features that are usually written in spec
     ```
 **A**: `get(x)` returns the **object** that has the name `x` bound to it. You cannot bind an object to an object, only to a name.
 
+4. Create a replacement function that modifies a random location in a vector.  
+**A**:
+    ```{r}
+    `rp<-` <- function(x, value) {
+      if (length(x) == 0 || is.null(x)) stop("x is not valid")
+      pos <- sample.int(length(x), 1)
+      x[pos] <- value
+      x
+    }
+    
+    x <- 1:5
+    rp(x) <- 6L
+    x
+    ```
+
+5. Write your own version of `+` that will paste its inputs together if they are character vectors but behaves as usual otherwise. In other words, make this code work:  
+**A**: 
+    ```{r}
+    `+` <- function(x, y) {
+      if(is.numeric(c(x, y))) {
+        base::`+`(x, y)
+      } else if (is.character(c(x, y))){
+        paste0(x, y)
+      } else {
+        NULL
+      }
+    }
+    
+    1 + 2
+    1 + "2"
+    "a" + "b"
+    rm(`+`)
+    ```
+
+6. Create a list of all the replacement functions found in the base package. Which ones are primitive functions? (Hint use `apropros()`)  
+**A**: 
+    ```{r}
+    fn <- apropos("<-", where = TRUE, mode = "function")
+    length(fn)
+    base_fn <- fn[names(fn) == length(searchpaths())] # serachpaths always ends in package::base
+    names(base_fn) <- NULL
+    length(base_fn)
+    base_f <- mget(base_fn, inherits = TRUE)
+    base_fp <- base_fn[as.logical(map(base_f, ~ is.primitive(.)))]
+    length(base_fp)
+    base_fp
+    ```
+
+
+
+
+
+
+
+
+
+
+
 
 # DO RECURSIVE SUBSETTING
