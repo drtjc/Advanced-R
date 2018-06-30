@@ -6,45 +6,7 @@ library(pryr)
 library(rlang)
 
 
-`(` <- function(e1) {
-  "hi!"
-}
-replicate(5, (1 + 2))
-rm("(")
-
-
-
-
-
-
-x <- c(a = 1, b = 2, c = 3)
-names(x)
-
-names(x)[2] <- "two"
-names(x)
-
-`*tmp*` <- x
-x <- `names<-`(`*tmp*`, `[<-`(names(`*tmp*`), 2, "two"))
-x
-rm(`*tmp*`)
-
-
-y <- matrix(1:4, nrow = 2)
-`[<-`(y, 1, 2, 5)
-
-
-tt <- `[<-`(names(`*tmp*`), 2, "two")
-`names<-`(`*tmp*`, tt)
-
-
-
-v <- c(1,2)
-v
-`[`(v, 1)
-
-
-
-
+NULL <- 1
 
 # f1 <- factor("a")
 # f2 <- factor("b")

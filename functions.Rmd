@@ -830,7 +830,145 @@ Function calls come in four varieties:
 
 While four forms exist, you only need to use one, because any call can be written in prefix form.
 
+### Rewriting to prefix form
+The following example shows three pairs of equivalent calls, rewriting an infix form, replacement form, and a special form into prefix form.
+```
+x + y
+`+`(x, y)
 
+names(df) <- c("x", "y", "z")
+`names<-`(df, c("x", "y", "z"))
+
+for(i in 1:3) print(i)
+`for`(i, 1:3, print(i))
+```
+
+Overriding built-in functions is a bad idea!
+```{r}
+`(` <- function(e1) {
+  e1 + 1
+}
+replicate(5, (1 + 2))
+rm("(")
+```
+
+### Prefix form
+You can specify arguments in three ways:
+
+* By position, like `help(mean)`.
+* Using partial matching, like `help(to = mean)`.
+* By name, like `help(topic = mean)`.
+
+As illustrated by the following chunk, arguments are matched by exact name, then with unique prefixes, and finally by position.
+```{r, error=TRUE}
+f <- function(abcdef, bcde1, bcde2) {
+  list(a = abcdef, b1 = bcde1, b2 = bcde2)
+}
+str(f(1, 2, 3))
+str(f(2, 3, abcdef = 1))
+str(f(2, 3, a = 1)) # Can abbreviate long argument names:
+str(f(1, 3, b = 1)) # But this doesn't work because abbreviation is ambiguous
+```
+
+### Infix functions
+Infix functions are so called because the function name comes inbetween its arguments, and hence infix functions have two arguments. R comes with a number of built-in infix operators: `:`, `::`, `:::`, `$`, `@`, `^`, `*`, `/`, `+`, `-`, `>`, `>=`, `<`, `<=`, `==`, `!=`, `!`, `&`, `&&`, `|`, `||`, `~`, `<-`, and `<<-`. You can also create your own infix functions that start and end with `%`, and base R uses this to additionally define `%%`, `%*%`, `%/%`, `%in%`, `%o%`, and `%x%`.
+
+Defining your own infix function is simple. You create a two argument function and bind it to a name that starts and ends with `%`:
+```{r}
+`%+%` <- function(a, b) paste0(a, b)
+"new " %+% "string"
+```
+
+R’s default precedence rules mean that infix operators are composed from left to right:
+```{r}
+`%-%` <- function(a, b) paste0("(", a, " %-% ", b, ")")
+"a" %-% "b" %-% "c"
+```
+
+There are two special infix functions that can be called with a single argument: `+` and `-`.
+```{r}
+-1
++10
+```
+
+### Replacement functions
+Replacement functions act like they modify their arguments in place (they actually create a modified copy), and have the special name `xxx<-`. They typically have two arguments (`x` and `value`) and they must return the modified object. For example, the following function allows you to modify the second element of a vector:
+```{r}
+`second<-` <- function(x, value) {
+  x[2] <- value
+  x
+}
+```
+
+Replacement functions are used by placing the function call on the LHS of `<-`:
+```{r}
+x <- 1:10
+second(x) <- 5L
+x
+```
+
+ you want to supply additional arguments, they go inbetween x and value:
+```{r}
+`modify<-` <- function(x, position, value) {
+  x[position] <- value
+  x
+}
+x <- 1:10
+modify(x, 1) <- 10
+x
+```
+
+When you write modify(x, 1) <- 10, behind the scenes R turns it into:
+```{r}
+x <- 1:10
+x <- `modify<-`(x, 1, 10)
+x
+```
+
+### Special forms
+Finally, there are a bunch of language features that are usually written in special ways, but also have prefix forms. E.g. `x[i]` - `` `[`(x, i) ``
+
+### Exercises
+1. Rewrite the following code snippets into prefix form
+    ```{r, eval=FALSE}
+    1 + 2 + 3
+    1 + (2 + 3)
+    if (length(x) <= 5) x[[5]] else x[[n]]
+    ```
+**A**: 
+    ```
+    `+`(`+`(1, 2), 3)
+    `+`(1, `(`(`+`(2, 3)))
+    'if'(`<=`(length(x), 5), `[[`(x, 5), `[[`(x, n))
+    ```
+
+2. Clarify the following list of odd function calls:  
+    ```{r}
+    x <- sample(replace = TRUE, 20, x = c(1:10, NA))
+    y <- runif(min = 0, max = 1, 20)
+    cor(m = "k", y = y, u = "p", x = x)
+    ```
+**A**:
+    ```
+    x <- sample(replace = TRUE, 20, x = c(1:10, NA)) 
+    # first arg is x, hence by position, size = 20
+    
+    y <- runif(min = 0, max = 1, 20) 
+    # by position, argument n = 20
+    
+    cor(m = "k", y = y, u = "p", x = x)
+    # m is partial for method - kendall is selected
+    # u is partial for use - pairwise.complete.obs is selected
+    ```
+
+3. Explain why the following code fails:
+    ```{r, error=TRUE}
+    modify(get("x"), 1) <- 10
+    
+    # same issue as
+    1:2 <- 1
+    ```
+**A**: `get(x)` returns the **object** that has the name `x` bound to it. You cannot bind an object to an object, only to a name.
 
 
 # DO RECURSIVE SUBSETTING

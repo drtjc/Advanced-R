@@ -93,9 +93,6 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
-.html-widget {
-  margin-bottom: 20px;
-}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -622,7 +619,7 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x0000000007cb16f0&gt;
+## &lt;bytecode: 0x00000000135f18a0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>However, it’s better to use <code>force(x)</code> than just <code>x</code>, even though they do the same thing: <code>force()</code> provides a clear signal that you’re deliberately forcing evaluation.</p>
 <p>It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.</p>
@@ -671,7 +668,7 @@ g1()</code></pre>
 }
 
 j(runif(1))</code></pre>
-<pre><code>## [1] 0.5235952 0.5235952 0.5235952</code></pre>
+<pre><code>## [1] 0.06311262 0.06311262 0.06311262</code></pre>
 <p>You can also create promises “by hand” using <code>delayedAssign()</code>:</p>
 <pre class="r"><code>delayedAssign(&quot;x&quot;, {
     print(&quot;Executing code&quot;)
@@ -679,9 +676,9 @@ j(runif(1))</code></pre>
 })
 x</code></pre>
 <pre><code>## [1] &quot;Executing code&quot;</code></pre>
-<pre><code>## [1] 0.0479128</code></pre>
+<pre><code>## [1] 0.01759215</code></pre>
 <pre class="r"><code>x</code></pre>
-<pre><code>## [1] 0.0479128</code></pre>
+<pre><code>## [1] 0.01759215</code></pre>
 </div>
 <div id="default-arguments" class="section level3">
 <h3><span class="header-section-number">1.3.3</span> Default arguments</h3>
@@ -794,7 +791,7 @@ f()</code></pre>
     print(x)
 }
 show_time()</code></pre>
-<pre><code>## [1] &quot;2018-06-29 14:26:06 -05&quot;</code></pre>
+<pre><code>## [1] &quot;2018-06-29 23:55:17 -05&quot;</code></pre>
 <p><strong>A</strong>: <code>x</code> is not evaluated until <code>print(x)</code>, at which point the function <code>stop()</code> has been reassigned to <code>Sys.time()</code>.</p></li>
 </ol>
 </div>
@@ -874,7 +871,7 @@ g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
 <pre class="r"><code>mean</code></pre>
 <pre><code>## function (x, ...) 
 ## UseMethod(&quot;mean&quot;)
-## &lt;bytecode: 0x000000000d4169a8&gt;
+## &lt;bytecode: 0x00000000191f2b10&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>methods(mean)  # first argument of mean(1, 2, 3) is a double - hence mean.default is used</code></pre>
 <pre><code>## [1] mean.Date     mean.default  mean.difftime mean.POSIXct  mean.POSIXlt 
@@ -888,7 +885,7 @@ g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
 <pre class="r"><code>plot</code></pre>
 <pre><code>## function (x, y, ...) 
 ## UseMethod(&quot;plot&quot;)
-## &lt;bytecode: 0x000000000898f190&gt;
+## &lt;bytecode: 0x00000000142d0878&gt;
 ## &lt;environment: namespace:graphics&gt;</code></pre>
 <pre class="r"><code>methods(plot)</code></pre>
 <pre><code>##  [1] plot,ANY-method        plot,color-method      plot.acf*             
@@ -1051,6 +1048,149 @@ f(TRUE)</code></pre>
     on.exit(dev.off())
     code
 }</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="function-forms" class="section level2">
+<h2><span class="header-section-number">1.6</span> Function forms</h2>
+<p>Function calls come in four varieties:</p>
+<ul>
+<li>In <strong>prefix</strong> form, the function name comes before its arguments, like <code>foofy(a, b, c)</code>. These constitute of the majority of function calls in R.</li>
+<li>In <strong>infix</strong> form, the function name comes inbetween its arguments, like <code>x + y</code>. Infix forms are used for many mathematical operators, as well as user-defined functions that begin and end with %.</li>
+<li>A <strong>replacement</strong> function assigns into what looks like a prefix function, like <code>names(df) &lt;- c(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;)</code>.</li>
+<li><strong>Special forms</strong> like <code>[[</code>, <code>if</code>, and <code>for</code>, don’t have a consistent structure and provide some of the most important syntax in R.</li>
+</ul>
+<p>While four forms exist, you only need to use one, because any call can be written in prefix form.</p>
+<div id="rewriting-to-prefix-form" class="section level3">
+<h3><span class="header-section-number">1.6.1</span> Rewriting to prefix form</h3>
+<p>The following example shows three pairs of equivalent calls, rewriting an infix form, replacement form, and a special form into prefix form.</p>
+<pre><code>x + y
+`+`(x, y)
+
+names(df) &lt;- c(&quot;x&quot;, &quot;y&quot;, &quot;z&quot;)
+`names&lt;-`(df, c(&quot;x&quot;, &quot;y&quot;, &quot;z&quot;))
+
+for(i in 1:3) print(i)
+`for`(i, 1:3, print(i))</code></pre>
+<p>Overriding built-in functions is a bad idea!</p>
+<pre class="r"><code>`(` &lt;- function(e1) {
+    e1 + 1
+}
+replicate(5, (1 + 2))</code></pre>
+<pre><code>## [1] 4 4 4 4 4</code></pre>
+<pre class="r"><code>rm(&quot;(&quot;)</code></pre>
+</div>
+<div id="prefix-form" class="section level3">
+<h3><span class="header-section-number">1.6.2</span> Prefix form</h3>
+<p>You can specify arguments in three ways:</p>
+<ul>
+<li>By position, like <code>help(mean)</code>.</li>
+<li>Using partial matching, like <code>help(to = mean)</code>.</li>
+<li>By name, like <code>help(topic = mean)</code>.</li>
+</ul>
+<p>As illustrated by the following chunk, arguments are matched by exact name, then with unique prefixes, and finally by position.</p>
+<pre class="r"><code>f &lt;- function(abcdef, bcde1, bcde2) {
+    list(a = abcdef, b1 = bcde1, b2 = bcde2)
+}
+str(f(1, 2, 3))</code></pre>
+<pre><code>## List of 3
+##  $ a : num 1
+##  $ b1: num 2
+##  $ b2: num 3</code></pre>
+<pre class="r"><code>str(f(2, 3, abcdef = 1))</code></pre>
+<pre><code>## List of 3
+##  $ a : num 1
+##  $ b1: num 2
+##  $ b2: num 3</code></pre>
+<pre class="r"><code>str(f(2, 3, a = 1))  # Can abbreviate long argument names:</code></pre>
+<pre><code>## List of 3
+##  $ a : num 1
+##  $ b1: num 2
+##  $ b2: num 3</code></pre>
+<pre class="r"><code>str(f(1, 3, b = 1))  # But this doesn't work because abbreviation is ambiguous</code></pre>
+<pre><code>## Error in f(1, 3, b = 1): argument 3 matches multiple formal arguments</code></pre>
+</div>
+<div id="infix-functions" class="section level3">
+<h3><span class="header-section-number">1.6.3</span> Infix functions</h3>
+<p>Infix functions are so called because the function name comes inbetween its arguments, and hence infix functions have two arguments. R comes with a number of built-in infix operators: <code>:</code>, <code>::</code>, <code>:::</code>, <code>$</code>, <code>@</code>, <code>^</code>, <code>*</code>, <code>/</code>, <code>+</code>, <code>-</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>==</code>, <code>!=</code>, <code>!</code>, <code>&amp;</code>, <code>&amp;&amp;</code>, <code>|</code>, <code>||</code>, <code>~</code>, <code>&lt;-</code>, and <code>&lt;&lt;-</code>. You can also create your own infix functions that start and end with <code>%</code>, and base R uses this to additionally define <code>%%</code>, <code>%*%</code>, <code>%/%</code>, <code>%in%</code>, <code>%o%</code>, and <code>%x%</code>.</p>
+<p>Defining your own infix function is simple. You create a two argument function and bind it to a name that starts and ends with <code>%</code>:</p>
+<pre class="r"><code>`%+%` &lt;- function(a, b) paste0(a, b)
+&quot;new &quot; %+% &quot;string&quot;</code></pre>
+<pre><code>## [1] &quot;new string&quot;</code></pre>
+<p>R’s default precedence rules mean that infix operators are composed from left to right:</p>
+<pre class="r"><code>`%-%` &lt;- function(a, b) paste0(&quot;(&quot;, a, &quot; %-% &quot;, b, &quot;)&quot;)
+&quot;a&quot; %-% &quot;b&quot; %-% &quot;c&quot;</code></pre>
+<pre><code>## [1] &quot;((a %-% b) %-% c)&quot;</code></pre>
+<p>There are two special infix functions that can be called with a single argument: <code>+</code> and <code>-</code>.</p>
+<pre class="r"><code>-1</code></pre>
+<pre><code>## [1] -1</code></pre>
+<pre class="r"><code>+10</code></pre>
+<pre><code>## [1] 10</code></pre>
+</div>
+<div id="replacement-functions" class="section level3">
+<h3><span class="header-section-number">1.6.4</span> Replacement functions</h3>
+<p>Replacement functions act like they modify their arguments in place (they actually create a modified copy), and have the special name <code>xxx&lt;-</code>. They typically have two arguments (<code>x</code> and <code>value</code>) and they must return the modified object. For example, the following function allows you to modify the second element of a vector:</p>
+<pre class="r"><code>`second&lt;-` &lt;- function(x, value) {
+    x[2] &lt;- value
+    x
+}</code></pre>
+<p>Replacement functions are used by placing the function call on the LHS of <code>&lt;-</code>:</p>
+<pre class="r"><code>x &lt;- 1:10
+second(x) &lt;- 5L
+x</code></pre>
+<pre><code>##  [1]  1  5  3  4  5  6  7  8  9 10</code></pre>
+<p>you want to supply additional arguments, they go inbetween x and value:</p>
+<pre class="r"><code>`modify&lt;-` &lt;- function(x, position, value) {
+    x[position] &lt;- value
+    x
+}
+x &lt;- 1:10
+modify(x, 1) &lt;- 10
+x</code></pre>
+<pre><code>##  [1] 10  2  3  4  5  6  7  8  9 10</code></pre>
+<p>When you write modify(x, 1) &lt;- 10, behind the scenes R turns it into:</p>
+<pre class="r"><code>x &lt;- 1:10
+x &lt;- `modify&lt;-`(x, 1, 10)
+x</code></pre>
+<pre><code>##  [1] 10  2  3  4  5  6  7  8  9 10</code></pre>
+</div>
+<div id="special-forms" class="section level3">
+<h3><span class="header-section-number">1.6.5</span> Special forms</h3>
+<p>Finally, there are a bunch of language features that are usually written in special ways, but also have prefix forms. E.g. <code>x[i]</code> - <code>`[`(x, i)</code></p>
+</div>
+<div id="exercises-5" class="section level3">
+<h3><span class="header-section-number">1.6.6</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Rewrite the following code snippets into prefix form</p>
+<pre class="r"><code>1 + 2 + 3
+1 + (2 + 3)
+if (length(x) &lt;= 5) x[[5]] else x[[n]]</code></pre>
+<p><strong>A</strong>:</p>
+<pre><code>`+`(`+`(1, 2), 3)
+`+`(1, `(`(`+`(2, 3)))
+'if'(`&lt;=`(length(x), 5), `[[`(x, 5), `[[`(x, n))</code></pre></li>
+<li><p>Clarify the following list of odd function calls:</p>
+<pre class="r"><code>x &lt;- sample(replace = TRUE, 20, x = c(1:10, NA))
+y &lt;- runif(min = 0, max = 1, 20)
+cor(m = &quot;k&quot;, y = y, u = &quot;p&quot;, x = x)</code></pre>
+<pre><code>## [1] 0.02757847</code></pre>
+<p><strong>A</strong>:</p>
+<pre><code>x &lt;- sample(replace = TRUE, 20, x = c(1:10, NA)) 
+# first arg is x, hence by position, size = 20
+
+y &lt;- runif(min = 0, max = 1, 20) 
+# by position, argument n = 20
+
+cor(m = &quot;k&quot;, y = y, u = &quot;p&quot;, x = x)
+# m is partial for method - kendall is selected
+# u is partial for use - pairwise.complete.obs is selected</code></pre></li>
+<li><p>Explain why the following code fails:</p>
+<pre class="r"><code>modify(get(&quot;x&quot;), 1) &lt;- 10</code></pre>
+<pre><code>## Error in modify(get(&quot;x&quot;), 1) &lt;- 10: target of assignment expands to non-language object</code></pre>
+<pre class="r"><code># same issues as
+1:2 &lt;- 1</code></pre>
+<pre><code>## Error in 1:2 &lt;- 1: target of assignment expands to non-language object</code></pre>
+<p><strong>A</strong>: <code>get(x)</code> returns the <strong>object</strong> that has the name <code>x</code> bound to it. You cannot bind an object to an object, only to a name.</p></li>
 </ol>
 </div>
 </div>
