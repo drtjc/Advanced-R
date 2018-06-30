@@ -962,7 +962,7 @@ Finally, there are a bunch of language features that are usually written in spec
     ```
 
 3. Explain why the following code fails:
-    ```{r, error=TRUE}
+    ```{r, error=TRUE, cache=FALSE}
     modify(get("x"), 1) <- 10
     
     # same issue as
@@ -1018,6 +1018,49 @@ Finally, there are a bunch of language features that are usually written in spec
     base_fp
     ```
 
+7. What are valid names for user-created infix functions?  
+**A**: They can contain any sequence of characters except “%”. You will need to escape any special characters in the string used to define the function, but not when you call it:
+    ```{r}
+    `% %` <- function(a, b) paste(a, b)
+    `%/\\%` <- function(a, b) paste(a, b)
+    
+    "a" % % "b"
+    "a" %/\% "b"
+    ```
+
+8. Create an infix `xor()` operator.  
+**A**: 
+    ```{r}
+    `%xor%` <- function(x, y) {
+      xor(x, y)
+    }
+    x <- c(T, T, F)
+    y <- c(T, F, F)
+    x %xor% y
+    ```
+
+9. Create infix versions of the set functions `intersect()`, `union()`, and `setdiff()`. You might call them `%n%`, `%u%`, and `%/%` to match conventions from mathematics.
+**A**: 
+    ```{r}
+    `%n%` <- function(x, y) {
+      intersect(x, y)
+    }
+    
+    `%u%` <- function(x, y) {
+      union(x, y)
+    }
+    
+    `%/%` <- function(x, y) {
+      setdiff(x, y)
+    }
+    
+    x <- 1:3
+    y <- 2:4
+    
+    x %n% y
+    x %u% y
+    x %/% y
+    ```
 
 
 
@@ -1026,7 +1069,3 @@ Finally, there are a bunch of language features that are usually written in spec
 
 
 
-
-
-
-# DO RECURSIVE SUBSETTING

@@ -5,7 +5,14 @@ library(purrr)
 library(pryr)
 library(rlang)
 
+x <- 1:3
+y <- 2:4
 
+match(x, y, 0L)
+y[match(x, y, 0L)]
+
+
+xor(x, y)
 
 
 

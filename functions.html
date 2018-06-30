@@ -622,7 +622,7 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x0000000005cb1720&gt;
+## &lt;bytecode: 0x0000000005cb1648&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>However, it’s better to use <code>force(x)</code> than just <code>x</code>, even though they do the same thing: <code>force()</code> provides a clear signal that you’re deliberately forcing evaluation.</p>
 <p>It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.</p>
@@ -671,7 +671,7 @@ g1()</code></pre>
 }
 
 j(runif(1))</code></pre>
-<pre><code>## [1] 0.200359 0.200359 0.200359</code></pre>
+<pre><code>## [1] 0.4138875 0.4138875 0.4138875</code></pre>
 <p>You can also create promises “by hand” using <code>delayedAssign()</code>:</p>
 <pre class="r"><code>delayedAssign(&quot;x&quot;, {
     print(&quot;Executing code&quot;)
@@ -679,9 +679,9 @@ j(runif(1))</code></pre>
 })
 x</code></pre>
 <pre><code>## [1] &quot;Executing code&quot;</code></pre>
-<pre><code>## [1] 0.547891</code></pre>
+<pre><code>## [1] 0.08941059</code></pre>
 <pre class="r"><code>x</code></pre>
-<pre><code>## [1] 0.547891</code></pre>
+<pre><code>## [1] 0.08941059</code></pre>
 </div>
 <div id="default-arguments" class="section level3">
 <h3><span class="header-section-number">1.3.3</span> Default arguments</h3>
@@ -794,7 +794,7 @@ f()</code></pre>
     print(x)
 }
 show_time()</code></pre>
-<pre><code>## [1] &quot;2018-06-30 14:56:08 -05&quot;</code></pre>
+<pre><code>## [1] &quot;2018-06-30 17:09:14 -05&quot;</code></pre>
 <p><strong>A</strong>: <code>x</code> is not evaluated until <code>print(x)</code>, at which point the function <code>stop()</code> has been reassigned to <code>Sys.time()</code>.</p></li>
 </ol>
 </div>
@@ -874,7 +874,7 @@ g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
 <pre class="r"><code>mean</code></pre>
 <pre><code>## function (x, ...) 
 ## UseMethod(&quot;mean&quot;)
-## &lt;bytecode: 0x000000000db971c8&gt;
+## &lt;bytecode: 0x000000000ad16b90&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>methods(mean)  # first argument of mean(1, 2, 3) is a double - hence mean.default is used</code></pre>
 <pre><code>## [1] mean.Date     mean.default  mean.difftime mean.POSIXct  mean.POSIXlt 
@@ -888,7 +888,7 @@ g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
 <pre class="r"><code>plot</code></pre>
 <pre><code>## function (x, y, ...) 
 ## UseMethod(&quot;plot&quot;)
-## &lt;bytecode: 0x000000000898f270&gt;
+## &lt;bytecode: 0x000000000898f190&gt;
 ## &lt;environment: namespace:graphics&gt;</code></pre>
 <pre class="r"><code>methods(plot)</code></pre>
 <pre><code>##  [1] plot,ANY-method        plot,color-method      plot.acf*             
@@ -1176,7 +1176,7 @@ if (length(x) &lt;= 5) x[[5]] else x[[n]]</code></pre>
 <pre class="r"><code>x &lt;- sample(replace = TRUE, 20, x = c(1:10, NA))
 y &lt;- runif(min = 0, max = 1, 20)
 cor(m = &quot;k&quot;, y = y, u = &quot;p&quot;, x = x)</code></pre>
-<pre><code>## [1] -0.1628032</code></pre>
+<pre><code>## [1] 0.07300534</code></pre>
 <p><strong>A</strong>:</p>
 <pre><code>x &lt;- sample(replace = TRUE, 20, x = c(1:10, NA)) 
 # first arg is x, hence by position, size = 20
@@ -1207,7 +1207,7 @@ cor(m = &quot;k&quot;, y = y, u = &quot;p&quot;, x = x)
 x &lt;- 1:5
 rp(x) &lt;- 6L
 x</code></pre>
-<pre><code>## [1] 1 2 3 4 6</code></pre></li>
+<pre><code>## [1] 1 2 3 6 5</code></pre></li>
 <li><p>Write your own version of <code>+</code> that will paste its inputs together if they are character vectors but behaves as usual otherwise. In other words, make this code work:<br />
 <strong>A</strong>:</p>
 <pre class="r"><code>`+` &lt;- function(x, y) {
@@ -1246,12 +1246,49 @@ length(base_fp)</code></pre>
 ##  [9] &quot;class&lt;-&quot;        &quot;dim&lt;-&quot;          &quot;dimnames&lt;-&quot;     &quot;environment&lt;-&quot; 
 ## [13] &quot;length&lt;-&quot;       &quot;levels&lt;-&quot;       &quot;names&lt;-&quot;        &quot;oldClass&lt;-&quot;    
 ## [17] &quot;storage.mode&lt;-&quot;</code></pre></li>
+<li><p>What are valid names for user-created infix functions?<br />
+<strong>A</strong>: They can contain any sequence of characters except “%”. You will need to escape any special characters in the string used to define the function, but not when you call it:</p>
+<pre class="r"><code>`% %` &lt;- function(a, b) paste(a, b)
+`%/\\%` &lt;- function(a, b) paste(a, b)
+
+&quot;a&quot; % % &quot;b&quot;</code></pre>
+<pre><code>## [1] &quot;a b&quot;</code></pre>
+<pre class="r"><code>&quot;a&quot; %/\% &quot;b&quot;</code></pre>
+<pre><code>## [1] &quot;a b&quot;</code></pre></li>
+<li><p>Create an infix <code>xor()</code> operator.<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>`%xor%` &lt;- function(x, y) {
+    xor(x, y)
+}
+x &lt;- c(T, T, F)
+y &lt;- c(T, F, F)
+x %xor% y</code></pre>
+<pre><code>## [1] FALSE  TRUE FALSE</code></pre></li>
+<li><p>Create infix versions of the set functions <code>intersect()</code>, <code>union()</code>, and <code>setdiff()</code>. You might call them <code>%n%</code>, <code>%u%</code>, and <code>%/%</code> to match conventions from mathematics. <strong>A</strong>:</p>
+<pre class="r"><code>`%n%` &lt;- function(x, y) {
+    intersect(x, y)
+}
+
+`%u%` &lt;- function(x, y) {
+    union(x, y)
+}
+
+`%/%` &lt;- function(x, y) {
+    setdiff(x, y)
+}
+
+x &lt;- 1:3
+y &lt;- 2:4
+
+x %n% y</code></pre>
+<pre><code>## [1] 2 3</code></pre>
+<pre class="r"><code>x %u% y</code></pre>
+<pre><code>## [1] 1 2 3 4</code></pre>
+<pre class="r"><code>x%/%y</code></pre>
+<pre><code>## [1] 1</code></pre></li>
 </ol>
 </div>
 </div>
-</div>
-<div id="do-recursive-subsetting" class="section level1">
-<h1><span class="header-section-number">2</span> DO RECURSIVE SUBSETTING</h1>
 </div>
 
 
