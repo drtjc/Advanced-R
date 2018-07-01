@@ -427,7 +427,7 @@ knitr::include_graphics("Images/search-path-2.png")
 ```
 
 ### The function environment
-A function binds the current environment when it is created. This is called the **function environment** (or enclosing environment?), and is used for lexical scoping. Across computer languages, functions that capture their environments are called **closures**, which is why this term is often used interchangeably with function in R’s documentation.
+A function binds the current environment when it is created. This is called the **function environment** (or enclosing environment?), and is used for **lexical scoping**. Across computer languages, functions that capture their environments are called **closures**, which is why this term is often used interchangeably with function in R’s documentation.
 
 You can get the function environment:
 ```{r}
@@ -442,20 +442,71 @@ In diagrams, I’ll depict functions as rectangles with a rounded end that binds
 knitr::include_graphics("Images/binding.png")
 ```
 
-In this case, `f()` binds the environment that binds the name `f` to the function. But that’s not always the case: in the following example `g` is bound in a new environment e, but `g()` binds the global environment. The distinction between binding and being bound by is subtle but important; the difference is how we find `g` vs. how `g()` finds its variables.
+In this case, `f()` binds the environment that binds the name `f` to the function. But that’s not always the case: in the following example `g` is bound in a new environment `e`, but `g()` binds the global environment. The distinction between binding and being bound by is subtle but important; the difference is how we find `g` vs. how `g()` finds its variables.
 ```{r}
 e <- new.env()
 attr(e, "name") <- "e"
-e$g <- function() 1
-environment(e$g)
+e$g <- function() x # binding environment is e, enclosing is global
+environment(e$g) 
 pryr::where("g", e)
+
+x <- 2 
+e$x <- 3
+e$g() # returns 2 as function (enclosing) environment is the global
+
+environment(e$g) <- e
+e$g() # returns 2 as function environment is e
 ```
 
 ```{r, out.width="200px", echo=FALSE}
 knitr::include_graphics("Images/binding-2 (1).png")
 ```
 
+As seen above, you can change the enclosing environment. It is the enclosing environment of a function from a package you cannot change. In that case you don't change the enclosing environment, you actually create a copy in the new environment:
+
+```{r}
+ls(pattern = "sd")
+environment(sd)
+environment(sd) <- globalenv()
+environment(sd)
+ls(pattern = "sd")
+find("sd") # find the binding environment 
+pryr::where("sd") # not same as pryr::where which return first env only
+rm(sd)
+environment(sd)
+```
+
+Consider this:
+
+```{r}
+f <- sd
+environment(f)
+find("f")
+```
+
+The enclosing environment is still the namespace ''stats''. That's where the function is created. However, the binding environment is now the global environment. That's where the name "f" is bound to the object.
+
+
+
 ### Namespaces
+In the diagram above, you saw that the parent environment of a package varies based on what other packages have been loaded. This seems worrying: doesn’t that mean that the package will find different functions if packages are loaded in a different order? The goal of namespaces is to make sure that this does not happen, and that every package works the same way regardless of what packages are attached by the user.
+
+For example, take `sd()`:
+```{r}
+sd
+```
+
+`sd()` is defined in terms of `var()`, so you might worry that the result of `sd()` would be affected by any function called `var()` either in the global environment, or in one of the other attached packages.
+
+R avoids this problem by taking advantage of the function (used for lexical scoping) vs. binding environment described above. Every function in a package is associated with a pair of environments: the package environment, which you learned about earlier, and the namespace environment.
+
+
+
+https://stackoverflow.com/questions/44427752/distinct-enclosing-environment-function-environment-etc-in-r
+
+
+
+
 
 
 

@@ -7,10 +7,19 @@ library(rlang)
 library(rlist)
 
 
+var <- function() 100
 
 
+environment(sd)
+environment(sd) <- globalenv()
+environment(sd) # enclosing environment
+find("sd") # find the binding environment 
+rm(sd)
+environment(sd)
 
-rm(getEnv)
+sd(1:3)
+
+
 
 
 # f1 <- factor("a")
