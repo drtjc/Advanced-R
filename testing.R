@@ -5,17 +5,18 @@ library(purrr)
 library(pryr)
 library(rlang)
 
-x <- 1:3
-y <- 2:4
 
-match(x, y, 0L)
-y[match(x, y, 0L)]
+e1 <- new.env()
+e1$a <- FALSE
+e1$b <- "a"
+e1$c <- 2.3
+e1$d <- e1
 
+env_print(e1)
+env_print(e1$d)
 
-xor(x, y)
-
-
-
+e1$a
+e1$d$a
 
 # f1 <- factor("a")
 # f2 <- factor("b")

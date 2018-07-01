@@ -22,6 +22,69 @@ library(magrittr)
 library(dplyr)
 library(tidyverse)
 library(rlang)
+
+# Some API changes that haven't made it in rlang yet
+search_envs <- function() {
+  rlang:::new_environments(c(
+    list(global_env()),
+    head(env_parents(global_env()), -1)
+  ))
+}
 ```
 
 # Environments
+The environment is the data structure that powers many important R features like lexical scoping, namespaces, and R6 classes, and interact with evaluation to give you powerful tools for making domain specific languages, like dplyr and ggplot2.
+
+## Basics
+Create a new environment using `new.env()`:
+```{r}
+e1 <- new.env()
+e1$a <- FALSE
+e1$b <- "a"
+e1$c <- 2.3
+e1$d <- 1:3
+
+names(e1)
+env_names(e1) # rlang function
+print(e1)
+env_print(e1) # rlang function
+typeof(e1)
+class(e1)
+attributes(e1)
+```
+
+The job of an environment is to associate, or bind, a set of names to a set of values.
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/bindings.png")
+```
+
+Environments have reference semantics: unlike most R objects, when you modify them, you modify them in place, and don’t create a copy. One important implication is that environments can contain themselves.
+```{r}
+e1$d <- e1
+env_print(e1)
+```
+
+One important implication is that environments can contain themselves.
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/loop.png")
+```
+
+TJC: diagram may be incorrect:
+```{r}
+e1$a # FALSE, not 1:3
+```
+
+There is essentially infinite nesting:
+
+```{r}
+env_print(e1)
+env_print(e1$d)
+e1$a
+e1$d$a
+e1$d$d$b
+```
+
+## Important environments
+
