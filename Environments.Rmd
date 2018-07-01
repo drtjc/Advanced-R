@@ -335,9 +335,95 @@ where("c", e4a)
 
 ### Exercises
 1. Modify `where()` to return all environments that contain a binding for name. Carefully think through what type of object the function will need to return.
+```{r}
+where_all <- function(name, env = caller_env()) {
+  if (identical(env, empty_env())) {
+    # do nothing
+  } else if (env_has(env, name)) {
+    # Success case
+    c(env, where_all(name, env_parent(env)))
+  } else {
+    # Recursive case
+    where_all(name, env_parent(env))
+  }
+}
 
+e1 <- env(empty_env(), x = 1)
+attr(e1, "name") <- "e1"
 
+e2 <- env(e1, x = 2)
+attr(e2, "name") <- "e2"
 
+x <- 3
 
+where_all("x", e1)
+where_all("x", e2)
+where_all("x")
+
+where_all("y", e1)
+
+# NOTE:
+c("a", c("b", c("C")))
+```
+
+2. Write a function called `fget()` that finds only function objects. It should have two arguments, name and env, and should obey the regular scoping rules for functions: if there’s an object with a matching name that’s not a function, look in the parent. For an added challenge, also add an inherits argument which controls whether the function recurses up the parents or only looks in one environment.
+```{r}
+fget <- function(name, env = caller_env(), inherits = TRUE) {
+  if (identical(env, empty_env())) {
+    # do nothing
+  } else if (env_has(env, name) && is.function(env[[name]])) {
+    # Success case
+    c(env[[name]], fget(name, env_parent(env)))
+  } else {
+    # Recursive case
+    if (inherits) fget(name, env_parent(env)) else NULL
+  }
+}
+
+e1 <- env(empty_env(), x = mean)
+attr(e1, "name") <- "e1"
+
+e2 <- env(e1, x = 2)
+attr(e2, "name") <- "e2"
+
+x <- 3
+
+fget("x", e1)
+fget("x", e2)
+fget("x", e2, inherits = FALSE)
+fget("x")
+
+fget("y", e1)
+```
+
+## Special environments
+Most environments are not created by you (e.g. with `env()`) but are instead created by R. In this section, you’ll learn about the most important environments, starting with the package environments. You’ll then learn about the function environment bound to the function when it is created, and the (usually) ephemeral execution environment created every time the function is called. Finally, you’ll see how the package and function environments interact to support namespaces, which ensure that a package always behaves the same way, regardless of what other packages the user has loaded.
+
+### Package environments and the search path
+Each package attached by `library()` or `require()` becomes one of the parents of the global environment. The immediate parent of the global environment is the last package you attached:
+```{r}
+parent.env(globalenv()) # base
+env_parent(global_env()) # rlang
+```
+
+If you follow all the parents back, you see the order in which every package has been attached. This is known as the **search path** because all objects in these environments can be found from the top-level interactive workspace.
+```{r}
+search()
+```
+
+The last two environments on the search path are always the same:
+
+* The `Autoloads` environment uses delayed bindings to save memory by only loading package objects (like big datasets) when needed.
+* The base environment, `package:base` or sometimes just `base`, is the environment of the base package. It is special because it has to be able to bootstrap the loading of all other packages. You can access it directly with `baseenv()` or `base_env()`.
+
+Graphically, the search path looks like this:
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/search-path.png")
+```
+
+When you attach another package with `library()`, the parent environment of the global environment changes:
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/search-path-2.png")
+```
 
 

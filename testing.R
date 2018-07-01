@@ -7,55 +7,10 @@ library(rlang)
 library(rlist)
 
 
-e1 <- env(empty_env(), y = 1)
-e2 <- env(e1, x = 2)
-
-e <- new.env()
-attr(e, "name") <- "xyzzy"
-names(e1) <- "test"
-
-obj_addr(e1)
-obj_addr(e2)
-
-x <- 3
-
-
-where_all <- function(name, env = caller_env()) {
-  #el <- list()
-  
-  if (identical(env, empty_env())) {
-    # Base case - do nothing
-
-  } else if (env_has(env, name)) {
-    # Success case
-    list.append(env, where_all(name, env_parent(env)))
-  } else {
-    # Recursive case
-    where_all(name, env_parent(env))
-  }
-}
-
-vvv <- where_all("x", e2)
-vvv
-
-uuu <- where_all("x")
-uuu
-obj_addr(globalenv())
-
-
-ll <- list()
-list.append(ll, sum(1,2,3))
 
 
 
-x <- 5
-where("x")
-where("mean")
-
-
-
-
-
+search()
 
 
 # f1 <- factor("a")
