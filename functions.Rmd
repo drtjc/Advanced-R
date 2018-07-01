@@ -1009,7 +1009,7 @@ Finally, there are a bunch of language features that are usually written in spec
     ```{r}
     base_fn <- lsf.str(baseenv(), pattern = "*<-", all.names = TRUE)
     base_f <- mget(base_fn, inherits = TRUE)
-    base_fp <- base_fn[as.logical(map(base_f, ~ is.primitive(.)))]
+    base_fp <- base_fn[map_lgl(base_f, ~ is.primitive(.))]
     length(base_fp)
     base_fp
     ```

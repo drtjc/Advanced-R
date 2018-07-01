@@ -3641,7 +3641,7 @@ x</code></pre>
 <strong>A</strong>:</p>
 <pre class="r"><code>base_fn &lt;- lsf.str(baseenv(), pattern = &quot;*&lt;-&quot;, all.names = TRUE)
 base_f &lt;- mget(base_fn, inherits = TRUE)
-base_fp &lt;- base_fn[as.logical(map(base_f, ~is.primitive(.)))]
+base_fp &lt;- base_fn[map_lgl(base_f, ~is.primitive(.))]
 length(base_fp)</code></pre>
 <pre><code>## [1] 17</code></pre>
 <pre class="r"><code>base_fp</code></pre>
@@ -3714,9 +3714,9 @@ names(e1)</code></pre>
 <pre class="r"><code>env_names(e1)  # rlang function</code></pre>
 <pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot; &quot;d&quot;</code></pre>
 <pre class="r"><code>print(e1)</code></pre>
-<pre><code>## &lt;environment: 0x00000000158c7bb8&gt;</code></pre>
+<pre><code>## &lt;environment: 0x00000000158c9aa0&gt;</code></pre>
 <pre class="r"><code>env_print(e1)  # rlang function</code></pre>
-<pre><code>## &lt;environment: 00000000158C7BB8&gt;
+<pre><code>## &lt;environment: 00000000158C9AA0&gt;
 ##   parent: &lt;environment: global&gt;
 ##   bindings:
 ##    * a: &lt;lgl&gt;
@@ -3734,7 +3734,7 @@ names(e1)</code></pre>
 <p>Environments have reference semantics: unlike most R objects, when you modify them, you modify them in place, and don’t create a copy. One important implication is that environments can contain themselves.</p>
 <pre class="r"><code>e1$d &lt;- e1
 env_print(e1)</code></pre>
-<pre><code>## &lt;environment: 00000000158C7BB8&gt;
+<pre><code>## &lt;environment: 00000000158C9AA0&gt;
 ##   parent: &lt;environment: global&gt;
 ##   bindings:
 ##    * a: &lt;lgl&gt;
@@ -3748,7 +3748,7 @@ env_print(e1)</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <p>There is essentially infinite nesting:</p>
 <pre class="r"><code>env_print(e1)</code></pre>
-<pre><code>## &lt;environment: 00000000158C7BB8&gt;
+<pre><code>## &lt;environment: 00000000158C9AA0&gt;
 ##   parent: &lt;environment: global&gt;
 ##   bindings:
 ##    * a: &lt;lgl&gt;
@@ -3756,7 +3756,7 @@ env_print(e1)</code></pre>
 ##    * c: &lt;dbl&gt;
 ##    * d: &lt;env&gt;</code></pre>
 <pre class="r"><code>env_print(e1$d)</code></pre>
-<pre><code>## &lt;environment: 00000000158C7BB8&gt;
+<pre><code>## &lt;environment: 00000000158C9AA0&gt;
 ##   parent: &lt;environment: global&gt;
 ##   bindings:
 ##    * a: &lt;lgl&gt;
@@ -3799,9 +3799,9 @@ e2b &lt;- env(e2a, a = 1, b = 2, c = 3)</code></pre>
 <pre class="r"><code>env_parent(e2a)  # rlang</code></pre>
 <pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre>
 <pre class="r"><code>parent.env(e2b)  # base</code></pre>
-<pre><code>## &lt;environment: 0x0000000018b2a188&gt;</code></pre>
+<pre><code>## &lt;environment: 0x0000000018b2c0e0&gt;</code></pre>
 <pre class="r"><code>env_parent(e2b)  # rlang</code></pre>
-<pre><code>## &lt;environment: 0x0000000018b2a188&gt;</code></pre>
+<pre><code>## &lt;environment: 0x0000000018b2c0e0&gt;</code></pre>
 <p>Only one environment doesn’t have a parent: the <strong>empty</strong> environment.</p>
 <pre class="r"><code>emptyenv()  #base</code></pre>
 <pre><code>## &lt;environment: R_EmptyEnv&gt;</code></pre>
@@ -3817,10 +3817,10 @@ e2d &lt;- env(e2c, a = 1, b = 2, c = 3)</code></pre>
 <pre><code>## Error: The empty environment has no parent</code></pre>
 <p>You can list all ancestors of an environment with <code>env_parents()</code>:</p>
 <pre class="r"><code>env_parents(e2b)  # rlang, no base equivalent</code></pre>
-<pre><code>## [[1]]   &lt;env: 0000000018B2A188&gt;
+<pre><code>## [[1]]   &lt;env: 0000000018B2C0E0&gt;
 ## [[2]] $ &lt;env: global&gt;</code></pre>
 <pre class="r"><code>env_parents(e2d)</code></pre>
-<pre><code>## [[1]]   &lt;env: 0000000019A2B128&gt;
+<pre><code>## [[1]]   &lt;env: 0000000019A2B1D0&gt;
 ## [[2]] $ &lt;env: empty&gt;</code></pre>
 <p>By default, <code>env_parents()</code> continues until it hits either the global environment or the empty environment. You can control this behaviour with the <code>last</code> environment.</p>
 </div>
