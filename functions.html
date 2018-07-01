@@ -93,9 +93,6 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
-.html-widget {
-  margin-bottom: 20px;
-}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -622,7 +619,7 @@ f(stop(&quot;This is an error!&quot;))</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x0000000005cb1648&gt;
+## &lt;bytecode: 0x00000000135f2750&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>However, it’s better to use <code>force(x)</code> than just <code>x</code>, even though they do the same thing: <code>force()</code> provides a clear signal that you’re deliberately forcing evaluation.</p>
 <p>It is usually not necessary to force evaluation. It’s primary usage is in higher order functions which return functions. Take this relative simple function. It takes a single argument, and returns a function that when called returns that function.</p>
@@ -671,7 +668,7 @@ g1()</code></pre>
 }
 
 j(runif(1))</code></pre>
-<pre><code>## [1] 0.4138875 0.4138875 0.4138875</code></pre>
+<pre><code>## [1] 0.6232419 0.6232419 0.6232419</code></pre>
 <p>You can also create promises “by hand” using <code>delayedAssign()</code>:</p>
 <pre class="r"><code>delayedAssign(&quot;x&quot;, {
     print(&quot;Executing code&quot;)
@@ -679,9 +676,9 @@ j(runif(1))</code></pre>
 })
 x</code></pre>
 <pre><code>## [1] &quot;Executing code&quot;</code></pre>
-<pre><code>## [1] 0.08941059</code></pre>
+<pre><code>## [1] 0.4452563</code></pre>
 <pre class="r"><code>x</code></pre>
-<pre><code>## [1] 0.08941059</code></pre>
+<pre><code>## [1] 0.4452563</code></pre>
 </div>
 <div id="default-arguments" class="section level3">
 <h3><span class="header-section-number">1.3.3</span> Default arguments</h3>
@@ -794,7 +791,7 @@ f()</code></pre>
     print(x)
 }
 show_time()</code></pre>
-<pre><code>## [1] &quot;2018-06-30 17:09:14 -05&quot;</code></pre>
+<pre><code>## [1] &quot;2018-06-30 21:34:32 -05&quot;</code></pre>
 <p><strong>A</strong>: <code>x</code> is not evaluated until <code>print(x)</code>, at which point the function <code>stop()</code> has been reassigned to <code>Sys.time()</code>.</p></li>
 </ol>
 </div>
@@ -874,7 +871,7 @@ g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
 <pre class="r"><code>mean</code></pre>
 <pre><code>## function (x, ...) 
 ## UseMethod(&quot;mean&quot;)
-## &lt;bytecode: 0x000000000ad16b90&gt;
+## &lt;bytecode: 0x0000000019724300&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>methods(mean)  # first argument of mean(1, 2, 3) is a double - hence mean.default is used</code></pre>
 <pre><code>## [1] mean.Date     mean.default  mean.difftime mean.POSIXct  mean.POSIXlt 
@@ -888,7 +885,7 @@ g(x = 1, 2, 3)  # returns 1, 2, 3</code></pre>
 <pre class="r"><code>plot</code></pre>
 <pre><code>## function (x, y, ...) 
 ## UseMethod(&quot;plot&quot;)
-## &lt;bytecode: 0x000000000898f190&gt;
+## &lt;bytecode: 0x00000000142d0798&gt;
 ## &lt;environment: namespace:graphics&gt;</code></pre>
 <pre class="r"><code>methods(plot)</code></pre>
 <pre><code>##  [1] plot,ANY-method        plot,color-method      plot.acf*             
@@ -1176,7 +1173,7 @@ if (length(x) &lt;= 5) x[[5]] else x[[n]]</code></pre>
 <pre class="r"><code>x &lt;- sample(replace = TRUE, 20, x = c(1:10, NA))
 y &lt;- runif(min = 0, max = 1, 20)
 cor(m = &quot;k&quot;, y = y, u = &quot;p&quot;, x = x)</code></pre>
-<pre><code>## [1] 0.07300534</code></pre>
+<pre><code>## [1] -0.1946809</code></pre>
 <p><strong>A</strong>:</p>
 <pre><code>x &lt;- sample(replace = TRUE, 20, x = c(1:10, NA)) 
 # first arg is x, hence by position, size = 20
@@ -1207,7 +1204,7 @@ cor(m = &quot;k&quot;, y = y, u = &quot;p&quot;, x = x)
 x &lt;- 1:5
 rp(x) &lt;- 6L
 x</code></pre>
-<pre><code>## [1] 1 2 3 6 5</code></pre></li>
+<pre><code>## [1] 1 2 6 4 5</code></pre></li>
 <li><p>Write your own version of <code>+</code> that will paste its inputs together if they are character vectors but behaves as usual otherwise. In other words, make this code work:<br />
 <strong>A</strong>:</p>
 <pre class="r"><code>`+` &lt;- function(x, y) {
@@ -1229,14 +1226,8 @@ x</code></pre>
 <pre class="r"><code>rm(`+`)</code></pre></li>
 <li><p>Create a list of all the replacement functions found in the base package. Which ones are primitive functions? (Hint use <code>apropros()</code>)<br />
 <strong>A</strong>:</p>
-<pre class="r"><code>fn &lt;- apropos(&quot;&lt;-&quot;, where = TRUE, mode = &quot;function&quot;)
-length(fn)</code></pre>
-<pre><code>## [1] 86</code></pre>
-<pre class="r"><code>base_fn &lt;- fn[names(fn) == length(searchpaths())]  # serachpaths always ends in package::base
-names(base_fn) &lt;- NULL
-length(base_fn)</code></pre>
-<pre><code>## [1] 61</code></pre>
-<pre class="r"><code>base_f &lt;- mget(base_fn, inherits = TRUE)
+<pre class="r"><code>base_fn &lt;- lsf.str(baseenv(), pattern = &quot;*&lt;-&quot;, all.names = TRUE)
+base_f &lt;- mget(base_fn, inherits = TRUE)
 base_fp &lt;- base_fn[as.logical(map(base_f, ~is.primitive(.)))]
 length(base_fp)</code></pre>
 <pre><code>## [1] 17</code></pre>

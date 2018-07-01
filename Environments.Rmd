@@ -151,4 +151,27 @@ env_parents(e2d)
 
 By default, `env_parents()` continues until it hits either the global environment or the empty environment. You can control this behaviour with the `last` environment.
 
+## Getting and setting
+You can get and set elements of an environment with `$` and `[[` in the same way as a list:
+```{r}
+e3 <- env(x = 1, y = 2)
+e3$x
+
+e3$z <- 3
+e3[["z"]]
+```
+
+But you can’t use `[[` with numeric indices, and you can’t use `[`:
+```{r, error=TRUE}
+e3[[1]]
+e3[c("x", "y")]
+```
+
+`$` and `[[` will return `NULL` if the binding does not exist. Use `env_get()` if you want an error or get a default value:
+```{r, error=TRUE}
+e3$xyz
+env_get(e3, "xyz")
+env_get(e3, "xyz", default = NA)
+```
+
 

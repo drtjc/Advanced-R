@@ -1007,11 +1007,7 @@ Finally, there are a bunch of language features that are usually written in spec
 6. Create a list of all the replacement functions found in the base package. Which ones are primitive functions? (Hint use `apropros()`)  
 **A**: 
     ```{r}
-    fn <- apropos("<-", where = TRUE, mode = "function")
-    length(fn)
-    base_fn <- fn[names(fn) == length(searchpaths())] # serachpaths always ends in package::base
-    names(base_fn) <- NULL
-    length(base_fn)
+    base_fn <- lsf.str(baseenv(), pattern = "*<-", all.names = TRUE)
     base_f <- mget(base_fn, inherits = TRUE)
     base_fp <- base_fn[as.logical(map(base_f, ~ is.primitive(.)))]
     length(base_fp)

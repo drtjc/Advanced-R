@@ -5,11 +5,25 @@ library(purrr)
 library(pryr)
 library(rlang)
 
-emptyenv() #base
-empty_env() # rlang
+
+bb <- lsf.str(baseenv(), pattern = "*<-", all.names = TRUE)
+setdiff(base_fn, bb)
 
 
+fn <- apropos("<-", where = TRUE, mode = "function")
+length(fn)
+base_fn <- fn[names(fn) == length(searchpaths())] # serachpaths always ends in package::base
+names(base_fn) <- NULL
 
+
+length(base_fn)
+
+
+base_fn <- lsf.str(baseenv(), pattern = "*<-", all.names = TRUE)
+base_f <- mget(base_fn, inherits = TRUE)
+base_fp <- base_fn[as.logical(map(base_f, ~ is.primitive(.)))]
+length(base_fp)
+base_fp
 
 # f1 <- factor("a")
 # f2 <- factor("b")
