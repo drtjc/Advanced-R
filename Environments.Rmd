@@ -216,4 +216,81 @@ Unbinding a name doesn’t delete the object. That’s the job of the garbage co
 
 Beware `get()`, `assign()`, and `exists()`. The `inherits` argument defaults to `TRUE` meaning that they  will inspect the supplied environment and all its ancestors.
 
+## Advanced bindings
+`delayedAssign()` creates delayed bindings, which are evaluated the first time they are accessed. Behind the scenes, delayed bindings create promises, so behave in the same way as function arguments.
+```{r}
+p1 <- {print("hi1"); 1}
+delayedAssign("p2", {print("hi2"); 2})
+p2
+```
+
+**Delayed bindings** are used to implement `autoload()`, which makes R behave as if the package data is in memory, even though it’s only loaded from disk when you ask for it.
+
+The idea of an **active binding** is that you can define something that looks like a variable but it actually invokes a function each time it is accessed. `makeActiveBinding()` creates active bindings which are re-computed every time they’re accessed:
+```{r}
+x <- runif(1)
+x
+x
+rm(x)
+
+makeActiveBinding("x", function() runif(1), globalenv())
+x
+x
+rm(x)
+```
+
+Active bindings can also be "set":
+```{r}
+f <- function(x) {
+  if (missing(x)) {
+    print("get")
+  } else {
+    print(paste("set", x))
+  }
+}
+
+makeActiveBinding("y", f, globalenv())
+y # "get" value
+y <- 1 # "set" value
+rm(y)
+```
+
+## Exercises
+1. List three ways in which an environment differs from a list.  
+**A**: The most important differences are:  
+
+  * environments have reference semantics (they are modifed in place and can contain themselves)
+  * environments have parents
+  * environments are not ordered
+  * elements of environments need to be (uniquely) named
+  
+2. Create an environment as illustrated by this picture.  
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/recursive-1.png")
+```
+**A**:
+    ```{r}
+    e <- new.env()
+    e$loop <- e
+    ```
+
+3. Create an environment as illustrated by this picture.  
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/recursive-2.png")
+```
+**A**:
+    ```{r}
+    e1 <- new.env()
+    e2 <- new.env()
+    e1$loop <- e2
+    e2$dedoop <- e1
+    ```
+
+4. Explain why `e[[1]]` and `e[c("a", "b")]` don’t make sense when e is an environment.  
+**A**: Environments are not ordered; environments are not subsettable for multiple elements
+
+
+
+
+
 

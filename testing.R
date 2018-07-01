@@ -6,11 +6,14 @@ library(pryr)
 library(rlang)
 
 
-e3 <- env(x = 1, y = 2)
-e3$x
 
 
-get("x", e3)
+
+e1 <- new.env()
+e1$a <- e1
+ls.str(e1)
+
+
 
 
 
