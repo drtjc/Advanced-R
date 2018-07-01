@@ -62,21 +62,23 @@ The job of an environment is to associate, or bind, a set of names to a set of v
 knitr::include_graphics("Images/bindings.png")
 ```
 
+The objects don’t live in the environment so multiple names can point to the same object:
+```{r}
+e1$b <- e1$d
+```
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/multiple-names.png")
+```
+
 Environments have reference semantics: unlike most R objects, when you modify them, you modify them in place, and don’t create a copy. One important implication is that environments can contain themselves.
 ```{r}
 e1$d <- e1
 env_print(e1)
 ```
 
-One important implication is that environments can contain themselves.
-
 ```{r, out.width="400px", echo=FALSE}
 knitr::include_graphics("Images/loop.png")
-```
-
-TJC: diagram may be incorrect:
-```{r}
-e1$a # FALSE, not 1:3
 ```
 
 There is essentially infinite nesting:
@@ -167,11 +169,51 @@ e3[[1]]
 e3[c("x", "y")]
 ```
 
-`$` and `[[` will return `NULL` if the binding does not exist. Use `env_get()` if you want an error or get a default value:
+`$` and `[[` will return `NULL` if the binding does not exist. Use `get()` or `env_get()` if you want an error or get a default value:
 ```{r, error=TRUE}
-e3$xyz
-env_get(e3, "xyz")
+e3$xyz 
+get("xyz", pos = e3) # base
+env_get(e3, "xyz") # rlang
 env_get(e3, "xyz", default = NA)
 ```
+
+You can add bindings to an environment:
+
+```{r}
+# base
+assign("a", 10, e3)
+assign("b", 20, e3)
+ls.str(e3)
+
+# rlang
+env_bind(e3, a = 10, b = 20)
+```
+
+You can determine if an environment has a binding:
+```{r}
+exists("x", e3) # base
+env_has(e3, "x") # rlang
+```
+
+Unlike lists, setting an element to `NULL` does not remove it. In environments, that will create a new binding to `NULL`. Instead:
+```{r}
+# base
+e4 <- new.env()
+e4$a <- 1
+e4$a <- NULL
+ls(e4)
+rm("a", envir = e4)
+ls(e4)
+
+# rlang
+e4$a <- 1
+ls(e4)
+env_unbind(e4, "a")
+ls(e4)
+```
+
+Unbinding a name doesn’t delete the object. That’s the job of the garbage collector, which automatically removes objects with no names binding to them.
+
+Beware `get()`, `assign()`, and `exists()`. The `inherits` argument defaults to `TRUE` meaning that they  will inspect the supplied environment and all its ancestors.
 
 

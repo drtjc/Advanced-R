@@ -6,12 +6,13 @@ library(pryr)
 library(rlang)
 
 
+e3 <- env(x = 1, y = 2)
+e3$x
 
-base_fn <- lsf.str(baseenv(), pattern = "*<-", all.names = TRUE)
-base_f <- mget(base_fn, inherits = TRUE)
-base_fp <- base_fn[map_lgl(base_f, ~ is.primitive(.))]
-length(base_fp)
-base_fp
+
+get("x", e3)
+
+
 
 # f1 <- factor("a")
 # f2 <- factor("b")
