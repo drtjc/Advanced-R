@@ -38,11 +38,14 @@ The environment is the data structure that powers many important R features like
 ## Basics
 Create a new environment using `new.env()`:
 ```{r}
-e1 <- new.env()
+e1 <- new.env() # base
 e1$a <- FALSE
 e1$b <- "a"
 e1$c <- 2.3
 e1$d <- 1:3
+
+# rlang
+e1 <- env(a = FALSE, b = "a", c = 2.3, d = 1:3)
 
 names(e1)
 env_names(e1) # rlang function
@@ -87,4 +90,65 @@ e1$d$d$b
 ```
 
 ## Important environments
+The current environment, or `current_env()` is the environment in which code is currently executing. When you’re experimenting interactively, that’s usually the global environment, or `global_env()`. The global environment is sometimes called your “workspace”, as it’s where all interactive (i.e. outside of a funtion) computation takes place.
+```{r, error=TRUE}
+environment() # base
+current_env() # rlang
+
+globalenv() # base
+global_env() # rlang
+
+identical(globalenv(), environment())
+globalenv() == environment() # note, don't use ==
+```
+
+## Parents
+Every environment has a **parent**, another environment. The parent is what’s used to implement lexical scoping: if a name is not found in an environment, then R will look in its parent (and so on).
+
+You can set the parent environment by supplying an unnamed argument to 'env()', or setting providing the parent in `new.env()` . If you don’t supply it, it defaults to the current environment.
+
+```{r}
+e2a <- env(d = 4, e = 5)
+e2b <- env(e2a, a = 1, b = 2, c = 3)
+```
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/parents.png")
+```
+
+You can find the parent of an environment:
+```{r}
+parent.env(e2a) # base
+env_parent(e2a) # rlang
+parent.env(e2b) # base
+env_parent(e2b) # rlang
+```
+
+Only one environment doesn’t have a parent: the **empty** environment.
+```{r}
+emptyenv() #base
+empty_env() # rlang
+
+e2c <- env(empty_env(), d = 4, e = 5)
+e2d <- env(e2c, a = 1, b = 2, c = 3)
+```
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/parents-empty.png")
+```
+
+You’ll get an error if you try and find the parent of the empty environment:
+```{r, error=TRUE}
+parent.env(emptyenv()) # base
+env_parent(empty_env()) # rlang
+```
+
+You can list all ancestors of an environment with `env_parents()`:
+```{r}
+env_parents(e2b) # rlang, no base equivalent
+env_parents(e2d)
+```
+
+By default, `env_parents()` continues until it hits either the global environment or the empty environment. You can control this behaviour with the `last` environment.
+
 
