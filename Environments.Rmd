@@ -289,6 +289,53 @@ knitr::include_graphics("Images/recursive-2.png")
 4. Explain why `e[[1]]` and `e[c("a", "b")]` don’t make sense when e is an environment.  
 **A**: Environments are not ordered; environments are not subsettable for multiple elements
 
+## Recursing over environments
+If you want to operate on every ancestor of an environment, it’s often convenient to write a recursive function. This section shows you how, applying your new knowledge of environments to write a function that given a name, finds the environment `where()` that name is defined, using R’s regular scoping rules.
+
+The definition of `where()` is straightforward. It has two arguments: the name to look for (as a string), and the environment in which to start the search. (We’ll learn why `caller_env()` is a good default in calling environments.)
+```{r, error=TRUE}
+where <- function(name, env = caller_env()) {
+  if (identical(env, empty_env())) {
+    # Base case
+    stop("Can't find ", name, call. = FALSE)
+  } else if (env_has(env, name)) {
+    # Success case
+    env
+  } else {
+    # Recursive case
+    where(name, env_parent(env))
+  }
+}
+
+where("yyy")
+x <- 5
+where("x")
+where("mean")
+```
+
+It might help to see a picture. Imagine you have two environments, as in the following code and diagram:
+```{r}
+e4a <- env(empty_env(), a = 1, b = 2)
+e4b <- env(e4a, x = 10, a = 11)
+```
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/where-ex.png")
+```
+
+* `where("a"", e4a)` will find `a` in `e4a`.
+* `where("b", e4a)` doesn’t find `b` in `e4a`, so it looks in its parent, `e4b`, and finds it there.
+* `where("c", e4a)` looks in `e4a`, then `e4b`, then hits the empty environment and throws an error.
+
+```{r, error=TRUE}
+where("a", e4a)
+where("b", e4a)
+where("c", e4a)
+```
+
+### Exercises
+1. Modify `where()` to return all environments that contain a binding for name. Carefully think through what type of object the function will need to return.
+
 
 
 
