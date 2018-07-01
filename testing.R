@@ -10,7 +10,7 @@ library(rlist)
 
 
 
-search()
+rm(getEnv)
 
 
 # f1 <- factor("a")
