@@ -627,10 +627,29 @@ knitr::include_graphics("Images/closure.png")
 knitr::include_graphics("Images/closure-call.png")
 ```
 
+### Exercises
+1. How is `search_envs()` different to `env_parents(global_env())`?  
+**A**: `search_envs()` is not defined in rlang version 0.2.0.9001.
 
+2. Draw a diagram that shows the enclosing environments of this function:
+```{r}
+f1 <- function(x1) {
+  f2 <- function(x2) {
+    f3 <- function(x3) {
+      x1 + x2 + x3
+    }
+    f3(3)
+  }
+  f2(2)
+}
+f1(1)
+```
+**A**:
+TJC
 
-
-
+3. Write an enhanced version of `str()` that provides more information about functions. Show where the function was found and what environment it was defined in.  
+**A**:
+TJC
 
 
 
