@@ -7,7 +7,24 @@ library(rlang)
 library(rlist)
 
 
-packageVersion("rlang")
+f <- function(x) {
+  g(x = 2)
+}
+g <- function(x) {
+  h(x = 3)
+}
+h <- function(x) {
+  lobstr::cst()
+}
+
+a <- function(x) b(x)
+b <- function(x) c(x)
+c <- function(x) x
+
+a(f())
+
+parent.env(parent.env(globalenv()))
+
 
 
 

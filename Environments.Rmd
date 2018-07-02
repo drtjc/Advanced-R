@@ -592,7 +592,7 @@ knitr::include_graphics("Images/execution.png")
 
 * **Step 2**: `a` is bound to the object/value `2` in the execution environment.
 
-* **Step 3**: Function completes and `y` in the ?calling? environment is assigned `3`.
+* **Step 3**: Function completes and `y` in the ?TJC calling? environment is assigned `3`.
 
 The execution environment is usually ephemeral; once the function has completed, the environment will be GC’d. There are several ways to make it stay around for longer. The first is to explicitly return it:
 ```{r}
@@ -651,6 +651,66 @@ TJC
 **A**:
 TJC
 
+## The call stack
+There is one last environment we need to explain, the **caller** environment, accessed with `parent.frame()` or `rlang::caller_env()`. This provides the environment from which the function was called, and hence varies based on how the function is called, not how the function was created. 
+
+To fully understand the caller environment we need to discuss two related concepts: the **call stack**, which is made up of **frames**. Executing a function creates two types of context. You’ve learn about one already: the execution environment is a child of the function (enclosing) environment, which is determined by where the function was created. There’s another type of context created by where the function was called: this is called the call stack.
+
+Let’s illustrate this with a simple sequence of calls: f() calls g() calls h().
+
+```{r}
+f <- function(x) {
+  g(x = 2)
+}
+g <- function(x) {
+  h(x = 3)
+}
+h <- function(x) {
+  stop()
+}
+```
+
+The way you most commonly see a call stack in R is by looking at the `traceback()` after an error has occured:
+```{r, eval = FALSE}
+f(x = 1)
+traceback()
+
+## Error in h(x = 3)
+
+## 4: stop() at #2 
+
+## 3: h(x = 3) at #2
+
+## 2: g(x = 2) at #2  
+
+## 1: f(x = 1)
+```
+
+Instead of `stop()` `+` `traceback()` to understand the call stack, we’re going to use `lobstr::cst()` to print out the **c**all **s**tack **t**ree:
+```{r}
+h <- function(x) {
+  lobstr::cst()
+}
+f(x = 1)
+```
+
+### Lazy evaluation
+The call stack above is simple - while you get a hint that there’s some tree-like structure involved, everything happens on a single branch. This is typical of a call stack when all arguments are eagerly evaluated.
+
+Let’s create a more complicated example that involves some lazy evaluation. We’ll create a sequence of functions, `a()`, `b()`, `c()`, that pass along an argument `x`.
+```{r, e}
+a <- function(x) b(x)
+b <- function(x) c(x)
+c <- function(x) x
+
+a(f())
+```
+
+`x` is lazily evaluated so this tree gets two branches. In the first branch `a()` calls `b()`, then `b()` calls `c()`. The second branch starts when `c()` evaluates its argument `x`. This argument is evaluated in a new branch because the environment in which it is evaluated is the global environment, not the environment of `c()`.
+
+
+https://stackoverflow.com/questions/7903414/how-are-environments-enclosures-and-frames-related
+https://www.r-bloggers.com/using-closures-as-objects-in-r/
 
 
 TJC: binding, enclosing, execution and calling environment - give example where all 4 are different
