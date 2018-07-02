@@ -486,8 +486,6 @@ find("f")
 
 The enclosing environment is still the namespace ''stats''. That's where the function is created. However, the binding environment is now the global environment. That's where the name "f" is bound to the object.
 
-
-
 ### Namespaces
 In the diagram above, you saw that the parent environment of a package varies based on what other packages have been loaded. This seems worrying: doesn’t that mean that the package will find different functions if packages are loaded in a different order? The goal of namespaces is to make sure that this does not happen, and that every package works the same way regardless of what packages are attached by the user.
 
@@ -500,9 +498,60 @@ sd
 
 R avoids this problem by taking advantage of the function (used for lexical scoping) vs. binding environment described above. Every function in a package is associated with a pair of environments: the package environment, which you learned about earlier, and the namespace environment.
 
+* The package environment is the external interface to the package. It’s how you, the R user, find a function in an attached package or with `::`. Its parent is determined by search path, i.e. the order in which packages have been attached.(Binding environment)
 
+* The namespace environment is the internal interface to the package. The package environment controls how we find the function; the namespace controls how the function finds its variables.(Enclosing/function environment)
 
-https://stackoverflow.com/questions/44427752/distinct-enclosing-environment-function-environment-etc-in-r
+Every binding in the package environment is also found in the namespace environment; this ensures every function can use every other function in the package. But some bindings only occur in the namespace environment. These are known as internal or non-exported objects, which make it possible to hide internal implementation details from the user.
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/namespace-bind.png")
+```
+
+`sd` is bound in both the `package:stats` and `namespace:stats` environments, but `sd()` binds the `namespace:stats` environment. 
+
+Every namespace environment has the same set of ancestors:
+
+* Each namespace has an **imports** environment that contains bindings to all the functions used by the package. The imports environment is controlled by the package developer with the `NAMESPACE` file.
+*
+* Explicitly importing every base function would be tiresome, so the parent of the imports environment is the base namespace. The base namespace contains the same bindings as the base environment, but it has different parent.
+
+* The parent of the base namespace is the global environment. This means that if a binding isn’t defined in the imports environment the packge will look for it in the usual way. This is usually a bad idea (because it makes code depend on other loaded packages), so `R CMD check` automatically warns about such code. It is needed primarily for historical reasons, particularly due to how S3 method dispatch works
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/namespace-env.png")
+```
+
+Putting all these diagrams together we get:
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/namespace.png")
+```
+Note that there’s no direct link between the package and namespace environments; the link is defined by the function environments.
+
+#### Don't do this!
+But consider this, in which we also change the enclosing environment of the copied `sd()` to the global environment!!
+```{r}
+environment(sd)
+find("sd")
+sd(1:3)
+
+environment(sd) <- globalenv()
+environment(sd) # enclosing environment
+find("sd") # find the binding environment 
+globalenv()$sd(1:3) # or just sd() as global env is first in search path
+
+# sd() uses var() - redefine var in the global environment!
+# This is hackish and dangerouus!
+var <- function(x, na.rm = TRUE) 100
+globalenv()$sd(1:3)
+stats::sd(1:3)
+
+rm(var)
+rm(sd)
+environment(sd)
+```
+
+See https://stackoverflow.com/questions/44427752/distinct-enclosing-environment-function-environment-etc-in-r for some good information.
 
 
 
