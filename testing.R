@@ -9,12 +9,6 @@ library(rlist)
 
 
 
-rm(var)
-
-
-
-
-
 
 
 
