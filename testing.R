@@ -6,27 +6,32 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-
-f <- function(x) {
-  g(x = 2)
+f <- function() {
+  print(parent.frame())
+  print(sys.nframe())
+  print(sys.frame(sys.nframe()))
+  print(environment())
+  print(sys.parent())
+  print(sys.call())
+  print(sys.on.exit())
+  g <- function(x) {
+    print(parent.frame())
+    print(sys.nframe())
+    print(sys.frame(sys.nframe()))
+    print(environment())
+    print(sys.parent())
+    print(sys.call())
+    print(sys.on.exit())
+    #sys.status()
+  }
+  g()
 }
-g <- function(x) {
-  h(x = 3)
-}
-h <- function(x) {
-  lobstr::cst()
-}
 
-a <- function(x) b(x)
-b <- function(x) c(x)
-c <- function(x) x
+f()
 
-a(f())
-
-parent.env(parent.env(globalenv()))
-
-
-
+environment(f)
+obj_addr(environment(sys.status))
+obj_addr(globalenv())
 
 # f1 <- factor("a")
 # f2 <- factor("b")
