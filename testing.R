@@ -6,32 +6,12 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-f <- function() {
-  print(parent.frame())
-  print(sys.nframe())
-  print(sys.frame(sys.nframe()))
-  print(environment())
-  print(sys.parent())
-  print(sys.call())
-  print(sys.on.exit())
-  g <- function(x) {
-    print(parent.frame())
-    print(sys.nframe())
-    print(sys.frame(sys.nframe()))
-    print(environment())
-    print(sys.parent())
-    print(sys.call())
-    print(sys.on.exit())
-    #sys.status()
-  }
-  g()
-}
+# TJC: binding, enclosing, execution and calling environment - give example where all 4 are different
 
-f()
 
-environment(f)
-obj_addr(environment(sys.status))
-obj_addr(globalenv())
+
+
+
 
 # f1 <- factor("a")
 # f2 <- factor("b")

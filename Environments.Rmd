@@ -698,7 +698,7 @@ f(x = 1)
 The call stack above is simple - while you get a hint that there’s some tree-like structure involved, everything happens on a single branch. This is typical of a call stack when all arguments are eagerly evaluated.
 
 Let’s create a more complicated example that involves some lazy evaluation. We’ll create a sequence of functions, `a()`, `b()`, `c()`, that pass along an argument `x`.
-```{r, e}
+```{r}
 a <- function(x) b(x)
 b <- function(x) c(x)
 c <- function(x) x
@@ -708,12 +708,176 @@ a(f())
 
 `x` is lazily evaluated so this tree gets two branches. In the first branch `a()` calls `b()`, then `b()` calls `c()`. The second branch starts when `c()` evaluates its argument `x`. This argument is evaluated in a new branch because the environment in which it is evaluated is the global environment, not the environment of `c()`.
 
+### Frames
+Each element of the call stack is a frame, also known as an evaluation context. A frame has three main components that are accessible from R:
 
+* An expression (labelled with `expr`) giving the function call. This is what `traceback()` prints out.
+
+* An environment (labelled with `env`), which is typically the execution environment of a funtion. There are two main exceptions: the environment of the global frame is the global environment, and calling `eval()` also generates frames, where the environment can be anything.
+
+* A parent, the previous call in the call stack (shown by a grey arrow).
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/calling.png")
+```
+
+To focus on the calling environments, I have omitted the bindings in the global environment from `f`, `g`, and `h` to the respective function objects.)
+
+The frame also holds exit handlers created with `on.exit()`, restarts and handlers for the the condition system, and which context to `return()` to when a function completes. These are important for the internal operation of R, but are not directly accessible.
+
+Consider this function structure:
+```{r, eval=FALSE}
+f <- function() {
+  g <- function(x) {
+  }
+  g()
+}
+
+f()
+```
+
+```{r, out.width="400px", echo=FALSE}
+knitr::include_graphics("Images/frames.png")
+```
+
+```{r, eval=FALSE}
+f <- function() {
+  print("f")
+  print(parent.frame())
+  print(sys.nframe())
+  print(sys.frame(sys.nframe()))
+  print(environment())
+  print(sys.parent())
+  print(sys.call())
+  print(sys.on.exit())
+  g <- function(x) {
+    cat("\ng\n")
+    print(parent.frame())
+    print(sys.nframe())
+    print(sys.frame(sys.nframe()))
+    print(environment())
+    print(sys.parent())
+    print(sys.call())
+    print(sys.on.exit())
+    cat("\n")
+    lobstr::cst()
+  }
+  g()
+}
+
+f()
+```
+
+```
+[1] "f"
+<environment: R_GlobalEnv>
+[1] 1
+<environment: 0x000000001684fcc0>
+<environment: 0x000000001684fcc0>
+[1] 0
+f()
+NULL
+
+g<environment: 0x000000001684fcc0>
+[1] 2
+<environment: 0x000000001680ab58>
+<environment: 0x000000001680ab58>
+[1] 1
+g()
+NULL
+
+x
+\-f()
+  \-g()
+    \-lobstr::cst()
+```
+
+### Dynamic scoping
+Looking up variables in the calling stack rather than in the enclosing environment is called dynamic scoping. Few languages implement dynamic scoping because dynamic scoping makes it much harder to reason about how a function operates: not only do you need to know how it was defined, you also need to know the context in which it was called. Dynamic scoping is primarily useful for developing functions that aid interactive data analysis. It is one of the topics discussed in non-standard evaluation.
+
+### Exercises
+1. Write a function that lists all the variables defined in the environment in which it was called. It should return the same results as `ls()`.
+
+**A**: 
+    ```{r, eval=FALSE}
+    x <- 1
+    ls_call <- function() {
+      y <- 1
+      print(ls())
+      ls(parent.frame())
+    }
+    ls()
+    ls_call()
+    ```
+
+    ```
+    > ls()
+    [1] "ls_call" "x"      
+    > ls_call()
+    [1] "y"
+    [1] "ls_call" "x"  
+    ```
+### As data structures
+As well as powering scoping, environments are also useful data structures in their own right because they have reference semantics. There are three common problems that they can help solve:
+
+* Avoiding copies of large data. Since environments have reference semantics, you’ll never accidentally create a copy. This makes it a useful vessel for large objects. Bare environments are not that pleasant to work with; I recommend using R6 objects instead.
+
+* Managing state within a package. Explicit environments are useful in packages because they allow you to maintain state across function calls. Normally, objects in a package are locked, so you can’t modify them directly. Instead, you can do something like this:
+
+    ```{r}
+    my_env <- new.env(parent = emptyenv())
+    my_env$a <- 1
+    
+    get_a <- function() {
+      my_env$a
+    }
+    set_a <- function(value) {
+      old <- my_env$a
+      my_env$a <- value
+      invisible(old)
+    }
+    ```
+Returning the old value from setter functions is a good pattern because it makes it easier to reset the previous value in conjunction with `on.exit()`.
+
+* As a hashmap. A hashmap is a data structure that takes constant, O(1), time to find an object based on its name. Environments provide this behaviour by default, so can be used to simulate a hashmap. 
+
+### `<<-`
+The ancestors of an environment have an important relationship to `<<-`. The regular assignment arrow, `<-`, always creates a variable in the current environment. The deep assignment arrow, `<<-`, never creates a variable in the current environment, but instead modifies an existing variable found by walking up the parent environments.
+
+```{r}
+x <- 0
+f <- function() {
+  x <<- 1
+}
+f()
+x
+```
+
+If `<<-` doesn’t find an existing variable, it will create one in the global environment. This is usually undesirable, because global variables introduce non-obvious dependencies between functions. `<<-` is most often used in conjunction with a closure.
+
+### Exercises
+1. What does this function do? How does it differ from `<<-` and why might you prefer it?  
+```{r, error=TRUE}
+rebind <- function(name, value, env = caller_env()) {
+  if (identical(env, empty_env())) {
+    stop("Can't find `", name, "`", call. = FALSE)
+  } else if (env_has(env, name)) {
+    env_poke(env, name, value)
+  } else {
+    rebind(name, value, env_parent(env))
+  }
+}
+rebind("a", 10)
+a <- 5
+rebind("a", 10)
+a
+```
+**A**: Same as `<<-` except does not create a variable in the global environment if not found beforehand.
+
+### Resources
 https://stackoverflow.com/questions/7903414/how-are-environments-enclosures-and-frames-related
 https://www.r-bloggers.com/using-closures-as-objects-in-r/
 
-
-TJC: binding, enclosing, execution and calling environment - give example where all 4 are different
 
 
 
