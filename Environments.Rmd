@@ -228,15 +228,15 @@ p2
 
 The idea of an **active binding** is that you can define something that looks like a variable but it actually invokes a function each time it is accessed. `makeActiveBinding()` creates active bindings which are re-computed every time they’re accessed:
 ```{r}
-# x <- runif(1)
-# x
-# x
-# rm(x)
-# 
-# makeActiveBinding("x", function() runif(1), globalenv())
-# x
-# x
-# rm(x)
+x <- runif(1)
+x
+x
+rm(x)
+
+makeActiveBinding("x", function() runif(1), globalenv())
+x
+x
+rm(x)
 ```
 
 Active bindings can also be "set":
@@ -249,10 +249,10 @@ f <- function(x) {
   }
 }
 
-makeActiveBinding("y", f, globalenv())
-y # "get" value
-y <- 1 # "set" value
-rm(y)
+makeActiveBinding("yy", f, globalenv())
+yy # "get" value
+yy <- 1 # "set" value
+rm(yy)
 ```
 
 ## Exercises
