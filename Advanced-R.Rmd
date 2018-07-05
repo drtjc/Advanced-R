@@ -32,13 +32,15 @@ library(pryr)
 
 ```{r child_YAML, child = "Subsetting.Rmd", cache=TRUE}
 ```
-
+  
 ```{r child_YAML, child = "functions.Rmd", results='markup', cache=TRUE}
 ```
 
-```{r child_YAML, child = "Environments.Rmd", results='markup'}
+```{r child_YAML, child = "Environments.Rmd", results='markup', cache=FALSE}
 ```
 
+```{r child_YAML, child = "Conditions.Rmd", results='markup'}
+```
 
 
 # DO RECURSIVE SUBSETTING
