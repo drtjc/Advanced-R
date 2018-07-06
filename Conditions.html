@@ -318,8 +318,69 @@ file_remove(&quot;nosuchfile.no&quot;)</code></pre>
 <li><p>What does <code>options(error = quote(dump.frames(to.file = TRUE)))</code> do? Why might you use it?<br />
 <strong>A</strong>: Dumps error information to a file. Might be used for post-mortem debugging in non-interactive sessions.</p></li>
 </ol>
-<p>signalConditon q or quit getermessage debugger browser</p>
 </div>
+</div>
+<div id="ignoring-conditions" class="section level2">
+<h2><span class="header-section-number">1.3</span> Ignoring conditions</h2>
+<p>The simplest way of handling conditions in R is to simply ignore them:</p>
+<ul>
+<li>Ignore errors with <code>try()</code>.</li>
+<li>Ignore warnings with <code>suppressWarnings()</code>.</li>
+<li>Ignore messages with <code>suppressMessages()</code>.</li>
+</ul>
+<p>These functions are heavy handed as you can’t use them to suppress a single type of condition that you know about, while allowing everything else to pass through. We’ll come back to that challenge later in the chapter.</p>
+<p><code>try()</code> allows execution to continue even after an error has occurred. Normally if you run a function that throws an error, it terminates immediately and doesn’t return a value:</p>
+<pre class="r"><code>f1 &lt;- function(x) {
+    log(x)
+    10
+}
+f1(&quot;x&quot;)</code></pre>
+<pre><code>## Error in log(x): non-numeric argument to mathematical function</code></pre>
+<p>It is possible, but not recommended, to save the result of <code>try()</code> and perform different actions based on whether or not the code succeed or failed.</p>
+<pre class="r"><code>class(try(log(&quot;x&quot;)))</code></pre>
+<pre><code>## [1] &quot;try-error&quot;</code></pre>
+<pre class="r"><code>class(try(log(100)))</code></pre>
+<pre><code>## [1] &quot;numeric&quot;</code></pre>
+<pre class="r"><code>err &lt;- try(log(&quot;x&quot;))
+class(err)</code></pre>
+<pre><code>## [1] &quot;try-error&quot;</code></pre>
+<pre class="r"><code>(a1 &lt;- attributes(err))</code></pre>
+<pre><code>## $class
+## [1] &quot;try-error&quot;
+## 
+## $condition
+## &lt;simpleError in log(&quot;x&quot;): non-numeric argument to mathematical function&gt;</code></pre>
+<pre class="r"><code>str(a1$condition)</code></pre>
+<pre><code>## List of 2
+##  $ message: chr &quot;non-numeric argument to mathematical function&quot;
+##  $ call   : language log(&quot;x&quot;)
+##  - attr(*, &quot;class&quot;)= chr [1:3] &quot;simpleError&quot; &quot;error&quot; &quot;condition&quot;</code></pre>
+<pre class="r"><code>(a2 &lt;- attributes(a1$condition))</code></pre>
+<pre><code>## $names
+## [1] &quot;message&quot; &quot;call&quot;   
+## 
+## $class
+## [1] &quot;simpleError&quot; &quot;error&quot;       &quot;condition&quot;</code></pre>
+<pre class="r"><code>str(a2)</code></pre>
+<pre><code>## List of 2
+##  $ names: chr [1:2] &quot;message&quot; &quot;call&quot;
+##  $ class: chr [1:3] &quot;simpleError&quot; &quot;error&quot; &quot;condition&quot;</code></pre>
+<pre class="r"><code>attributes(a2)</code></pre>
+<pre><code>## $names
+## [1] &quot;names&quot; &quot;class&quot;</code></pre>
+<p>Instead, it is better to use <code>tryCatch()</code> or a higher-level helper; you’ll learn about those shortly. A simple, but useful, pattern is to do assignment inside the call: this lets you define a default value to be used if the code does not succeed.</p>
+<pre class="r"><code>read.csv(&quot;possibly-bad-input.csv&quot;)</code></pre>
+<pre><code>## Warning in file(file, &quot;rt&quot;): cannot open file 'possibly-bad-input.csv': No
+## such file or directory</code></pre>
+<pre><code>## Error in file(file, &quot;rt&quot;): cannot open the connection</code></pre>
+<pre class="r"><code>default &lt;- NULL
+try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</code></pre>
+<pre><code>## Warning in file(file, &quot;rt&quot;): cannot open file 'possibly-bad-input.csv': No
+## such file or directory</code></pre>
+<pre class="r"><code>default</code></pre>
+<pre><code>## NULL</code></pre>
+<p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a></p>
+<p>signalConditon q or quit getermessage debugger browser interrupt</p>
 </div>
 </div>
 

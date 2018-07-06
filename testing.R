@@ -6,26 +6,43 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-class(last.dump)
-typeof(last.dump)
-
-str(last.dump)
-
-debugger()
-
-(suppressWarnings(file.remove("nosuchfile.no")))
 
 
-options(error = recover)
-options(error = quote(dump.frames(to.file = TRUE)))
-options(error = NULL)
-file_remove <- function(...) {
-  if (!suppressWarnings(file.remove(...))) stop ("No such file")
+tryCatch(1, finally = print("Hello"))
+e <- simpleError("test error")
+## Not run: 
+stop(e)
+tryCatch(stop(e), finally = print("Hello"))
+tryCatch(stop("fred"), finally = print("Hello"))
+
+f2 <- function(x) {
+  try(log(x))
+  10
 }
+f2("a")
 
-file_remove("nosuchfile.no")
+err <- try(log("a"))
+class(err)
+(a1 <- attributes(err))
+str(a1$condition)
+(a2 <- attributes(a1$condition))
+str(a2)
+attributes(a2)
 
-quote(file_remove())
+cnd <- attributes(err)$condition
+conditionCall(cnd)
+conditionMessage(cnd)
+class(cnd)
+names(cnd)
+str(cnd)
+
+
+str(err)
+
+err <- try(stop("Err"))
+
+
+
 # f1 <- factor("a")
 # f2 <- factor("b")
 # c(f1, f2)

@@ -129,10 +129,61 @@ Generally any function that produces a message should have some way to suppress 
 4. What does `options(error = quote(dump.frames(to.file = TRUE)))` do? Why might you use it?  
 **A**: Dumps error information to a file. Might be used for post-mortem debugging in non-interactive sessions.
 
+## Ignoring conditions
+The simplest way of handling conditions in R is to simply ignore them:
+
+* Ignore errors with `try()`.
+* Ignore warnings with `suppressWarnings()`.
+* Ignore messages with `suppressMessages()`.
+
+These functions are heavy handed as you can’t use them to suppress a single type of condition that you know about, while allowing everything else to pass through. We’ll come back to that challenge later in the chapter.
+
+`try()` allows execution to continue even after an error has occurred. Normally if you run a function that throws an error, it terminates immediately and doesn’t return a value:
+
+```{r, error=TRUE}
+f1 <- function(x) {
+  log(x)
+  10
+}
+f1("x")
+```
+
+It is possible, but not recommended, to save the result of `try()` and perform different actions based on whether or not the code succeed or failed. 
+
+```{r, error=TRUE}
+class(try(log("x")))
+class(try(log(100)))
+
+err <- try(log("x"))
+class(err)
+(a1 <- attributes(err))
+str(a1$condition)
+(a2 <- attributes(a1$condition))
+str(a2)
+attributes(a2)
+```
+
+Instead, it is better to use `tryCatch()` or a higher-level helper; you’ll learn about those shortly. A simple, but useful, pattern is to do assignment inside the call: this lets you define a default value to be used if the code does not succeed.
+
+```{r, error=TRUE}
+read.csv("possibly-bad-input.csv")
+
+default <- NULL
+try(default <- read.csv("possibly-bad-input.csv"), silent = TRUE)
+default
+```
+
+## Handling conditions
+Every condition has default behaviour: errors stop execution and return to the top level, warnings are captured and displayed in aggregate, and messages are immediately displayed. Condition handlers allow us to temporarily override or supplement the default behaviour.
+
+Two functions, `tryCatch()` and `withCallingHandlers()`, allow us to register handlers, functions that take the signalled condition as their single argument. The registration functions have the same basic form:
 
 
 
 
+
+https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html
+http://www.win-vector.com/blog/2012/10/error-handling-in-r/
 
 
 
@@ -141,3 +192,8 @@ q or quit
 getermessage
 debugger
 browser
+interrupt
+muffleWarning
+muffleMessage
+invokeRestart
+traceback
