@@ -25,3 +25,119 @@ library(rlang)
 ```
 
 # Conditions
+## Introduction
+The **condition** system provides a paired set of tools that allow the author of a function to indicate that something unusual is happening, and the user of that function to deal with it. The function author signals conditions with functions like `stop()` (for errors), `warning()` (for warnings), and `message()` (for messages), then the function user can handle them with functions like `tryCatch()` and `withCallingHandlers()`. Understanding the condition system is important because you’ll often need to play both roles: signalling conditions from the functions you create, and handle conditions signalled by the functions you call.
+
+## Signalling conditions
+There are three conditions that you can signal in code: errors, warnings, and messages.
+
+* Errors are the most severe; they indicate that there is no way for a function to continue and execution must stop.
+
+* Messages are the mildest; they are way of informing the user that some action has been performed on their behalf.
+
+* Warnings fall somewhat in between, and typically indicate that something has gone wrong but the function has been able to at least partially recover.
+
+There is a final condition that can only be generated interactively: an interrupt, which indicates that the user has “interrupted” execution by pressing Escape, Ctrl + Break, or Ctrl + C (depending on the platform).
+
+```{r, error=TRUE}
+stop("This is what an error looks like")
+warning("This is what a warning looks like")
+message("This is what a message looks like")
+```
+
+### Errors
+In base R, errors are signalled, or thrown, by `stop()`:
+```{r, error=TRUE}
+f <- function() g()
+g <- function() h()
+h <- function() stop("This is an error!")
+
+f()
+```
+
+### Warnings
+Warnings, signalled by `warning()`, are weaker than errors: they signal that something has gone wrong, but the code has been able to recover and continue. Unlike errors, you can have multiple warnings from a single function call:
+```{r, eval=FALSE}
+fw <- function() {
+  cat("1\n")
+  warning("W1")
+  cat("2\n")
+  warning("W2")
+  cat("3\n")
+  warning("W3")
+}
+
+fw()
+```
+
+```
+1
+2
+3
+Warning messages:
+1: In fw() : W1
+2: In fw() : W2
+3: In fw() : W3
+```
+
+By default, warnings are cached and printed only when control returns to the top level. You can control this behaviour with the warn option:
+
+* To make warnings appear immediately, set options(warn = 1).
+
+* To turn warnings into errors, set * options(warn = 2). This is usually the easiest way to debug a warning, as once it’s an error you can use tools like `traceback()` to find the source.
+
+* Restore the default behaviour with options(warn = 0).
+
+### Messages
+`messages()` are displayed immediately and do not have a call. argument:
+```{r}
+fm <- function() {
+  cat("1\n")
+  message("M1")
+  cat("2\n")
+  message("M2")
+  cat("3\n")
+  message("M3")
+}
+```
+
+Generally any function that produces a message should have some way to suppress it, like a `quiet = TRUE` argument. It is possible to suppress all messages with `suppressMessages()`.
+
+### Exercises
+1. Write a wrapper around `file.remove()` that throws an error if the file to be deleted does not exist.  
+**A**:
+    ```{r, error=TRUE}
+    file_remove <- function(...) {
+      if (!suppressWarnings(file.remove(...))) stop ("No such file")
+    }
+    
+    file_remove("nosuchfile.no")
+    ```
+
+2. What does the appendLF argument to `message()` do? How is it related to `cat()`?  
+**A**: indicates if a new line should be added to messages. `cat()` requires a `\n` for a new line.
+    ```{r}
+    message("Hello World!", appendLF = TRUE)
+    message("Hello World!", appendLF = FALSE)
+    message("Hello World\n", appendLF = FALSE)
+    message("Hello World!", appendLF = TRUE)
+    ```
+
+3. What does `options(error = recover)` do? Why might you use it?  
+**A**: When an error occurs, the standard R browser is then invoked from the corresponding environment; the user can type ordinary R language expressions to be evaluated in that environment.
+
+4. What does `options(error = quote(dump.frames(to.file = TRUE)))` do? Why might you use it?  
+**A**: Dumps error information to a file. Might be used for post-mortem debugging in non-interactive sessions.
+
+
+
+
+
+
+
+
+signalConditon
+q or quit
+getermessage
+debugger
+browser

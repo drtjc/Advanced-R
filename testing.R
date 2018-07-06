@@ -6,13 +6,26 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-# TJC: binding, enclosing, execution and calling environment - give example where all 4 are different
+class(last.dump)
+typeof(last.dump)
+
+str(last.dump)
+
+debugger()
+
+(suppressWarnings(file.remove("nosuchfile.no")))
 
 
+options(error = recover)
+options(error = quote(dump.frames(to.file = TRUE)))
+options(error = NULL)
+file_remove <- function(...) {
+  if (!suppressWarnings(file.remove(...))) stop ("No such file")
+}
 
+file_remove("nosuchfile.no")
 
-
-
+quote(file_remove())
 # f1 <- factor("a")
 # f2 <- factor("b")
 # c(f1, f2)
