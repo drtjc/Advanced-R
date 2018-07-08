@@ -180,6 +180,8 @@ Two functions, `tryCatch()` and `withCallingHandlers()`, allow us to register ha
 
 * `withCallingHandlers()` defines calling handlers; after the condition is captured control returns to the context where the condition was signalled. This makes it most suitable for working with non-error conditions.
 
+### Exiting handlers
+
 ```{r}
 tryCatch(
   error = function(cnd) 10,  
@@ -290,6 +292,50 @@ tryCatch(
   }
 )
 ```
+
+### Calling handlers
+The handlers set up by `tryCatch()` are called exiting handlers, because they cause code to exit once the condition has been caught. By contrast, `withCallingHandler()` sets up calling handlers: code execution continues normally once the handler returns. This tends to make `withCallingHandlers()` a more natural pairing with the non-error conditions.
+
+```{r}
+tryCatch(
+  message = function(cnd) cat("Caught a message!\n"), 
+  {
+    message("Someone there?")
+    message("Why, yes!")
+  }
+)
+
+withCallingHandlers(
+  message = function(c) cat("Caught a message!\n"), 
+  {
+    message("Someone there?")
+    message("Why, yes!")
+  }
+)
+```
+
+One important side-effect unique to calling handlers is the ability to muffle the signal. By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):
+
+```{r, tidy=FALSE}
+# Bubbles all the way up to default handler which generates the message
+withCallingHandlers(
+  message = function(cnd) cat("Level 2\n"),
+  withCallingHandlers(
+    message = function(cnd) cat("Level 1\n"),
+    message("Hello")
+  )
+)
+
+# Bubbles up to tryCatch
+tryCatch(
+  message = function(cnd) cat("Level 2\n"),
+  withCallingHandlers(
+    message = function(cnd) cat("Level 1\n"),
+    message("Hello")
+  )
+)
+```
+
 
 
 

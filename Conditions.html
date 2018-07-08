@@ -374,6 +374,8 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 <li><p><code>tryCatch()</code> defines exiting handlers; after the condition is handled, control returns to the context where tryCatch() was called. This makes <code>tryCatch()</code> most suitable for working with errors and interrupts, as these have to exit anyway.</p></li>
 <li><p><code>withCallingHandlers()</code> defines calling handlers; after the condition is captured control returns to the context where the condition was signalled. This makes it most suitable for working with non-error conditions.</p></li>
 </ul>
+<div id="exiting-handlers" class="section level3">
+<h3><span class="header-section-number">1.4.1</span> Exiting handlers</h3>
 <pre class="r"><code>tryCatch(error = function(cnd) 10, stop(&quot;This is an error!&quot;))</code></pre>
 <pre><code>## [1] 10</code></pre>
 <p>If no conditions are signalled, or the class of the signalled condition does not match the handler name, the code executes normally:</p>
@@ -408,7 +410,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 })</code></pre>
 <pre><code>## [1] &quot;Hi&quot;
 ## &lt;environment: R_GlobalEnv&gt;
-## &lt;environment: 0x0000000019c00e70&gt;
+## &lt;environment: 0x000000001a5a44c8&gt;
 ## &lt;environment: R_GlobalEnv&gt;
 ## x
 ## \-tryCatch(...)
@@ -460,8 +462,48 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 ## &lt;environment: R_GlobalEnv&gt;
 ## [1] &quot;and everywhere&quot;</code></pre>
 <pre><code>## [1] &quot;There&quot;</code></pre>
+</div>
+<div id="calling-handlers" class="section level3">
+<h3><span class="header-section-number">1.4.2</span> Calling handlers</h3>
+<p>The handlers set up by <code>tryCatch()</code> are called exiting handlers, because they cause code to exit once the condition has been caught. By contrast, <code>withCallingHandler()</code> sets up calling handlers: code execution continues normally once the handler returns. This tends to make <code>withCallingHandlers()</code> a more natural pairing with the non-error conditions.</p>
+<pre class="r"><code>tryCatch(message = function(cnd) cat(&quot;Caught a message!\n&quot;), {
+    message(&quot;Someone there?&quot;)
+    message(&quot;Why, yes!&quot;)
+})</code></pre>
+<pre><code>## Caught a message!</code></pre>
+<pre class="r"><code>withCallingHandlers(message = function(c) cat(&quot;Caught a message!\n&quot;), {
+    message(&quot;Someone there?&quot;)
+    message(&quot;Why, yes!&quot;)
+})</code></pre>
+<pre><code>## Caught a message!</code></pre>
+<pre><code>## Someone there?</code></pre>
+<pre><code>## Caught a message!</code></pre>
+<pre><code>## Why, yes!</code></pre>
+<p>One important side-effect unique to calling handlers is the ability to muffle the signal. By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):</p>
+<pre class="r"><code># Bubbles all the way up to default handler which generates the message
+withCallingHandlers(
+  message = function(cnd) cat(&quot;Level 2\n&quot;),
+  withCallingHandlers(
+    message = function(cnd) cat(&quot;Level 1\n&quot;),
+    message(&quot;Hello&quot;)
+  )
+)</code></pre>
+<pre><code>## Level 1
+## Level 2</code></pre>
+<pre><code>## Hello</code></pre>
+<pre class="r"><code># Bubbles up to tryCatch
+tryCatch(
+  message = function(cnd) cat(&quot;Level 2\n&quot;),
+  withCallingHandlers(
+    message = function(cnd) cat(&quot;Level 1\n&quot;),
+    message(&quot;Hello&quot;)
+  )
+)</code></pre>
+<pre><code>## Level 1
+## Level 2</code></pre>
 <p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a> <a href="http://www.win-vector.com/blog/2012/10/error-handling-in-r/" class="uri">http://www.win-vector.com/blog/2012/10/error-handling-in-r/</a></p>
 <p>signalConditon q or quit getermessage debugger browser interrupt muffleWarning muffleMessage invokeRestart traceback</p>
+</div>
 </div>
 </div>
 
