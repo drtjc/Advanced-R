@@ -151,16 +151,14 @@ f1("x")
 It is possible, but not recommended, to save the result of `try()` and perform different actions based on whether or not the code succeed or failed. 
 
 ```{r, error=TRUE}
-class(try(log("x")))
-class(try(log(100)))
-
-err <- try(log("x"))
+err <- try(log("a"))
 class(err)
-(a1 <- attributes(err))
-str(a1$condition)
-(a2 <- attributes(a1$condition))
-str(a2)
-attributes(a2)
+cnd <- attributes(err)$condition
+conditionCall(cnd)
+conditionMessage(cnd)
+class(cnd)
+names(cnd)
+str(cnd)
 ```
 
 Instead, it is better to use `tryCatch()` or a higher-level helper; you’ll learn about those shortly. A simple, but useful, pattern is to do assignment inside the call: this lets you define a default value to be used if the code does not succeed.
@@ -176,7 +174,122 @@ default
 ## Handling conditions
 Every condition has default behaviour: errors stop execution and return to the top level, warnings are captured and displayed in aggregate, and messages are immediately displayed. Condition handlers allow us to temporarily override or supplement the default behaviour.
 
-Two functions, `tryCatch()` and `withCallingHandlers()`, allow us to register handlers, functions that take the signalled condition as their single argument. The registration functions have the same basic form:
+Two functions, `tryCatch()` and `withCallingHandlers()`, allow us to register handlers, functions that take the signalled condition as their single argument. They differ in the type of handlers that they create:
+
+* `tryCatch()` defines exiting handlers; after the condition is handled, control returns to the context where tryCatch() was called. This makes `tryCatch()` most suitable for working with errors and interrupts, as these have to exit anyway.
+
+* `withCallingHandlers()` defines calling handlers; after the condition is captured control returns to the context where the condition was signalled. This makes it most suitable for working with non-error conditions.
+
+```{r}
+tryCatch(
+  error = function(cnd) 10,  
+  stop("This is an error!")
+)
+```
+
+If no conditions are signalled, or the class of the signalled condition does not match the handler name, the code executes normally:
+
+```{r}
+tryCatch(
+  error = function(cnd) 10,
+  1 + 1
+)
+
+tryCatch(
+  error = function(cnd) 10,
+  {
+    message("Hi!")
+    1 + 1
+  }
+)
+
+```
+
+The handlers set up by `tryCatch()` are called **exiting handlers** because after the condition is signalled, control passes to the handler and never returns to the original code, effectively meaning that the code “exits”:
+
+```{r}
+tryCatch(
+  message = function(cnd) "There",
+  {
+    message("Here")
+    stop("This code is never run!")
+  }
+)
+
+tryCatch(
+  message = function(cnd) conditionMessage(cnd),
+  {
+    message("Here")
+    stop("This code is never run!")
+  }
+)
+```
+
+Note that the code is evaluated in the environment of `tryCatch()`, but the handler code is not, because the handlers are functions. This is important to remember if you’re trying to modify objects in the parent environment.
+
+```{r}
+tryCatch(
+  message = function(cnd) {print(environment()); print(parent.frame(4)); lobstr::cst()},
+  {
+    print("Hi")
+    print(environment())
+    message("Here")
+  }
+)
+```
+
+The handler functions are called with a single argument, the condition object. This value is only moderately useful for the base conditions because they contain relatively little data. It’s more useful when you make your own custom conditions, as you’ll see shortly.
+
+```{r}
+tryCatch(
+  error = function(cnd) {
+    paste0("--", conditionMessage(cnd), "--")
+  },
+  stop("This is an error")
+)
+```
+
+`tryCatch()` has one other argument: `finally`. It specifies a block of code (not a function) to run regardless of whether the initial expression succeeds or fails. This can be useful for clean up, like deleting files, or closing connections. This is functionally equivalent to using `on.exit()` (and indeed that’s how it’s implemented) but it can wrap smaller chunks of code than an entire function.
+
+```{r}
+tryCatch(
+  message = function(cnd) "There",
+  {
+    print("Hi")
+    print(environment())
+    message("Here")
+  },
+  finally = {print(environment()); print("and everywhere")}
+)
+```
+
+and this...
+
+```{r}
+tryCatch(
+  message = function(cnd) "There",
+  {
+    print("Hi")
+    print(environment())
+    f <- function() on.exit(print("and everywhere"))
+    f()
+    message("Here")
+  }
+)
+```
+
+and this...
+
+```{r}
+tryCatch(
+  message = function(cnd) {on.exit(print("and everywhere")); "There"},
+  {
+    print("Hi")
+    print(environment())
+    message("Here")
+  }
+)
+```
 
 
 

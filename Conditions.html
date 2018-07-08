@@ -337,37 +337,23 @@ file_remove(&quot;nosuchfile.no&quot;)</code></pre>
 f1(&quot;x&quot;)</code></pre>
 <pre><code>## Error in log(x): non-numeric argument to mathematical function</code></pre>
 <p>It is possible, but not recommended, to save the result of <code>try()</code> and perform different actions based on whether or not the code succeed or failed.</p>
-<pre class="r"><code>class(try(log(&quot;x&quot;)))</code></pre>
-<pre><code>## [1] &quot;try-error&quot;</code></pre>
-<pre class="r"><code>class(try(log(100)))</code></pre>
-<pre><code>## [1] &quot;numeric&quot;</code></pre>
-<pre class="r"><code>err &lt;- try(log(&quot;x&quot;))
+<pre class="r"><code>err &lt;- try(log(&quot;a&quot;))
 class(err)</code></pre>
 <pre><code>## [1] &quot;try-error&quot;</code></pre>
-<pre class="r"><code>(a1 &lt;- attributes(err))</code></pre>
-<pre><code>## $class
-## [1] &quot;try-error&quot;
-## 
-## $condition
-## &lt;simpleError in log(&quot;x&quot;): non-numeric argument to mathematical function&gt;</code></pre>
-<pre class="r"><code>str(a1$condition)</code></pre>
+<pre class="r"><code>cnd &lt;- attributes(err)$condition
+conditionCall(cnd)</code></pre>
+<pre><code>## log(&quot;a&quot;)</code></pre>
+<pre class="r"><code>conditionMessage(cnd)</code></pre>
+<pre><code>## [1] &quot;non-numeric argument to mathematical function&quot;</code></pre>
+<pre class="r"><code>class(cnd)</code></pre>
+<pre><code>## [1] &quot;simpleError&quot; &quot;error&quot;       &quot;condition&quot;</code></pre>
+<pre class="r"><code>names(cnd)</code></pre>
+<pre><code>## [1] &quot;message&quot; &quot;call&quot;</code></pre>
+<pre class="r"><code>str(cnd)</code></pre>
 <pre><code>## List of 2
 ##  $ message: chr &quot;non-numeric argument to mathematical function&quot;
-##  $ call   : language log(&quot;x&quot;)
+##  $ call   : language log(&quot;a&quot;)
 ##  - attr(*, &quot;class&quot;)= chr [1:3] &quot;simpleError&quot; &quot;error&quot; &quot;condition&quot;</code></pre>
-<pre class="r"><code>(a2 &lt;- attributes(a1$condition))</code></pre>
-<pre><code>## $names
-## [1] &quot;message&quot; &quot;call&quot;   
-## 
-## $class
-## [1] &quot;simpleError&quot; &quot;error&quot;       &quot;condition&quot;</code></pre>
-<pre class="r"><code>str(a2)</code></pre>
-<pre><code>## List of 2
-##  $ names: chr [1:2] &quot;message&quot; &quot;call&quot;
-##  $ class: chr [1:3] &quot;simpleError&quot; &quot;error&quot; &quot;condition&quot;</code></pre>
-<pre class="r"><code>attributes(a2)</code></pre>
-<pre><code>## $names
-## [1] &quot;names&quot; &quot;class&quot;</code></pre>
 <p>Instead, it is better to use <code>tryCatch()</code> or a higher-level helper; you’ll learn about those shortly. A simple, but useful, pattern is to do assignment inside the call: this lets you define a default value to be used if the code does not succeed.</p>
 <pre class="r"><code>read.csv(&quot;possibly-bad-input.csv&quot;)</code></pre>
 <pre><code>## Warning in file(file, &quot;rt&quot;): cannot open file 'possibly-bad-input.csv': No
@@ -379,8 +365,103 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 ## such file or directory</code></pre>
 <pre class="r"><code>default</code></pre>
 <pre><code>## NULL</code></pre>
-<p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a></p>
-<p>signalConditon q or quit getermessage debugger browser interrupt</p>
+</div>
+<div id="handling-conditions" class="section level2">
+<h2><span class="header-section-number">1.4</span> Handling conditions</h2>
+<p>Every condition has default behaviour: errors stop execution and return to the top level, warnings are captured and displayed in aggregate, and messages are immediately displayed. Condition handlers allow us to temporarily override or supplement the default behaviour.</p>
+<p>Two functions, <code>tryCatch()</code> and <code>withCallingHandlers()</code>, allow us to register handlers, functions that take the signalled condition as their single argument. They differ in the type of handlers that they create:</p>
+<ul>
+<li><p><code>tryCatch()</code> defines exiting handlers; after the condition is handled, control returns to the context where tryCatch() was called. This makes <code>tryCatch()</code> most suitable for working with errors and interrupts, as these have to exit anyway.</p></li>
+<li><p><code>withCallingHandlers()</code> defines calling handlers; after the condition is captured control returns to the context where the condition was signalled. This makes it most suitable for working with non-error conditions.</p></li>
+</ul>
+<pre class="r"><code>tryCatch(error = function(cnd) 10, stop(&quot;This is an error!&quot;))</code></pre>
+<pre><code>## [1] 10</code></pre>
+<p>If no conditions are signalled, or the class of the signalled condition does not match the handler name, the code executes normally:</p>
+<pre class="r"><code>tryCatch(error = function(cnd) 10, 1 + 1)</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>tryCatch(error = function(cnd) 10, {
+    message(&quot;Hi!&quot;)
+    1 + 1
+})</code></pre>
+<pre><code>## Hi!</code></pre>
+<pre><code>## [1] 2</code></pre>
+<p>The handlers set up by <code>tryCatch()</code> are called <strong>exiting handlers</strong> because after the condition is signalled, control passes to the handler and never returns to the original code, effectively meaning that the code “exits”:</p>
+<pre class="r"><code>tryCatch(message = function(cnd) &quot;There&quot;, {
+    message(&quot;Here&quot;)
+    stop(&quot;This code is never run!&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;There&quot;</code></pre>
+<pre class="r"><code>tryCatch(message = function(cnd) conditionMessage(cnd), {
+    message(&quot;Here&quot;)
+    stop(&quot;This code is never run!&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;Here\n&quot;</code></pre>
+<p>Note that the code is evaluated in the environment of <code>tryCatch()</code>, but the handler code is not, because the handlers are functions. This is important to remember if you’re trying to modify objects in the parent environment.</p>
+<pre class="r"><code>tryCatch(message = function(cnd) {
+    print(environment())
+    print(parent.frame(4))
+    lobstr::cst()
+}, {
+    print(&quot;Hi&quot;)
+    print(environment())
+    message(&quot;Here&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;Hi&quot;
+## &lt;environment: R_GlobalEnv&gt;
+## &lt;environment: 0x0000000019c00e70&gt;
+## &lt;environment: R_GlobalEnv&gt;
+## x
+## \-tryCatch(...)
+##   \-tryCatchList(expr, classes, parentenv, handlers)
+##     \-tryCatchOne(expr, names, parentenv, handlers[[1L]])
+##       \-value[[3L]](cond)
+##         \-lobstr::cst()</code></pre>
+<p>The handler functions are called with a single argument, the condition object. This value is only moderately useful for the base conditions because they contain relatively little data. It’s more useful when you make your own custom conditions, as you’ll see shortly.</p>
+<pre class="r"><code>tryCatch(error = function(cnd) {
+    paste0(&quot;--&quot;, conditionMessage(cnd), &quot;--&quot;)
+}, stop(&quot;This is an error&quot;))</code></pre>
+<pre><code>## [1] &quot;--This is an error--&quot;</code></pre>
+<p><code>tryCatch()</code> has one other argument: <code>finally</code>. It specifies a block of code (not a function) to run regardless of whether the initial expression succeeds or fails. This can be useful for clean up, like deleting files, or closing connections. This is functionally equivalent to using <code>on.exit()</code> (and indeed that’s how it’s implemented) but it can wrap smaller chunks of code than an entire function.</p>
+<pre class="r"><code>tryCatch(message = function(cnd) &quot;There&quot;, {
+    print(&quot;Hi&quot;)
+    print(environment())
+    message(&quot;Here&quot;)
+}, finally = {
+    print(environment())
+    print(&quot;and everywhere&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;Hi&quot;
+## &lt;environment: R_GlobalEnv&gt;
+## &lt;environment: R_GlobalEnv&gt;
+## [1] &quot;and everywhere&quot;</code></pre>
+<pre><code>## [1] &quot;There&quot;</code></pre>
+<p>and this…</p>
+<pre class="r"><code>tryCatch(message = function(cnd) &quot;There&quot;, {
+    print(&quot;Hi&quot;)
+    print(environment())
+    f &lt;- function() on.exit(print(&quot;and everywhere&quot;))
+    f()
+    message(&quot;Here&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;Hi&quot;
+## &lt;environment: R_GlobalEnv&gt;
+## [1] &quot;and everywhere&quot;</code></pre>
+<pre><code>## [1] &quot;There&quot;</code></pre>
+<p>and this…</p>
+<pre class="r"><code>tryCatch(message = function(cnd) {
+    on.exit(print(&quot;and everywhere&quot;))
+    &quot;There&quot;
+}, {
+    print(&quot;Hi&quot;)
+    print(environment())
+    message(&quot;Here&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;Hi&quot;
+## &lt;environment: R_GlobalEnv&gt;
+## [1] &quot;and everywhere&quot;</code></pre>
+<pre><code>## [1] &quot;There&quot;</code></pre>
+<p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a> <a href="http://www.win-vector.com/blog/2012/10/error-handling-in-r/" class="uri">http://www.win-vector.com/blog/2012/10/error-handling-in-r/</a></p>
+<p>signalConditon q or quit getermessage debugger browser interrupt muffleWarning muffleMessage invokeRestart traceback</p>
 </div>
 </div>
 
