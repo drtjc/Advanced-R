@@ -314,7 +314,7 @@ withCallingHandlers(
 )
 ```
 
-One important side-effect unique to calling handlers is the ability to muffle the signal. By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):
+By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):
 
 ```{r, tidy=FALSE}
 # Bubbles all the way up to default handler which generates the message
@@ -336,7 +336,8 @@ tryCatch(
 )
 ```
 
-
+TJC rlang::cnd_muffler
+One important side-effect unique to calling handlers is the ability to muffle the signal. 
 
 
 

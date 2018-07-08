@@ -11,21 +11,31 @@ library(rlist)
 
 
 
+i <- 1
+while(i < 10) {
+  tryCatch({
+    Sys.sleep(0.5)
+    message("Try to escape")
+  }, interrupt = function(x) {
+    message("Try again!")
+    i <<- i + 1
+  })
+}
 
 
 
+i <- 1
+while(i < 10) {
+  withCallingHandlers({
+    Sys.sleep(0.5)
+    message("Try to escape")
+  }, interrupt = function(x) {
+    message("Try again!")
+    i <<- i + 1
+    #rlang::cnd_muffle(x)
+  })
+}
 
-
-
-
-
-
-tryCatch(1, finally = print("Hello"))
-e <- simpleError("test error")
-## Not run: 
-stop(e)
-tryCatch(stop(e), finally = print("Hello"))
-tryCatch(stop("fred"), finally = print("Hello"))
 
 
 
