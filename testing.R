@@ -6,11 +6,6 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-
-
-
-
-
 i <- 1
 while(i < 10) {
   tryCatch({
@@ -25,17 +20,33 @@ while(i < 10) {
 
 
 i <- 1
-while(i < 10) {
+while(i <= 3) {
   withCallingHandlers({
     Sys.sleep(0.5)
     message("Try to escape")
   }, interrupt = function(x) {
-    message("Try again!")
+    print("Try again!")
     i <<- i + 1
-    #rlang::cnd_muffle(x)
+    #print(class(x))
+    print(computeRestarts())
+    invokeRestart("resume")
+    #invokeRestart("muffleMessage")
   })
 }
 
+
+r <- computeRestarts()[[1]]
+class(r)
+str(attributes(r))
+r[[3]]
+str(r)
+
+
+
+withCallingHandlers(
+  message = function(cnd) {lobstr::cst(); print(computeRestarts(cnd)); invokeRestart("muffleMessage")},
+  expr = message("Hello") # withRestarts creates the restart muffleMessage
+)
 
 
 

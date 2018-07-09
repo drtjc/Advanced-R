@@ -410,7 +410,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 })</code></pre>
 <pre><code>## [1] &quot;Hi&quot;
 ## &lt;environment: R_GlobalEnv&gt;
-## &lt;environment: 0x000000001a5a44c8&gt;
+## &lt;environment: 0x000000001a7665d0&gt;
 ## &lt;environment: R_GlobalEnv&gt;
 ## x
 ## \-tryCatch(...)
@@ -479,7 +479,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 <pre><code>## Someone there?</code></pre>
 <pre><code>## Caught a message!</code></pre>
 <pre><code>## Why, yes!</code></pre>
-<p>One important side-effect unique to calling handlers is the ability to muffle the signal. By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):</p>
+<p>By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):</p>
 <pre class="r"><code># Bubbles all the way up to default handler which generates the message
 withCallingHandlers(
   message = function(cnd) cat(&quot;Level 2\n&quot;),
@@ -501,6 +501,73 @@ tryCatch(
 )</code></pre>
 <pre><code>## Level 1
 ## Level 2</code></pre>
+<p>One important side-effect unique to calling handlers is the ability to muffle the signal. To do so, call <code>invokeRestart(&quot;muffleMessage&quot;)</code>.</p>
+<pre class="r"><code># muffles level 2 and default handler which prints the message
+withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n&quot;), withCallingHandlers(message = function(cnd) {
+    cat(&quot;Level 1\n&quot;)
+    invokeRestart(&quot;muffleMessage&quot;)
+}, message(&quot;Hello&quot;)))</code></pre>
+<pre><code>## Level 1</code></pre>
+<pre class="r"><code># muffles default handler which prints the message
+withCallingHandlers(message = function(cnd) {
+    cat(&quot;Level 2\n&quot;)
+    invokeRestart(&quot;muffleMessage&quot;)
+}, withCallingHandlers(message = function(cnd) cat(&quot;Level 1\n&quot;), message(&quot;Hello&quot;)))</code></pre>
+<pre><code>## Level 1
+## Level 2</code></pre>
+<p>The same effect can be acheived with <code>suppressMessages()</code>:</p>
+<pre class="r"><code># muffles level 2 and default handler which prints the message
+withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n&quot;), suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 1\n&quot;), 
+    message(&quot;Hello&quot;))))</code></pre>
+<pre><code>## Level 1</code></pre>
+<pre class="r"><code># muffles default handler which prints the message
+suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n&quot;), 
+    withCallingHandlers(message = function(cnd) cat(&quot;Level 1\n&quot;), message(&quot;Hello&quot;))))</code></pre>
+<pre><code>## Level 1
+## Level 2</code></pre>
+<p>Note that <code>supressMessages()</code> is essentially a call to <code>invokeRestart(&quot;muffleMessage&quot;)</code>.</p>
+<pre class="r"><code>suppressMessages</code></pre>
+<pre><code>## function (expr) 
+## withCallingHandlers(expr, message = function(c) invokeRestart(&quot;muffleMessage&quot;))
+## &lt;bytecode: 0x000000001a5a61c0&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<p>How does this work? Look at the code for <code>message()</code>:</p>
+<pre class="r"><code>message</code></pre>
+<pre><code>## function (..., domain = NULL, appendLF = TRUE) 
+## {
+##     args &lt;- list(...)
+##     cond &lt;- if (length(args) == 1L &amp;&amp; inherits(args[[1L]], &quot;condition&quot;)) {
+##         if (nargs() &gt; 1L) 
+##             warning(&quot;additional arguments ignored in message()&quot;)
+##         args[[1L]]
+##     }
+##     else {
+##         msg &lt;- .makeMessage(..., domain = domain, appendLF = appendLF)
+##         call &lt;- sys.call()
+##         simpleMessage(msg, call)
+##     }
+##     defaultHandler &lt;- function(c) {
+##         cat(conditionMessage(c), file = stderr(), sep = &quot;&quot;)
+##     }
+##     withRestarts({
+##         signalCondition(cond)
+##         defaultHandler(cond)
+##     }, muffleMessage = function() NULL)
+##     invisible()
+## }
+## &lt;bytecode: 0x0000000013ba3a20&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<p>Note this bit of code:</p>
+<pre><code>defaultHandler &lt;- function(c) {
+    cat(conditionMessage(c), file = stderr(), sep = &quot;&quot;)
+}
+withRestarts({
+    signalCondition(cond)
+    defaultHandler(cond)
+}, muffleMessage = function() NULL)</code></pre>
+<p>If a condition is signaled and the applicable handler is a calling handler, then the handler is called by <code>signalCondition(cond)</code> in the context where the condition was signaled but with the available handlers restricted to those below the handler called in the handler stack. If the handler returns, then the next handler is tried; once the last handler has been tried, signalCondition returns <code>NULL</code>.</p>
+<p>What this means is that the call to <code>signalCondition()</code> in <code>withRestarts()</code> will call all available handlers in the call stack. However, when <code>invokeRestart(&quot;muffleMessage&quot;)</code> is called in a handler then execution is returned to <code>muffleMessage = function() NULL</code>. This also means that the function <code>defaultHandler(cond)</code> is not called, which prints the message to the screen.</p>
+<p>TJC what is message, error etc defined more than once</p>
 <p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a> <a href="http://www.win-vector.com/blog/2012/10/error-handling-in-r/" class="uri">http://www.win-vector.com/blog/2012/10/error-handling-in-r/</a></p>
 <p>signalConditon q or quit getermessage debugger browser interrupt muffleWarning muffleMessage invokeRestart traceback</p>
 </div>

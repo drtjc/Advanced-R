@@ -336,8 +336,90 @@ tryCatch(
 )
 ```
 
-TJC rlang::cnd_muffler
-One important side-effect unique to calling handlers is the ability to muffle the signal. 
+One important side-effect unique to calling handlers is the ability to muffle the signal. To do so, call `invokeRestart("muffleMessage")`.
+
+```{r}
+# muffles level 2 and default handler which prints the message
+withCallingHandlers(
+  message = function(cnd) cat("Level 2\n"),
+  withCallingHandlers(
+      message = function(cnd) {cat("Level 1\n"); invokeRestart("muffleMessage")},
+      message("Hello")
+  )
+)
+
+# muffles default handler which prints the message
+withCallingHandlers(
+  message = function(cnd) {cat("Level 2\n"); invokeRestart("muffleMessage")},
+  withCallingHandlers(
+    message = function(cnd) cat("Level 1\n"),
+    message("Hello")
+  )
+)
+```
+
+The same effect can be acheived with `suppressMessages()`:
+
+```{r}
+# muffles level 2 and default handler which prints the message
+withCallingHandlers(
+  message = function(cnd) cat("Level 2\n"),
+  suppressMessages(
+    withCallingHandlers(
+     message = function(cnd) cat("Level 1\n"),
+     message("Hello")
+    )
+  )
+)
+
+
+# muffles default handler which prints the message
+suppressMessages(
+  withCallingHandlers(
+    message = function(cnd) cat("Level 2\n"),
+    withCallingHandlers(
+      message = function(cnd) cat("Level 1\n"),
+      message("Hello")
+    )
+  )
+)
+```
+
+Note that `supressMessages()` is essentially a call to `invokeRestart("muffleMessage")`.
+
+```{r}
+suppressMessages
+```
+
+How does this work? Look at the code for `message()`:
+
+```{r}
+message
+```
+
+Note this bit of code:
+
+```
+defaultHandler <- function(c) {
+    cat(conditionMessage(c), file = stderr(), sep = "")
+}
+withRestarts({
+    signalCondition(cond)
+    defaultHandler(cond)
+}, muffleMessage = function() NULL)
+```
+
+If a condition is signaled and the applicable handler is a calling handler, then the handler is called by `signalCondition(cond)` in the context where the condition was signaled but with the available handlers restricted to those below the handler called in the handler stack. If the handler returns, then the next handler is tried; once the last handler has been tried, signalCondition returns `NULL`.
+
+What this means is that the call to `signalCondition()` in `withRestarts()` will call all available handlers in the call stack. However, when `invokeRestart("muffleMessage")` is called in a handler then execution is returned to `muffleMessage = function() NULL`. This also means that the function `defaultHandler(cond)` is not called, which would have printed the message to the screen.
+
+
+
+TJC what is message, error etc defined more than once
+
+
+## Condition objects
+
 
 
 
