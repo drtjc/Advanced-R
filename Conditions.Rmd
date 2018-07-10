@@ -251,6 +251,24 @@ tryCatch(
 )
 ```
 
+Only the first handler is executed:
+
+```{r}
+tryCatch(
+  error = function(cnd) paste0("--", conditionMessage(cnd), "--"),
+  error = function(cnd) print("this is still an error"),
+  stop("This is an error")
+)
+
+tryCatch(
+  error = function(cnd) print("this is still an error"),
+  error = function(cnd) paste0("--", conditionMessage(cnd), "--"),
+  stop("This is an error")
+)
+```
+
+
+
 `tryCatch()` has one other argument: `finally`. It specifies a block of code (not a function) to run regardless of whether the initial expression succeeds or fails. This can be useful for clean up, like deleting files, or closing connections. This is functionally equivalent to using `on.exit()` (and indeed that’s how it’s implemented) but it can wrap smaller chunks of code than an entire function.
 
 ```{r}
@@ -314,6 +332,21 @@ withCallingHandlers(
 )
 ```
 
+More than one handler of the same type can be defined:
+
+```{r}
+withCallingHandlers(
+  message = function(c) cat("Caught a message!\n"), 
+  message = function(c) cat("Caught a message again!\n"),
+  {
+    message("Someone there?")
+    message("Why, yes!")
+  }
+)
+```
+
+
+
 By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):
 
 ```{r, tidy=FALSE}
@@ -336,8 +369,140 @@ tryCatch(
 )
 ```
 
-One important side-effect unique to calling handlers is the ability to muffle the signal. To do so, call `invokeRestart("muffleMessage")`.
+One important side-effect unique to calling handlers is the ability to muffle the signal. To do so, call `invokeRestart("muffleMessage")`. See section on restarts.
 
+There is also the equivalent for warnings:
+
+```{r}
+withCallingHandlers(
+  warning = function(cnd) cat("Level 2\n"),
+  withCallingHandlers(
+    warning = function(cnd) cat("Level 1\n"),
+    warning("Hello", call. = FALSE)
+  )
+)
+
+# muffles level 2 and default handler which prints the message
+withCallingHandlers(
+  warning = function(cnd) cat("Level 2\n"),
+  withCallingHandlers(
+    warning = function(cnd) {cat("Level 1\n"); invokeRestart("muffleWarning")},
+    warning("Hello", call. = FALSE)
+  )
+)
+
+
+# muffles level 2 and default handler which prints the message
+withCallingHandlers(
+  warning = function(cnd) cat("Level 2\n"),
+  suppressWarnings(
+    withCallingHandlers(
+      warning = function(cnd) {cat("Level 1\n"); invokeRestart("muffleWarning")},
+      warning("Hello", call. = FALSE)
+    )
+  )
+)
+
+warning
+```
+
+### Exercises
+1. Predict the results of evaluating the following code:
+    ```{r}
+    show_condition <- function(code) {
+      tryCatch(
+        error = function(cnd) "error",
+        warning = function(cnd) "warning",
+        message = function(cnd) "message",
+        {
+          code
+          NULL
+        }
+      )
+    }
+    
+    show_condition(stop("!")) # "error"
+    show_condition(10) # NULL
+    show_condition(warning("?!")) # "warning"
+    show_condition({
+      10
+      message("?")
+      warning("?!") # "message"
+    })
+    ```
+**A**: "error", `NULL`, "warning", "message"
+
+2. Explain the results of running this code:
+    ```{r}
+    withCallingHandlers(
+      message = function(cnd) message("b"),
+      withCallingHandlers(
+        message = function(cnd) message("a"),
+        message("c")
+      )
+    )
+    ```
+**A**: 
+Let the innermost hander be 1, and the outer handler 2. Now remember that `message()` causes `signalConditon()` to be called followed by the default handler which prints the message to the screen. Crucially, `signalConditon()` will try all handlers defined in the call stack. Hence:  
+    ```{r, eval=FALSE, results='asis', tidy=FALSE}
+    message("c")
+    |
+    |------handler1: message("a")
+    |                |
+    |                |------handler2: message("b")
+    |                |                |     
+    |                |                |------print("b")
+    |                |  
+    |                |------print("a")  
+    |  
+    |------handler2: message("b")
+    |                |
+    |                |------print("b")
+    |
+    |------print("c")
+    ```
+
+3. Read the source code for `catch_cnd()` and explain how it works.  
+    ```{r}
+    catch_cnd
+    ```
+**A**: Captures any condition (message, warning, error or interrupt) and returns the condition (`identity()` function) which is printed to the screen. If there is no condition the expression is evaluted and `NULL` is returned.
+
+4. How could you rewrite `show_condition()` to use a single handler?  
+**A**:
+    ```{r}
+    show_condition <- function(code) {
+      tryCatch(
+        condition = conditionMessage,
+        {
+          code
+          NULL
+        }
+      )
+    }
+
+    show_condition(stop("!")) 
+    show_condition(10) 
+    show_condition(warning("?!")) 
+    show_condition({
+      10
+      message("?")
+      warning("?!") 
+    })
+    ```
+
+
+
+
+TJC - error, warning, message, interrupt, and condition which is any of the former.
+
+
+## Condition objects
+
+
+
+
+## Restarts
 ```{r}
 # muffles level 2 and default handler which prints the message
 withCallingHandlers(
@@ -415,10 +580,7 @@ What this means is that the call to `signalCondition()` in `withRestarts()` will
 
 
 
-TJC what is message, error etc defined more than once
 
-
-## Condition objects
 
 
 

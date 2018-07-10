@@ -6,16 +6,75 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-i <- 1
-while(i < 10) {
-  tryCatch({
-    Sys.sleep(0.5)
-    message("Try to escape")
-  }, interrupt = function(x) {
-    message("Try again!")
-    i <<- i + 1
+show_condition <- function(code) {
+  tryCatch(condition = function(cnd) "hi",
+    {
+      code
+      NULL
+    }
+  )
+}
+
+show_condition(stop("!"))
+show_condition(log("x"))
+show_condition(10)
+show_condition(warning("?!"))
+show_condition({
+  10
+  message("?")
+  warning("?!")
+})
+
+
+
+
+tryCatch(
+  condition = function(cnd) conditionCall(cnd),
+  log("x")
+)
+
+tryCatch(
+  message = conditionMessage,
+  log("x")
+)
+
+tryCatch(
+  condition = identity,
+  log("x")
+)
+
+
+tryCatch(
+#  error = function(cnd) "hi",
+  conditon = NULL,
+  
+  log("x")
+)
+
+
+
+
+
+tt <- function (expr) 
+{
+  tryCatch(condition = identity, {
+    force(expr)
+    return(NULL)
   })
 }
+
+condition = identity
+rm(condition)
+
+
+tt(log("x"))
+tt2(log("x"))
+
+#TJC what is message, error etc defined more than once
+
+
+
+
 
 
 
@@ -23,14 +82,13 @@ i <- 1
 while(i <= 3) {
   withCallingHandlers({
     Sys.sleep(0.5)
-    message("Try to escape")
+    print("Try to escape")
   }, interrupt = function(x) {
     print("Try again!")
     i <<- i + 1
-    #print(class(x))
+    print(class(x))
     print(computeRestarts())
     invokeRestart("resume")
-    #invokeRestart("muffleMessage")
   })
 }
 
@@ -43,10 +101,6 @@ str(r)
 
 
 
-withCallingHandlers(
-  message = function(cnd) {lobstr::cst(); print(computeRestarts(cnd)); invokeRestart("muffleMessage")},
-  expr = message("Hello") # withRestarts creates the restart muffleMessage
-)
 
 
 

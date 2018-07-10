@@ -410,7 +410,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 })</code></pre>
 <pre><code>## [1] &quot;Hi&quot;
 ## &lt;environment: R_GlobalEnv&gt;
-## &lt;environment: 0x000000001a7665d0&gt;
+## &lt;environment: 0x000000001658f558&gt;
 ## &lt;environment: R_GlobalEnv&gt;
 ## x
 ## \-tryCatch(...)
@@ -423,6 +423,13 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
     paste0(&quot;--&quot;, conditionMessage(cnd), &quot;--&quot;)
 }, stop(&quot;This is an error&quot;))</code></pre>
 <pre><code>## [1] &quot;--This is an error--&quot;</code></pre>
+<p>Only the first handler is executed:</p>
+<pre class="r"><code>tryCatch(error = function(cnd) paste0(&quot;--&quot;, conditionMessage(cnd), &quot;--&quot;), error = function(cnd) print(&quot;this is still an error&quot;), 
+    stop(&quot;This is an error&quot;))</code></pre>
+<pre><code>## [1] &quot;--This is an error--&quot;</code></pre>
+<pre class="r"><code>tryCatch(error = function(cnd) print(&quot;this is still an error&quot;), error = function(cnd) paste0(&quot;--&quot;, 
+    conditionMessage(cnd), &quot;--&quot;), stop(&quot;This is an error&quot;))</code></pre>
+<pre><code>## [1] &quot;this is still an error&quot;</code></pre>
 <p><code>tryCatch()</code> has one other argument: <code>finally</code>. It specifies a block of code (not a function) to run regardless of whether the initial expression succeeds or fails. This can be useful for clean up, like deleting files, or closing connections. This is functionally equivalent to using <code>on.exit()</code> (and indeed that’s how it’s implemented) but it can wrap smaller chunks of code than an entire function.</p>
 <pre class="r"><code>tryCatch(message = function(cnd) &quot;There&quot;, {
     print(&quot;Hi&quot;)
@@ -479,6 +486,18 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 <pre><code>## Someone there?</code></pre>
 <pre><code>## Caught a message!</code></pre>
 <pre><code>## Why, yes!</code></pre>
+<p>More than one handler of the same type can be defined:</p>
+<pre class="r"><code>withCallingHandlers(message = function(c) cat(&quot;Caught a message!\n&quot;), message = function(c) cat(&quot;Caught a message again!\n&quot;), 
+    {
+        message(&quot;Someone there?&quot;)
+        message(&quot;Why, yes!&quot;)
+    })</code></pre>
+<pre><code>## Caught a message!
+## Caught a message again!</code></pre>
+<pre><code>## Someone there?</code></pre>
+<pre><code>## Caught a message!
+## Caught a message again!</code></pre>
+<pre><code>## Why, yes!</code></pre>
 <p>By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):</p>
 <pre class="r"><code># Bubbles all the way up to default handler which generates the message
 withCallingHandlers(
@@ -501,7 +520,139 @@ tryCatch(
 )</code></pre>
 <pre><code>## Level 1
 ## Level 2</code></pre>
-<p>One important side-effect unique to calling handlers is the ability to muffle the signal. To do so, call <code>invokeRestart(&quot;muffleMessage&quot;)</code>.</p>
+<p>One important side-effect unique to calling handlers is the ability to muffle the signal. To do so, call <code>invokeRestart(&quot;muffleMessage&quot;)</code>. See section on restarts.</p>
+<p>There is also the equivalent for warnings:</p>
+<pre class="r"><code>withCallingHandlers(warning = function(cnd) cat(&quot;Level 2\n&quot;), withCallingHandlers(warning = function(cnd) cat(&quot;Level 1\n&quot;), 
+    warning(&quot;Hello&quot;, call. = FALSE)))</code></pre>
+<pre><code>## Level 1
+## Level 2</code></pre>
+<pre><code>## Warning: Hello</code></pre>
+<pre class="r"><code># muffles level 2 and default handler which prints the message
+withCallingHandlers(warning = function(cnd) cat(&quot;Level 2\n&quot;), withCallingHandlers(warning = function(cnd) {
+    cat(&quot;Level 1\n&quot;)
+    invokeRestart(&quot;muffleWarning&quot;)
+}, warning(&quot;Hello&quot;, call. = FALSE)))</code></pre>
+<pre><code>## Level 1</code></pre>
+<pre class="r"><code># muffles level 2 and default handler which prints the message
+withCallingHandlers(warning = function(cnd) cat(&quot;Level 2\n&quot;), suppressWarnings(withCallingHandlers(warning = function(cnd) {
+    cat(&quot;Level 1\n&quot;)
+    invokeRestart(&quot;muffleWarning&quot;)
+}, warning(&quot;Hello&quot;, call. = FALSE))))</code></pre>
+<pre><code>## Level 1</code></pre>
+<pre class="r"><code>warning</code></pre>
+<pre><code>## function (..., call. = TRUE, immediate. = FALSE, noBreaks. = FALSE, 
+##     domain = NULL) 
+## {
+##     args &lt;- list(...)
+##     if (length(args) == 1L &amp;&amp; inherits(args[[1L]], &quot;condition&quot;)) {
+##         cond &lt;- args[[1L]]
+##         if (nargs() &gt; 1L) 
+##             cat(gettext(&quot;additional arguments ignored in warning()&quot;), 
+##                 &quot;\n&quot;, sep = &quot;&quot;, file = stderr())
+##         message &lt;- conditionMessage(cond)
+##         call &lt;- conditionCall(cond)
+##         withRestarts({
+##             .Internal(.signalCondition(cond, message, call))
+##             .Internal(.dfltWarn(message, call))
+##         }, muffleWarning = function() NULL)
+##         invisible(message)
+##     }
+##     else .Internal(warning(call., immediate., noBreaks., .makeMessage(..., 
+##         domain = domain)))
+## }
+## &lt;bytecode: 0x0000000013883910&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+</div>
+<div id="exercises-1" class="section level3">
+<h3><span class="header-section-number">1.4.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Predict the results of evaluating the following code:</p>
+<pre class="r"><code>show_condition &lt;- function(code) {
+    tryCatch(error = function(cnd) &quot;error&quot;, warning = function(cnd) &quot;warning&quot;, 
+        message = function(cnd) &quot;message&quot;, {
+            code
+            NULL
+        })
+}
+
+show_condition(stop(&quot;!&quot;))  # 'error'</code></pre>
+<pre><code>## [1] &quot;error&quot;</code></pre>
+<pre class="r"><code>show_condition(10)  # NULL</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>show_condition(warning(&quot;?!&quot;))  # 'warning'</code></pre>
+<pre><code>## [1] &quot;warning&quot;</code></pre>
+<pre class="r"><code>show_condition({
+    10
+    message(&quot;?&quot;)
+    warning(&quot;?!&quot;)  # 'message'
+})</code></pre>
+<pre><code>## [1] &quot;message&quot;</code></pre>
+<p><strong>A</strong>: “error”, <code>NULL</code>, “warning”, “message”</p></li>
+<li><p>Explain the results of running this code:</p>
+<pre class="r"><code>withCallingHandlers(message = function(cnd) message(&quot;b&quot;), withCallingHandlers(message = function(cnd) message(&quot;a&quot;), 
+    message(&quot;c&quot;)))</code></pre>
+<pre><code>## b</code></pre>
+<pre><code>## a</code></pre>
+<pre><code>## b</code></pre>
+<pre><code>## c</code></pre>
+<p><strong>A</strong>: Let the innermost hander be 1, and the outer handler 2. Now remember that <code>message()</code> causes <code>signalConditon()</code> to be called followed by the default handler which prints the message to the screen. Crucially, <code>signalConditon()</code> will try all handlers defined in the call stack. Hence:</p>
+<pre class="r"><code>message(&quot;c&quot;)
+|
+|------handler1: message(&quot;a&quot;)
+|                |
+|                |------handler2: message(&quot;b&quot;)
+|                |                |     
+|                |                |------print(&quot;b&quot;)
+|                |  
+|                |------print(&quot;a&quot;)  
+|  
+|------handler2: message(&quot;b&quot;)
+|                |
+|                |------print(&quot;b&quot;)
+|
+|------print(&quot;c&quot;)</code></pre></li>
+<li><p>Read the source code for <code>catch_cnd()</code> and explain how it works.</p>
+<pre class="r"><code>catch_cnd</code></pre>
+<pre><code>## function (expr) 
+## {
+##     tryCatch(condition = identity, {
+##         force(expr)
+##         return(NULL)
+##     })
+## }
+## &lt;bytecode: 0x000000001a7bd458&gt;
+## &lt;environment: namespace:rlang&gt;</code></pre>
+<p><strong>A</strong>: Captures any condition (message, warning, error or interrupt) and returns the condition (<code>identity()</code> function) which is printed to the screen. If there is no condition the expression is evaluted and <code>NULL</code> is returned.</p></li>
+<li><p>How could you rewrite <code>show_condition()</code> to use a single handler?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>show_condition &lt;- function(code) {
+    tryCatch(condition = conditionMessage, {
+        code
+        NULL
+    })
+}
+
+show_condition(stop(&quot;!&quot;))</code></pre>
+<pre><code>## [1] &quot;!&quot;</code></pre>
+<pre class="r"><code>show_condition(10)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>show_condition(warning(&quot;?!&quot;))</code></pre>
+<pre><code>## [1] &quot;?!&quot;</code></pre>
+<pre class="r"><code>show_condition({
+    10
+    message(&quot;?&quot;)
+    warning(&quot;?!&quot;)
+})</code></pre>
+<pre><code>## [1] &quot;?\n&quot;</code></pre></li>
+</ol>
+<p>TJC - error, warning, message, interrupt, and condition which is any of the former.</p>
+</div>
+</div>
+<div id="condition-objects" class="section level2">
+<h2><span class="header-section-number">1.5</span> Condition objects</h2>
+</div>
+<div id="restarts" class="section level2">
+<h2><span class="header-section-number">1.6</span> Restarts</h2>
 <pre class="r"><code># muffles level 2 and default handler which prints the message
 withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n&quot;), withCallingHandlers(message = function(cnd) {
     cat(&quot;Level 1\n&quot;)
@@ -529,7 +680,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 <pre class="r"><code>suppressMessages</code></pre>
 <pre><code>## function (expr) 
 ## withCallingHandlers(expr, message = function(c) invokeRestart(&quot;muffleMessage&quot;))
-## &lt;bytecode: 0x000000001a5a61c0&gt;
+## &lt;bytecode: 0x0000000018e546e0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>How does this work? Look at the code for <code>message()</code>:</p>
 <pre class="r"><code>message</code></pre>
@@ -555,7 +706,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 ##     }, muffleMessage = function() NULL)
 ##     invisible()
 ## }
-## &lt;bytecode: 0x0000000013ba3a20&gt;
+## &lt;bytecode: 0x0000000013ba34d8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Note this bit of code:</p>
 <pre><code>defaultHandler &lt;- function(c) {
@@ -566,11 +717,9 @@ withRestarts({
     defaultHandler(cond)
 }, muffleMessage = function() NULL)</code></pre>
 <p>If a condition is signaled and the applicable handler is a calling handler, then the handler is called by <code>signalCondition(cond)</code> in the context where the condition was signaled but with the available handlers restricted to those below the handler called in the handler stack. If the handler returns, then the next handler is tried; once the last handler has been tried, signalCondition returns <code>NULL</code>.</p>
-<p>What this means is that the call to <code>signalCondition()</code> in <code>withRestarts()</code> will call all available handlers in the call stack. However, when <code>invokeRestart(&quot;muffleMessage&quot;)</code> is called in a handler then execution is returned to <code>muffleMessage = function() NULL</code>. This also means that the function <code>defaultHandler(cond)</code> is not called, which prints the message to the screen.</p>
-<p>TJC what is message, error etc defined more than once</p>
+<p>What this means is that the call to <code>signalCondition()</code> in <code>withRestarts()</code> will call all available handlers in the call stack. However, when <code>invokeRestart(&quot;muffleMessage&quot;)</code> is called in a handler then execution is returned to <code>muffleMessage = function() NULL</code>. This also means that the function <code>defaultHandler(cond)</code> is not called, which would have printed the message to the screen.</p>
 <p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a> <a href="http://www.win-vector.com/blog/2012/10/error-handling-in-r/" class="uri">http://www.win-vector.com/blog/2012/10/error-handling-in-r/</a></p>
 <p>signalConditon q or quit getermessage debugger browser interrupt muffleWarning muffleMessage invokeRestart traceback</p>
-</div>
 </div>
 </div>
 
