@@ -410,7 +410,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 })</code></pre>
 <pre><code>## [1] &quot;Hi&quot;
 ## &lt;environment: R_GlobalEnv&gt;
-## &lt;environment: 0x000000001658f558&gt;
+## &lt;environment: 0x0000000016561d48&gt;
 ## &lt;environment: R_GlobalEnv&gt;
 ## x
 ## \-tryCatch(...)
@@ -560,7 +560,7 @@ withCallingHandlers(warning = function(cnd) cat(&quot;Level 2\n&quot;), suppress
 ##     else .Internal(warning(call., immediate., noBreaks., .makeMessage(..., 
 ##         domain = domain)))
 ## }
-## &lt;bytecode: 0x0000000013883910&gt;
+## &lt;bytecode: 0x00000000158bf9f8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 </div>
 <div id="exercises-1" class="section level3">
@@ -620,7 +620,7 @@ show_condition(stop(&quot;!&quot;))  # 'error'</code></pre>
 ##         return(NULL)
 ##     })
 ## }
-## &lt;bytecode: 0x000000001a7bd458&gt;
+## &lt;bytecode: 0x00000000166c3e68&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <p><strong>A</strong>: Captures any condition (message, warning, error or interrupt) and returns the condition (<code>identity()</code> function) which is printed to the screen. If there is no condition the expression is evaluted and <code>NULL</code> is returned.</p></li>
 <li><p>How could you rewrite <code>show_condition()</code> to use a single handler?<br />
@@ -645,7 +645,48 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 })</code></pre>
 <pre><code>## [1] &quot;?\n&quot;</code></pre></li>
 </ol>
-<p>TJC - error, warning, message, interrupt, and condition which is any of the former.</p>
+<p>Note:</p>
+<pre class="r"><code>withCallingHandlers(condition = function(cnd) {
+    print(class(cnd))
+    print(computeRestarts())
+}, {
+    message(&quot;%&quot;)
+    warning(&quot;?&quot;, call. = FALSE)
+    stop(&quot;!&quot;, call. = FALSE)
+})</code></pre>
+<pre><code>## [1] &quot;simpleMessage&quot; &quot;message&quot;       &quot;condition&quot;    
+## [[1]]
+## &lt;restart: muffleMessage &gt;
+## 
+## [[2]]
+## &lt;restart: abort &gt;</code></pre>
+<pre><code>## %</code></pre>
+<pre><code>## [1] &quot;simpleWarning&quot; &quot;warning&quot;       &quot;condition&quot;    
+## [[1]]
+## &lt;restart: muffleWarning &gt;
+## 
+## [[2]]
+## &lt;restart: abort &gt;</code></pre>
+<pre><code>## Warning: ?</code></pre>
+<pre><code>## [1] &quot;simpleError&quot; &quot;error&quot;       &quot;condition&quot;  
+## [[1]]
+## &lt;restart: abort &gt;</code></pre>
+<pre><code>## Error: !</code></pre>
+<p>And also for interrupts:</p>
+<pre class="r"><code>withCallingHandlers(condition = function(cnd) {
+    print(class(cnd))
+    print(computeRestarts())
+}, {
+    print(&quot;Try to escape&quot;)
+    Sys.sleep(1)  # press esc key
+})</code></pre>
+<pre><code># [1] &quot;Try to escape&quot;
+# [1] &quot;interrupt&quot; &quot;condition&quot;
+# [[1]]
+# &lt;restart: resume &gt;
+
+# [[2]]
+# &lt;restart: abort &gt;</code></pre>
 </div>
 </div>
 <div id="condition-objects" class="section level2">
@@ -680,7 +721,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 <pre class="r"><code>suppressMessages</code></pre>
 <pre><code>## function (expr) 
 ## withCallingHandlers(expr, message = function(c) invokeRestart(&quot;muffleMessage&quot;))
-## &lt;bytecode: 0x0000000018e546e0&gt;
+## &lt;bytecode: 0x000000001969b050&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>How does this work? Look at the code for <code>message()</code>:</p>
 <pre class="r"><code>message</code></pre>
@@ -706,7 +747,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 ##     }, muffleMessage = function() NULL)
 ##     invisible()
 ## }
-## &lt;bytecode: 0x0000000013ba34d8&gt;
+## &lt;bytecode: 0x0000000013ba4e98&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Note this bit of code:</p>
 <pre><code>defaultHandler &lt;- function(c) {

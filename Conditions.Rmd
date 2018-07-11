@@ -267,8 +267,6 @@ tryCatch(
 )
 ```
 
-
-
 `tryCatch()` has one other argument: `finally`. It specifies a block of code (not a function) to run regardless of whether the initial expression succeeds or fails. This can be useful for clean up, like deleting files, or closing connections. This is functionally equivalent to using `on.exit()` (and indeed that’s how it’s implemented) but it can wrap smaller chunks of code than an entire function.
 
 ```{r}
@@ -344,8 +342,6 @@ withCallingHandlers(
   }
 )
 ```
-
-
 
 By default, a condition will continue to propogate to parent handlers, all the way up to the default handler (or an exiting handler, if provided):
 
@@ -491,10 +487,49 @@ Let the innermost hander be 1, and the outer handler 2. Now remember that `messa
     })
     ```
 
+## Other things to note
+Note that a condition is a message, warning, error or interrupt. Note the classes and restarts associated with each.
+```{r, error=TRUE}
+withCallingHandlers(
+  condition = function(cnd) {print(class(cnd)); print(computeRestarts())},
+  {
+    message("%")
+    warning("?", call. = FALSE)
+    stop("!", call. = FALSE)
+  }
+)
+```
+
+And also for interrupts:
+
+```{r, eval=FALSE}
+withCallingHandlers(
+  condition = function(cnd) {print(class(cnd)); print(computeRestarts())},
+  {
+    print("Try to escape")
+    Sys.sleep(1) # press esc key
+  }
+)
+```
+```
+# [1] "Try to escape"
+# [1] "interrupt" "condition"
+# [[1]]
+# <restart: resume >
+
+# [[2]]
+# <restart: abort >
+```
 
 
 
-TJC - error, warning, message, interrupt, and condition which is any of the former.
+
+
+
+
+
+
+
 
 
 ## Condition objects

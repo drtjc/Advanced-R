@@ -28,75 +28,84 @@ show_condition({
 
 
 
-tryCatch(
-  condition = function(cnd) conditionCall(cnd),
-  log("x")
-)
-
-tryCatch(
-  message = conditionMessage,
-  log("x")
-)
-
-tryCatch(
-  condition = identity,
-  log("x")
+withCallingHandlers(
+  condition = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
+  {
+    message("%")
+    warning("?", call. = FALSE)
+    stop("!", call. = FALSE)
+  }
 )
 
 
-tryCatch(
-#  error = function(cnd) "hi",
-  conditon = NULL,
-  
-  log("x")
+withCallingHandlers(
+  message = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
+  {
+    message("%")
+    #warning("?", call. = FALSE)
+    #stop("!", call. = FALSE)
+  }
+)
+
+
+withCallingHandlers(
+  simpleMessage = function(cnd) print("is it simple?"),
+  message("yes")
+)
+
+withCallingHandlers(
+  message = function(cnd) print("is it simple?"),
+  signalCondition(simpleMessage("yes")) # no default handler which prints message to screen, returs NULL
+)
+
+withCallingHandlers(
+  message = function(cnd) {print("is it simple?"); invokeRestart("muffleMessage")},
+  message("yes") # return NULL but is invisible
 )
 
 
 
 
 
-tt <- function (expr) 
-{
-  tryCatch(condition = identity, {
-    force(expr)
-    return(NULL)
-  })
-}
-
-condition = identity
-rm(condition)
 
 
-tt(log("x"))
-tt2(log("x"))
+class(simpleMessage("yes"))
+class(simpleWarning("yes"))
+class(simpleError("yes"))
+class(simpleCondition("yes"))
 
-#TJC what is message, error etc defined more than once
+simpleMessage
+simpleWarning
+simpleError
+simpleCondition
 
+# so simpleCondition will not handle a message, warning, error or interrupt
 
+signalCondition(cond)
+# if not a constion then creates ne with simpleCondition(cond)
 
 
 
+withCallingHandlers(
+  message = function(cnd) print("is it simple?"),
+  signalCondition(simpleCondition("yes")) 
+)
 
+withCallingHandlers(
+  message = function(cnd) print("is it simple?"),
+  signalCondition("yes") 
+)
 
-i <- 1
-while(i <= 3) {
-  withCallingHandlers({
-    Sys.sleep(0.5)
-    print("Try to escape")
-  }, interrupt = function(x) {
-    print("Try again!")
-    i <<- i + 1
-    print(class(x))
-    print(computeRestarts())
-    invokeRestart("resume")
-  })
-}
+withCallingHandlers(
+  condition = function(cnd) print("is it simple?"),
+  signalCondition("yes") 
+)
+
 
 
 r <- computeRestarts()[[1]]
 class(r)
 str(attributes(r))
-r[[3]]
 str(r)
 
 
