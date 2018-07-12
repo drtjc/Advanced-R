@@ -521,18 +521,144 @@ withCallingHandlers(
 # <restart: abort >
 ```
 
+So `simpleMessage`, `simpleWarning` and `simpleError` can be used as handlers to. E.g.:
 
+```{r}
+withCallingHandlers(
+  simpleMessage = function(cnd) print("is it simple?"),
+  message("yes")
+)
+```
 
+`signalCondition()` can be used to raise a condition. It takes a condition object as an argument (or a chaaracter string - see later):
 
+```{r, eval=FALSE}
+withCallingHandlers(
+  message = function(cnd) print("is it simple?"),
+  signalCondition(simpleMessage("yes")) # no default handler which prints message to screen, returns NULL
+)
 
+# [1] "is it simple?"
 
+# NULL
+```
 
+``` {r}
+withCallingHandlers(
+   message = function(cnd) {print("is it simple?"); invokeRestart("muffleMessage")},
+   message("yes") # return NULL but is invisible
+)
+```
 
+Interrupts can be suspended while evaluating an expression using `suspendInterrupts`. Subexpression can be evaluated with interrupts enabled using `allowInterrupt`s. These functions can be used to make sure cleanup handlers cannot be interrupted.
 
-
-
+```{r, eval=FALSE}
+withCallingHandlers(
+  condition = function(cnd) "interrupted",
+  {
+    suspendInterrupts(
+      {
+        print("Try to escape")
+        Sys.sleep(5) # press esc key - won't interrupt
+        allowInterrupts(
+          {
+            print("Try to escape now")
+            Sys.sleep(5) # press esc key - will interrupt, but will not bubble up to handler
+          }
+        )
+      }
+    )
+  }
+)
+```
 
 ## Condition objects
+Built-in conditions are lists with two elements:
+
+* `message`, a length-1 character vector containing the text display to a user. To extract the message, use `conditionMessage(cnd)`.
+* `call`, the call which triggered the condition. To extract it, use `conditionCall(cnd)`.
+
+```{r}
+tryCatch(
+  error = function(cnd) {print(conditionMessage(cnd)); print(conditionCall(cnd))},
+  y <- log("x")
+)
+```
+
+Conditions can be created using the following functions:
+
+```{r}
+str(simpleMessage("yes"))
+str(simpleWarning("yes"))
+str(simpleError("yes"))
+str(simpleCondition("yes"))
+
+simpleMessage
+simpleWarning
+simpleError
+simpleCondition
+```
+
+Notice that every one has the class `condition`. Also notice that `simpleCondition` is not captured by the `message`, `warning` and `error` handlers (and also `interrupt`).
+
+```{r, tidy=FALSE}
+withCallingHandlers(
+  message = function(cnd) print("is it simple?"), # not called
+  signalCondition(simpleCondition("yes"))
+)
+
+withCallingHandlers(
+  condition = function(cnd) print("is it simple?"), # called
+  signalCondition(simpleCondition("yes"))
+)
+```
+
+Note that if the `signalCondition()` argument is not a condition, then a `simpleCondition` is created.
+
+```{r}
+withCallingHandlers(
+  condition = function(cnd) {print(conditionMessage(cnd)); print(class(cnd))},
+  signalCondition("yes") 
+)
+
+signalCondition
+```
+
+### Custom conditions
+R has a powerful, but little used feature: the ability to create custom conditions that can contain additional metadata.
+
+```{r, tidy=FALSE}
+stop_custom <- function(.subclass, message, call = NULL, ...) {
+  err <- structure(
+    list(
+      message = message,
+      call = call,
+      ...
+    ),
+    class = c(.subclass, "error", "condition")
+  )
+  stop(err)
+}
+
+err <- tryCatch(
+  condition = identity, # same as condition = function(cnd) cnd
+  stop_custom("error_new", "This is a custom error", x = 10)
+)
+
+class(err)
+err$x
+
+tryCatch(
+  error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
+  stop_custom("error_new", "This is a custom error", x = 10)
+)
+
+tryCatch(
+  condition = function(cnd) "hi",
+  error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
+  stop_custom("error_new", "This is a custom error", x = 10)
+)
+```
 
 
 
@@ -626,13 +752,7 @@ http://www.win-vector.com/blog/2012/10/error-handling-in-r/
 
 
 
-signalConditon
-q or quit
-getermessage
+
 debugger
 browser
-interrupt
-muffleWarning
-muffleMessage
-invokeRestart
 traceback

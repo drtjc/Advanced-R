@@ -6,24 +6,10 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-show_condition <- function(code) {
-  tryCatch(condition = function(cnd) "hi",
-    {
-      code
-      NULL
-    }
-  )
-}
 
-show_condition(stop("!"))
-show_condition(log("x"))
-show_condition(10)
-show_condition(warning("?!"))
-show_condition({
-  10
-  message("?")
-  warning("?!")
-})
+
+
+
 
 
 
@@ -46,61 +32,6 @@ withCallingHandlers(
     #stop("!", call. = FALSE)
   }
 )
-
-
-withCallingHandlers(
-  simpleMessage = function(cnd) print("is it simple?"),
-  message("yes")
-)
-
-withCallingHandlers(
-  message = function(cnd) print("is it simple?"),
-  signalCondition(simpleMessage("yes")) # no default handler which prints message to screen, returs NULL
-)
-
-withCallingHandlers(
-  message = function(cnd) {print("is it simple?"); invokeRestart("muffleMessage")},
-  message("yes") # return NULL but is invisible
-)
-
-
-
-
-
-
-
-class(simpleMessage("yes"))
-class(simpleWarning("yes"))
-class(simpleError("yes"))
-class(simpleCondition("yes"))
-
-simpleMessage
-simpleWarning
-simpleError
-simpleCondition
-
-# so simpleCondition will not handle a message, warning, error or interrupt
-
-signalCondition(cond)
-# if not a constion then creates ne with simpleCondition(cond)
-
-
-
-withCallingHandlers(
-  message = function(cnd) print("is it simple?"),
-  signalCondition(simpleCondition("yes")) 
-)
-
-withCallingHandlers(
-  message = function(cnd) print("is it simple?"),
-  signalCondition("yes") 
-)
-
-withCallingHandlers(
-  condition = function(cnd) print("is it simple?"),
-  signalCondition("yes") 
-)
-
 
 
 r <- computeRestarts()[[1]]
