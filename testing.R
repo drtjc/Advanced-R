@@ -6,9 +6,26 @@ library(pryr)
 library(rlang)
 library(rlist)
 
+bottles_of_beer <- function(i = 99) {
+  message("There are ", i, " bottles of beer on the wall, ", i, " bottles of beer.")
+  while(i > 0) {
+    tryCatch(
+      Sys.sleep(1),
+      interrupt = function(err) {
+        i <<- i - 1
+        if (i > 0) {
+          message(
+            "Take one down, pass it around, ", i, 
+            " bottle", if (i > 1) "s", " of beer on the wall."
+          )
+        }
+      }
+    )
+  }
+  message("No more bottles of beer on the wall, no more bottles of beer.")
+}
 
-
-
+bottles_of_beer(5)
 
 
 
