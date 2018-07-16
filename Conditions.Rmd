@@ -660,10 +660,209 @@ tryCatch(
 )
 ```
 
-
-
-
 ## Restarts
+One of R’s great features is its condition system. It serves a similar purpose to the exception handling systems in Java, Python, and C++ but is more flexible. In fact, its flexibility extends beyond error handling–conditions are more general than exceptions in that a condition can represent any occurrence during a program’s execution that may be of interest to code at different levels on the call stack. For example, conditions can be used to emit warnings without disrupting execution of the code that emits the warning while allowing code higher on the call stack to control whether the warning message is printed.
+
+The condition system is more flexible than exception systems because instead of providing a two-part division between the code that signals an error and the code that handles it, the condition system splits the responsibilities into three parts–signaling a *condition*, *handling* it, and *restarting*.
+
+You’ll see how you could use the condition system to allow a low-level function to detect a problem while parsing a log file and signal an error, to allow mid-level code to provide several possible ways of recovering from such an error, and to allow code at the highest level of the application to define a policy for choosing which recovery strategy to use.
+
+In most languages, errors are handled by returning from a failing function and giving the caller the choice of either recovering or failing itself. Some languages use the normal function return mechanism, while languages with exceptions return control by *throwing* or *raising* an exception. Exceptions are a vast improvement over using normal function returns, but both schemes suffer from a common flaw: while searching for a function that can recover, the stack unwinds, which means code that might recover has to do so without the context of what the lower-level code was trying to do when the error actually occurred.
+
+Consider the hypothetical call chain of `high`, `medium`, `low`. If `low` fails and `medium` can’t recover, the ball is in `high`’s court. For `high` to handle the error, it must either do its job without any help from `medium` or somehow change things so calling `medium` will work and call it again. The first option is theoretically clean but implies a lot of extra code–a whole extra implementation of whatever it was `medium` was supposed to do. And the further the stack unwinds, the more work that needs to be redone. The second option–patching things up and retrying–is tricky; for `high` to be able to change the state of the world so a second call into `medium` won’t end up causing an error in `low`, it’d need an unseemly knowledge of the inner workings of both `medium` and `low`, contrary to the notion that each function is a black box.
+
+### The R way
+R’s error handling system gives you a way out of this conundrum by letting you separate the code that actually recovers from an error from the code that decides how to recover. Thus, you can put recovery code in low-level functions without committing to actually using any particular recovery strategy, leaving that decision to code in high-level functions.
+
+To get a sense of how this works, let’s suppose you’re writing an application that reads some sort of textual log file, such as a Web server’s log. Somewhere in your application you’ll have a function to parse the individual log entries. Let’s assume you’ll write a function, parse_log_entry(), that will be passed a string containing the text of a single log entry and that is supposed to return a `log_entry()` object representing the entry. This function will be called from a function, `parse_log_file()`, that reads a complete log file and returns a list of objects representing all the entries in the file.
+
+To keep things simple, the `parse_log_entry()` function will not be required to parse incorrectly formatted entries. It will, however, be able to detect when its input is malformed. But what should it do when it detects bad input? In C you’d return a special value to indicate there was a problem. In Java or Python you’d throw or raise an exception. In R, you signal a condition.
+
+### Conditions
+A *condition* is an S3 object whose class indicates the general nature of the condition and whose instance data carries information about the details of the particular circumstances that lead to the condition being signaled.3 In this hypothetical log analysis program, you might define a condition class, malformed_log_entry_error, that parse_log_entry() will signal if it’s given data it can’t parse.
+
+Conditional classes are regular S3 classes, built up from a list with components message and call. There is no built in function to generate a new object of class condition, but we can add one:
+
+```{r, eval=FALSE}
+condition <- function(subclass, message, call = sys.call(-1), ...) {
+  structure(
+    class = c(subclass, "condition"),
+    list(message = message, call = call, ...)
+  )
+}
+```
+
+When using the condition system for error handling, you should define your conditions as subclasses of error, a subclass of condition. Thus, you might define malformed_log_entry_error, with a slot to hold the argument that was passed to `parse_log_entry()`, like this:
+
+```{r, eval=FALSE}
+malformed_log_entry_error <- function(text) {
+  msg <- paste0("Malformed log entry: ", text)
+  condition(c("malformed_log_entry_error", "error"),
+    message = msg, 
+    text = text
+  )
+}
+```
+
+In `parse_log_entry()` you’ll signal a `malformed_log_entry_error` if you can’t parse the log entry. You signal errors with the function `stop()`. `stop()` is normally just called with a string, the error message, but you can also call it with a condition object. Thus, you could write `parse_log_entry()` like this, eliding the details of actually parsing a log entry:
+
+```{r, eval=FALSE}
+parse_log_entry <- function(text) {
+  if (!well_formed_log_entry(text)) {
+    stop(malformed_log_entry_error(text))
+  }
+  
+  new_log_entry(text)
+}
+```
+
+Implement `parse_log_file()` so it establishes a restart. In general, a restart name should describe the action the restart takes. In `parse_log_file()`, you can call the restart `skip_log_entry` since that’s what it does:
+
+```{r, eval=FALSE}
+parse_log_file <- function(file) {
+  lines <- readLines(file)
+  
+  lapply(lines, function(text) {
+    withRestarts(
+      parse_log_entry(text),
+      skip_log_entry = function(e) NULL
+    )
+  })
+}
+```
+
+If you invoke this version of `parse_log_file()` on a log file containing corrupted entries, it won’t handle the error directly; you’ll end up in the debugger. However, there among the various restarts listed by `findRestarts()` will be one called `skip_log_entry`, which, if you choose it, will cause `parse_log_file()` to continue on its way as before. To avoid ending up in the debugger, you can establish a condition handler that invokes the `skip_log_entry` restart automatically.
+
+The advantage of establishing a restart rather than having `parse_log_file()` handle the error directly is it makes `parse_log_file()` usable in more situations. The higher-level code that invokes `parse_log_file()` doesn’t have to invoke the `skip_log_entry` restart. It can choose to handle the error at a higher level. Or, as I’ll show in the next section, you can add restarts to `parse_log_entry()` to provide other recovery strategies, and then condition handlers can choose which strategy they want to use.
+
+You need to see how to set up a condition handler that will invoke the `skip_log_entry` restart. You can set up the handler anywhere in the chain of calls leading to `parse_log_file()`. This may be quite high up in your application, not necessarily in `parse_log_file()`’s direct caller. For instance, suppose the main entry point to your application is a function, `log_analyzer()`, that finds a bunch of logs and analyzes them with the function `analyze_log()`, which eventually leads to a call to `parse_log_file()`. Without any error handling, it might look like this:
+
+```{r, eval=FALSE}
+log_analyzer <- function() {
+  logs <- find_all_logs()
+  lapply(logs, analyze_log)
+}
+```
+
+The job of `analyze_log()` is to call, directly or indirectly, `parse_log_file()` and then do something with the list of log entries returned. An extremely simple version might look like this:
+
+```{r, eval=FALSE}
+analyze_log <- function(log) {
+  entries <- parse_log_file(log)
+  lapply(entries, analyze_entry)
+}
+```
+
+where the function `analyze_entry()` is presumably responsible for extracting whatever information you care about from each log entry and stashing it away somewhere.
+
+So you can add a handler to log_analyzer() that will invoke the skip_log_entry restart established in parse_log_file() like this:
+
+```{r, eval=FALSE}
+log_analyzer <- function() {
+  logs <- find_all_logs()
+  
+  withCallingHandlers(
+    malformed_log_entry_error = function(e) invokeRestart("skip_log_entry"),
+    lapply(logs, analyze_log)
+  )
+}
+```
+
+In this `withCallingHandlers()`, the handler function is an anonymous function that invokes the restart `skip_log_entry`. You could also define a named function that does the same thing and bind it instead. In fact, a common practice when defining a restart is to define a function, with the same name and taking a single argument, the condition, that invokes the eponymous restart. Such functions are called *restart functions*. You could define a restart function for `skip_log_entry` like this:
+
+```{r, eval=FALSE}
+skip_log_entry <- function() invokeRestart("skip_log_entry")
+```
+
+Then you could change the definition of log_analyzer() to this:
+
+```{r, eval=FALSE}
+log_analyzer <- function() {
+  logs <- find_all_logs()
+  
+  withCallingHandlers(
+    malformed_log_entry_error = skip_log_entry,
+    lapply(logs, analyze_log)
+  )
+}
+```
+
+As written, the `skip_log_entry` restart function assumes that a `skip_log_entry` restart has been established. If a `malformed_log_entry_error` is ever signaled by code called from `log_analyzer()` without a `skip_log_entry` having been established, the call to `invokeRestart()` will signal an error when it fails to find the `skip_log_entry` restart. If you want to allow for the possibility that a `malformed_log_entry_error` might be signaled from code that doesn’t have a `skip_log_entry` restart established, you could change the `skip_log_entry` function to this:
+
+```{r, eval=FALSE}
+skip_log_entry <- function() {
+  r <- findRestart("skip_log_entry") 
+  if (is.null(r)) return()
+  
+  invokeRestart(r)
+}
+```
+
+`findRestart` looks for a restart with a given name and returns an object representing the restart if the restart is found and `NUL`L if not. You can invoke the restart by passing the restart object to `invokeRestart()`. Thus, when `skip_log_entry` is bound with `withCallingHandlers()`, it will handle the condition by invoking the `skip_log_entry` restart if one is available and otherwise will return normally, giving other condition handlers, bound higher on the stack, a chance to handle the condition.
+
+### Providing multiple restarts
+Since restarts must be explicitly invoked to have any effect, you can define multiple restarts, each providing a different recovery strategy. As I mentioned earlier, not all log-parsing applications will necessarily want to skip malformed entries. Some applications might want `parse_log_file()` to include a special kind of object representing malformed entries in the list of log-entry objects; other applications may have some way to repair a malformed entry and may want a way to pass the fixed entry back to `parse_log_entry()`.
+
+To allow more complex recovery protocols, restarts can take arbitrary arguments, which are passed in the call to `invokeRestart()`. You can provide support for both the recovery strategies I just mentioned by adding two restarts to `parse_log_entry()`, each of which takes a single argument. One simply returns the value it’s passed as the return value of `parse_log_entry()`, while the other tries to parse its argument in the place of the original log entry.
+
+```{r, eval=FALSE}
+parse_log_entry <- function(text) {
+  if (well_formed_log_entry(text)) {
+    return(new_log_entry(text))
+  }
+  
+  withRestarts(
+    stop(malformed_log_entry_error(text)),
+    use_value = function(x) x,
+    reparse_entry = function(fixed_text) parse_log_entry(fixed_text)
+  )
+}
+```
+
+The name `use_value()` is a standard name for this kind of restart. You can define a restart function for `use_value` similar to the `skip_log_entry` function you just defined.
+
+```{r, eval=FALSE}
+use_value <- function(x) invokeRestart("use_value", x)
+```
+
+So, if you wanted to change the policy on malformed entries to one that created an instance of `malformed_log_entry`, you could change `log_analyzer()` to this (assuming the existence of a `malformed_log_entry constructor` with a `text` parameter):
+
+```{r, eval=FALSE}
+log_analyzer <- function() {
+  logs <- find_all_logs()
+  
+  withCallingHandlers(
+    malformed_log_entry_error = function(text) {
+      use_value(malformed_log_entry(text))
+    },
+    lapply(logs, analyze_log)
+  )
+}
+```
+
+### Structure of restart objects
+```{r, error=TRUE}
+withCallingHandlers(
+  condition = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
+  message("%")
+)
+
+withCallingHandlers(
+  condition = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
+  warning("?", call. = FALSE)
+)
+
+withCallingHandlers(
+  condition = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
+  stop("!", call. = FALSE)
+)
+```
+
+
+
+
+### Other notes
+
 ```{r}
 # muffles level 2 and default handler which prints the message
 withCallingHandlers(

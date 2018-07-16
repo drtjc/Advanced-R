@@ -6,55 +6,62 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-bottles_of_beer <- function(i = 99) {
-  message("There are ", i, " bottles of beer on the wall, ", i, " bottles of beer.")
-  while(i > 0) {
-    tryCatch(
-      Sys.sleep(1),
-      interrupt = function(err) {
-        i <<- i - 1
-        if (i > 0) {
-          message(
-            "Take one down, pass it around, ", i, 
-            " bottle", if (i > 1) "s", " of beer on the wall."
-          )
-        }
-      }
-    )
-  }
-  message("No more bottles of beer on the wall, no more bottles of beer.")
+
+
+
+
+rsts <- function() {
+  withRestarts(
+    {
+      print("here");
+      stop("error")
+    },
+    rst = function(t) t^2
+  )
+  print("end")
 }
 
-bottles_of_beer(5)
 
 
 
 
 
-withCallingHandlers(
-  condition = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
-  {
-    message("%")
-    warning("?", call. = FALSE)
-    stop("!", call. = FALSE)
-  }
+
+
+
+
+
+
+rsts <- function() {
+  withRestarts(
+    {
+      print("here");
+      stop("error")
+    },
+    rst = "rest" # will simply just pass on control
+  )
+  print("end")
+}
+
+
+
+tryCatch(
+  error = function(cnd) print("caught error"),
+  withCallingHandlers(
+    condition = function(cnd) NULL,
+    rsts()
+  )
+)
+
+tryCatch(
+  error = function(cnd) print("caught error"),
+  withCallingHandlers(
+    condition = function(cnd) {print(str(findRestart("rest"))); invokeRestart("rest")},
+    rsts()
+  )
 )
 
 
-withCallingHandlers(
-  message = function(cnd) {print(class(cnd)); print(str(computeRestarts()))},
-  {
-    message("%")
-    #warning("?", call. = FALSE)
-    #stop("!", call. = FALSE)
-  }
-)
-
-
-r <- computeRestarts()[[1]]
-class(r)
-str(attributes(r))
-str(r)
 
 
 
