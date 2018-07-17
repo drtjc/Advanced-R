@@ -93,9 +93,6 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
-.html-widget {
-  margin-bottom: 20px;
-}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -413,7 +410,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 })</code></pre>
 <pre><code>## [1] &quot;Hi&quot;
 ## &lt;environment: R_GlobalEnv&gt;
-## &lt;environment: 0x00000000089ff4f8&gt;
+## &lt;environment: 0x0000000015d62a30&gt;
 ## &lt;environment: R_GlobalEnv&gt;
 ## x
 ## \-tryCatch(...)
@@ -563,7 +560,7 @@ withCallingHandlers(warning = function(cnd) cat(&quot;Level 2\n&quot;), suppress
 ##     else .Internal(warning(call., immediate., noBreaks., .makeMessage(..., 
 ##         domain = domain)))
 ## }
-## &lt;bytecode: 0x000000000a7da4e0&gt;
+## &lt;bytecode: 0x0000000015ef6b60&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 </div>
 <div id="exercises-1" class="section level3">
@@ -623,7 +620,7 @@ show_condition(stop(&quot;!&quot;))  # 'error'</code></pre>
 ##         return(NULL)
 ##     })
 ## }
-## &lt;bytecode: 0x0000000008bead60&gt;
+## &lt;bytecode: 0x0000000016370a38&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <p><strong>A</strong>: Captures any condition (message, warning, error or interrupt) and returns the condition (<code>identity()</code> function) which is printed to the screen. If there is no condition the expression is evaluted and <code>NULL</code> is returned.</p></li>
 <li><p>How could you rewrite <code>show_condition()</code> to use a single handler?<br />
@@ -761,7 +758,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 <pre><code>## function (message, call = NULL) 
 ## structure(list(message = message, call = call), class = c(&quot;simpleMessage&quot;, 
 ##     &quot;message&quot;, &quot;condition&quot;))
-## &lt;bytecode: 0x000000000968ce40&gt;
+## &lt;bytecode: 0x0000000014388cb0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>simpleWarning</code></pre>
 <pre><code>## function (message, call = NULL) 
@@ -770,7 +767,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     structure(list(message = as.character(message), call = call), 
 ##         class = class)
 ## }
-## &lt;bytecode: 0x000000000cc7b010&gt;
+## &lt;bytecode: 0x000000001461d1f8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>simpleError</code></pre>
 <pre><code>## function (message, call = NULL) 
@@ -779,7 +776,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     structure(list(message = as.character(message), call = call), 
 ##         class = class)
 ## }
-## &lt;bytecode: 0x000000000ca9afc0&gt;
+## &lt;bytecode: 0x00000000150faed8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>simpleCondition</code></pre>
 <pre><code>## function (message, call = NULL) 
@@ -788,7 +785,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     structure(list(message = as.character(message), call = call), 
 ##         class = class)
 ## }
-## &lt;bytecode: 0x000000000cafb548&gt;
+## &lt;bytecode: 0x000000001510ab50&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Notice that every one has the class <code>condition</code>. Also notice that <code>simpleCondition</code> is not captured by the <code>message</code>, <code>warning</code> and <code>error</code> handlers (and also <code>interrupt</code>).</p>
 <pre class="r"><code>withCallingHandlers(
@@ -819,7 +816,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     call &lt;- conditionCall(cond)
 ##     .Internal(.signalCondition(cond, msg, call))
 ## }
-## &lt;bytecode: 0x0000000008813ca8&gt;
+## &lt;bytecode: 0x00000000141b9a20&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <div id="custom-conditions" class="section level3">
 <h3><span class="header-section-number">1.6.1</span> Custom conditions</h3>
@@ -973,7 +970,7 @@ class(err)</code></pre>
 ## List of 2
 ##  $ :List of 6
 ##   ..$ name       : chr &quot;muffleMessage&quot;
-##   ..$ exit       :&lt;environment: 0x00000000088e5350&gt; 
+##   ..$ exit       :&lt;environment: 0x00000000164cb508&gt; 
 ##   ..$ handler    :function ()  
 ##   ..$ description: chr &quot;&quot;
 ##   ..$ test       :function (c)  
@@ -993,7 +990,7 @@ class(err)</code></pre>
 ## List of 2
 ##  $ :List of 6
 ##   ..$ name       : chr &quot;muffleWarning&quot;
-##   ..$ exit       :&lt;environment: 0x000000000ce77370&gt; 
+##   ..$ exit       :&lt;environment: 0x0000000014717650&gt; 
 ##   ..$ handler    :function ()  
 ##   ..$ description: chr &quot;&quot;
 ##   ..$ test       :function (c)  
@@ -1017,9 +1014,81 @@ class(err)</code></pre>
 ##   ..- attr(*, &quot;class&quot;)= chr &quot;restart&quot;
 ## NULL</code></pre>
 <pre><code>## Error: !</code></pre>
+<p>Note simple code for <code>isRestart()</code>, <code>restartDescription()</code> and <code>restartFormals()</code>:</p>
+<pre class="r"><code>isRestart</code></pre>
+<pre><code>## function (x) 
+## inherits(x, &quot;restart&quot;)
+## &lt;bytecode: 0x000000001628c810&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>restartDescription</code></pre>
+<pre><code>## function (r) 
+## r$description
+## &lt;bytecode: 0x0000000018cddad8&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>restartFormals</code></pre>
+<pre><code>## function (r) 
+## formals(r$handler)
+## &lt;bytecode: 0x0000000018d70a48&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+</div>
+<div id="specifying-a-restart" class="section level3">
+<h3><span class="header-section-number">1.7.5</span> Specifying a restart</h3>
+<p>A restart can be defined by <code>name = function</code>, <code>name = string</code> or by passing a list. If defined using a string then the restart function simply returns <code>NULL</code>.</p>
+<pre class="r"><code>rsts &lt;- function() {
+    withRestarts({
+        print(&quot;here&quot;)
+        stop(&quot;error&quot;)
+    }, rst = &quot;restart&quot;  # will simply just return NULL; 'rest' is stored in description field of restart object
+)
+    print(&quot;end&quot;)
+}
+
+
+withCallingHandlers(condition = function(cnd) {
+    print(str(findRestart(&quot;rst&quot;)))
+    invokeRestart(&quot;rst&quot;)
+}, rsts())</code></pre>
+<pre><code>## [1] &quot;here&quot;
+## List of 6
+##  $ name       : chr &quot;rst&quot;
+##  $ exit       :&lt;environment: 0x000000001926bfb0&gt; 
+##  $ handler    :function (...)  
+##  $ description: chr &quot;restart&quot;
+##  $ test       :function (c)  
+##  $ interactive: NULL
+##  - attr(*, &quot;class&quot;)= chr &quot;restart&quot;
+## NULL
+## [1] &quot;end&quot;</code></pre>
+<p>Defined using a funnction:</p>
+<pre class="r"><code>rsts &lt;- function() {
+    withRestarts({
+        print(&quot;here&quot;)
+        stop(&quot;error&quot;)
+    }, rst = function(t) print(t))
+    print(&quot;end&quot;)
+}
+
+withCallingHandlers(condition = function(cnd) {
+    print(str(findRestart(&quot;rst&quot;)))
+    invokeRestart(&quot;rst&quot;, &quot;and here&quot;)
+}, rsts())</code></pre>
+<pre><code>## [1] &quot;here&quot;
+## List of 6
+##  $ name       : chr &quot;rst&quot;
+##  $ exit       :&lt;environment: 0x000000001980d9d0&gt; 
+##  $ handler    :function (t)  
+##   ..- attr(*, &quot;srcref&quot;)= 'srcref' int [1:8] 5 14 5 33 14 33 5 5
+##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x00000000195bfe78&gt; 
+##  $ description: chr &quot;&quot;
+##  $ test       :function (c)  
+##  $ interactive: NULL
+##  - attr(*, &quot;class&quot;)= chr &quot;restart&quot;
+## NULL
+## [1] &quot;and here&quot;
+## [1] &quot;end&quot;</code></pre>
 </div>
 <div id="other-notes" class="section level3">
-<h3><span class="header-section-number">1.7.5</span> Other notes</h3>
+<h3><span class="header-section-number">1.7.6</span> Other notes</h3>
 <pre class="r"><code># muffles level 2 and default handler which prints the message
 withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n&quot;), withCallingHandlers(message = function(cnd) {
     cat(&quot;Level 1\n&quot;)
@@ -1047,7 +1116,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 <pre class="r"><code>suppressMessages</code></pre>
 <pre><code>## function (expr) 
 ## withCallingHandlers(expr, message = function(c) invokeRestart(&quot;muffleMessage&quot;))
-## &lt;bytecode: 0x000000000da2f9c0&gt;
+## &lt;bytecode: 0x00000000162c5948&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>How does this work? Look at the code for <code>message()</code>:</p>
 <pre class="r"><code>message</code></pre>
@@ -1073,7 +1142,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 ##     }, muffleMessage = function() NULL)
 ##     invisible()
 ## }
-## &lt;bytecode: 0x00000000096a1b98&gt;
+## &lt;bytecode: 0x0000000005cbaed0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Note this bit of code:</p>
 <pre><code>defaultHandler &lt;- function(c) {

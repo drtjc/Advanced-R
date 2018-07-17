@@ -858,6 +858,58 @@ withCallingHandlers(
 )
 ```
 
+Note simple code for `isRestart()`, `restartDescription()` and `restartFormals()`:
+
+```{r}
+isRestart
+restartDescription
+restartFormals
+```
+
+### Specifying a restart
+A restart can be defined by `name = function`, `name = string` or by passing a list. If defined using a string then the restart function simply returns `NULL`.
+
+```{r}
+rsts <- function() {
+  withRestarts(
+    {
+      print("here");
+      stop("error")
+    },
+    rst = "restart" # will simply just return NULL; "rest" is stored in description field of restart object
+  )
+  print("end")
+}
+
+
+withCallingHandlers(
+  condition = function(cnd) {r <- findRestart("rst"); print(str(r)); print(r$handler); invokeRestart("rst")},
+  rsts()
+)
+```
+
+Defined using a function:
+
+```{r}
+rsts <- function() {
+  withRestarts(
+    {
+      print("here");
+      stop("error")
+    },
+    rst = function(t) print(t)
+  )
+  print("end")
+}
+
+withCallingHandlers(
+  condition = function(cnd) {r <- findRestart("rst"); print(str(r)); print(r$handler); invokeRestart("rst", "and here")},
+  rsts()
+)
+```
+
+Finally, defined using a list:
+
 
 
 

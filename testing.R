@@ -9,26 +9,18 @@ library(rlist)
 
 
 
-
-rsts <- function() {
+f <- function() {
   withRestarts(
-    {
-      print("here");
-      stop("error")
-    },
-    rst = function(t) t^2
+    stop("error"),
+    rst = function(x) print(x^2)
   )
-  print("end")
 }
 
 
-
-
-
-
-
-
-
+withCallingHandlers(
+  condition = function(c) invokeRestartInteractively("rst"),
+  f()
+)
 
 
 
@@ -38,33 +30,14 @@ rsts <- function() {
       print("here");
       stop("error")
     },
-    rst = "rest" # will simply just pass on control
+    rst = function(t) print(t)
   )
   print("end")
 }
 
 
 
-tryCatch(
-  error = function(cnd) print("caught error"),
-  withCallingHandlers(
-    condition = function(cnd) NULL,
-    rsts()
-  )
-)
-
-tryCatch(
-  error = function(cnd) print("caught error"),
-  withCallingHandlers(
-    condition = function(cnd) {print(str(findRestart("rest"))); invokeRestart("rest")},
-    rsts()
-  )
-)
-
-
-
-
-
+invokeRestartInteractively
 
 
 
