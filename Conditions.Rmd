@@ -908,10 +908,86 @@ withCallingHandlers(
 )
 ```
 
-Finally, defined using a list:
+Finally, defined using a list. Note that the test field of the restart object can be used to define a function that checks if the restart can handle the condition:
+
+```{r}
+rsts <- function() {
+  withRestarts(
+    {
+      print("here");
+      stop("error")
+    },
+    rst = list(handler = function(t) print(t), 
+               description = "specified using list",
+               test = function(cnd) if (inherits(cnd, "error")) TRUE else FALSE)
+  )
+  print("end")
+}
+
+withCallingHandlers(
+  condition = function(cnd) {r <- findRestart("rst"); print(str(r)); print(r$test); if (r$test(cnd)) invokeRestart("rst", "and here")},
+  rsts()
+)
+```
+
+In this example, the test function says that it can't handle an error condition:
+
+```{r}
+rsts <- function() {
+  withRestarts(
+    {
+      print("here");
+      stop("error")
+    },
+    rst = list(handler = function(t) print(t), 
+               description = "specified using list",
+               test = function(cnd) if (inherits(cnd, "error")) FALSE else TRUE)
+  )
+  print("end")
+}
 
 
+tryCatch(
+  error = function (c) print("caught error"),
+  withCallingHandlers(
+    condition = function(cnd) {r <- findRestart("rst"); print(str(r)); print(r$test); if (r$test(cnd)) invokeRestart("rst", "and here")},
+    rsts()
+  )
+)
+```
 
+### Interactive restarts
+Restarts can be be invoked interactively. The function `invokeRestartInteractively` calls the 'interactive' function in the restart object to obtain the arguments to use when invoking the restart. The default interactive method queries the user for values for the formal arguments of the handler function.
+
+```{r, eval=FALSE}
+f <- function() {
+  withRestarts(
+    stop("error"),
+    rst = function(x) print(x^2)
+  )
+}
+
+withCallingHandlers(
+  condition = function(c) invokeRestartInteractively("rst"),
+  f() # user will be prompted for value of x
+)
+```
+
+If the interactive function is not `NULL` then it should return an argument list for the handler. NOte that it only works for an interactive session.
+
+```{r, eval=FALSE}
+f <- function() {
+  withRestarts(
+    stop("error"),
+    rst = list(handler = function(x) print(x ^ 2), interactive = function() list(x = 5))
+  )
+}
+
+withCallingHandlers(
+  condition = function(c) invokeRestartInteractively("rst"),
+  f() 
+)
+```
 
 ### Other notes
 

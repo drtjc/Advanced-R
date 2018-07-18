@@ -9,35 +9,15 @@ library(rlist)
 
 
 
-f <- function() {
-  withRestarts(
-    stop("error"),
-    rst = function(x) print(x^2)
-  )
-}
-
-
-withCallingHandlers(
-  condition = function(c) invokeRestartInteractively("rst"),
-  f()
-)
 
 
 
-rsts <- function() {
-  withRestarts(
-    {
-      print("here");
-      stop("error")
-    },
-    rst = function(t) print(t)
-  )
-  print("end")
-}
 
 
 
-invokeRestartInteractively
+
+
+
 
 
 
