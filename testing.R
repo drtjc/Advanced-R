@@ -9,19 +9,6 @@ library(rlist)
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # f1 <- factor("a")
 # f2 <- factor("b")
 # c(f1, f2)

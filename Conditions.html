@@ -410,7 +410,7 @@ try(default &lt;- read.csv(&quot;possibly-bad-input.csv&quot;), silent = TRUE)</
 })</code></pre>
 <pre><code>## [1] &quot;Hi&quot;
 ## &lt;environment: R_GlobalEnv&gt;
-## &lt;environment: 0x0000000014f1e5c0&gt;
+## &lt;environment: 0x0000000014fb4f10&gt;
 ## &lt;environment: R_GlobalEnv&gt;
 ## x
 ## \-tryCatch(...)
@@ -560,7 +560,7 @@ withCallingHandlers(warning = function(cnd) cat(&quot;Level 2\n&quot;), suppress
 ##     else .Internal(warning(call., immediate., noBreaks., .makeMessage(..., 
 ##         domain = domain)))
 ## }
-## &lt;bytecode: 0x0000000015fe8418&gt;
+## &lt;bytecode: 0x0000000016036f10&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 </div>
 <div id="exercises-1" class="section level3">
@@ -620,7 +620,7 @@ show_condition(stop(&quot;!&quot;))  # 'error'</code></pre>
 ##         return(NULL)
 ##     })
 ## }
-## &lt;bytecode: 0x0000000014588f10&gt;
+## &lt;bytecode: 0x00000000150dc6b8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <p><strong>A</strong>: Captures any condition (message, warning, error or interrupt) and returns the condition (<code>identity()</code> function) which is printed to the screen. If there is no condition the expression is evaluted and <code>NULL</code> is returned.</p></li>
 <li><p>How could you rewrite <code>show_condition()</code> to use a single handler?<br />
@@ -758,7 +758,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 <pre><code>## function (message, call = NULL) 
 ## structure(list(message = message, call = call), class = c(&quot;simpleMessage&quot;, 
 ##     &quot;message&quot;, &quot;condition&quot;))
-## &lt;bytecode: 0x00000000142f3750&gt;
+## &lt;bytecode: 0x0000000013b295a8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>simpleWarning</code></pre>
 <pre><code>## function (message, call = NULL) 
@@ -767,7 +767,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     structure(list(message = as.character(message), call = call), 
 ##         class = class)
 ## }
-## &lt;bytecode: 0x0000000018505590&gt;
+## &lt;bytecode: 0x00000000186994a8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>simpleError</code></pre>
 <pre><code>## function (message, call = NULL) 
@@ -776,7 +776,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     structure(list(message = as.character(message), call = call), 
 ##         class = class)
 ## }
-## &lt;bytecode: 0x00000000142ed240&gt;
+## &lt;bytecode: 0x00000000185013d8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>simpleCondition</code></pre>
 <pre><code>## function (message, call = NULL) 
@@ -785,7 +785,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     structure(list(message = as.character(message), call = call), 
 ##         class = class)
 ## }
-## &lt;bytecode: 0x0000000014417e20&gt;
+## &lt;bytecode: 0x000000001843ebe8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Notice that every one has the class <code>condition</code>. Also notice that <code>simpleCondition</code> is not captured by the <code>message</code>, <code>warning</code> and <code>error</code> handlers (and also <code>interrupt</code>).</p>
 <pre class="r"><code>withCallingHandlers(
@@ -816,7 +816,7 @@ show_condition(stop(&quot;!&quot;))</code></pre>
 ##     call &lt;- conditionCall(cond)
 ##     .Internal(.signalCondition(cond, msg, call))
 ## }
-## &lt;bytecode: 0x00000000143ae950&gt;
+## &lt;bytecode: 0x00000000143ada00&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <div id="custom-conditions" class="section level3">
 <h3><span class="header-section-number">1.6.1</span> Custom conditions</h3>
@@ -838,22 +838,54 @@ err &lt;- tryCatch(
   stop_custom(&quot;error_new&quot;, &quot;This is a custom error&quot;, x = 10)
 )
 
-class(err)</code></pre>
-<pre><code>## [1] &quot;error_new&quot; &quot;error&quot;     &quot;condition&quot;</code></pre>
-<pre class="r"><code>err$x</code></pre>
-<pre><code>## [1] 10</code></pre>
-<pre class="r"><code>tryCatch(
+class(err)
+err$x
+
+tryCatch(
   error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
   stop_custom(&quot;error_new&quot;, &quot;This is a custom error&quot;, x = 10)
-)</code></pre>
-<pre><code>## [1] &quot;This is a custom error&quot;
-## [1] 10</code></pre>
-<pre class="r"><code>tryCatch(
+)
+
+tryCatch(
   condition = function(cnd) &quot;hi&quot;,
   error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
   stop_custom(&quot;error_new&quot;, &quot;This is a custom error&quot;, x = 10)
 )</code></pre>
-<pre><code>## [1] &quot;hi&quot;</code></pre>
+<pre><code>&gt; stop_custom &lt;- function(.subclass, message, call = NULL, ...) {
++   err &lt;- structure(
++     list(
++       message = message,
++       call = call,
++       ...
++     ),
++     class = c(.subclass, &quot;error&quot;, &quot;condition&quot;)
++   )
++   stop(err)
++ }
+&gt; 
+&gt; err &lt;- tryCatch(
++   condition = identity, # same as condition = function(cnd) cnd
++   stop_custom(&quot;error_new&quot;, &quot;This is a custom error&quot;, x = 10)
++ )
+&gt; 
+&gt; class(err)
+[1] &quot;error_new&quot; &quot;error&quot;     &quot;condition&quot;
+&gt; err$x
+[1] 10
+&gt; 
+&gt; tryCatch(
++   error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
++   stop_custom(&quot;error_new&quot;, &quot;This is a custom error&quot;, x = 10)
++ )
+[1] &quot;This is a custom error&quot;
+[1] 10
+&gt; 
+&gt; tryCatch(
++   condition = function(cnd) &quot;hi&quot;,
++   error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
++   stop_custom(&quot;error_new&quot;, &quot;This is a custom error&quot;, x = 10)
++ )
+[1] &quot;hi&quot;</code></pre>
 </div>
 </div>
 <div id="restarts" class="section level2">
@@ -970,7 +1002,7 @@ class(err)</code></pre>
 ## List of 2
 ##  $ :List of 6
 ##   ..$ name       : chr &quot;muffleMessage&quot;
-##   ..$ exit       :&lt;environment: 0x00000000148033e0&gt; 
+##   ..$ exit       :&lt;environment: 0x00000000199aeab8&gt; 
 ##   ..$ handler    :function ()  
 ##   ..$ description: chr &quot;&quot;
 ##   ..$ test       :function (c)  
@@ -990,7 +1022,7 @@ class(err)</code></pre>
 ## List of 2
 ##  $ :List of 6
 ##   ..$ name       : chr &quot;muffleWarning&quot;
-##   ..$ exit       :&lt;environment: 0x00000000186a3288&gt; 
+##   ..$ exit       :&lt;environment: 0x0000000019d68e30&gt; 
 ##   ..$ handler    :function ()  
 ##   ..$ description: chr &quot;&quot;
 ##   ..$ test       :function (c)  
@@ -1018,17 +1050,17 @@ class(err)</code></pre>
 <pre class="r"><code>isRestart</code></pre>
 <pre><code>## function (x) 
 ## inherits(x, &quot;restart&quot;)
-## &lt;bytecode: 0x000000001602ffe8&gt;
+## &lt;bytecode: 0x0000000015fc80d0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>restartDescription</code></pre>
 <pre><code>## function (r) 
 ## r$description
-## &lt;bytecode: 0x0000000018f3db60&gt;
+## &lt;bytecode: 0x000000001877e050&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>restartFormals</code></pre>
 <pre><code>## function (r) 
 ## formals(r$handler)
-## &lt;bytecode: 0x0000000018fb26e0&gt;
+## &lt;bytecode: 0x00000000187edf58&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 </div>
 <div id="specifying-a-restart" class="section level3">
@@ -1053,7 +1085,7 @@ withCallingHandlers(condition = function(cnd) {
 <pre><code>## [1] &quot;here&quot;
 ## List of 6
 ##  $ name       : chr &quot;rst&quot;
-##  $ exit       :&lt;environment: 0x000000001945bf80&gt; 
+##  $ exit       :&lt;environment: 0x0000000018c2f0c0&gt; 
 ##  $ handler    :function (...)  
 ##  $ description: chr &quot;restart&quot;
 ##  $ test       :function (c)  
@@ -1062,7 +1094,7 @@ withCallingHandlers(condition = function(cnd) {
 ## NULL
 ## function (...) 
 ## NULL
-## &lt;environment: 0x0000000019457ed8&gt;
+## &lt;environment: 0x0000000018c2c9f8&gt;
 ## [1] &quot;end&quot;</code></pre>
 <p>Defined using a function:</p>
 <pre class="r"><code>rsts &lt;- function() {
@@ -1082,17 +1114,17 @@ withCallingHandlers(condition = function(cnd) {
 <pre><code>## [1] &quot;here&quot;
 ## List of 6
 ##  $ name       : chr &quot;rst&quot;
-##  $ exit       :&lt;environment: 0x0000000019a26a70&gt; 
+##  $ exit       :&lt;environment: 0x000000001920d138&gt; 
 ##  $ handler    :function (t)  
 ##   ..- attr(*, &quot;srcref&quot;)= 'srcref' int [1:8] 5 14 5 33 14 33 5 5
-##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x00000000198666c8&gt; 
+##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000019017228&gt; 
 ##  $ description: chr &quot;&quot;
 ##  $ test       :function (c)  
 ##  $ interactive: NULL
 ##  - attr(*, &quot;class&quot;)= chr &quot;restart&quot;
 ## NULL
 ## function(t) print(t)
-## &lt;environment: 0x0000000019a24ee8&gt;
+## &lt;environment: 0x000000001920b560&gt;
 ## [1] &quot;and here&quot;
 ## [1] &quot;end&quot;</code></pre>
 <p>Finally, defined using a list. Note that the test field of the restart object can be used to define a function that checks if the restart can handle the condition:</p>
@@ -1115,19 +1147,19 @@ withCallingHandlers(condition = function(cnd) {
 <pre><code>## [1] &quot;here&quot;
 ## List of 6
 ##  $ name       : chr &quot;rst&quot;
-##  $ exit       :&lt;environment: 0x0000000016480de0&gt; 
+##  $ exit       :&lt;environment: 0x00000000198b8708&gt; 
 ##  $ handler    :function (t)  
 ##   ..- attr(*, &quot;srcref&quot;)= 'srcref' int [1:8] 5 29 5 48 29 48 5 5
-##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x00000000167cdda8&gt; 
+##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000001965c5e8&gt; 
 ##  $ description: chr &quot;specified using list&quot;
 ##  $ test       :function (cnd)  
 ##   ..- attr(*, &quot;srcref&quot;)= 'srcref' int [1:8] 6 16 6 72 16 72 6 6
-##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x00000000167cdda8&gt; 
+##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000001965c5e8&gt; 
 ##  $ interactive: NULL
 ##  - attr(*, &quot;class&quot;)= chr &quot;restart&quot;
 ## NULL
 ## function(cnd) if (inherits(cnd, &quot;error&quot;)) TRUE else FALSE
-## &lt;environment: 0x00000000164b6580&gt;
+## &lt;environment: 0x00000000198b4af8&gt;
 ## [1] &quot;and here&quot;
 ## [1] &quot;end&quot;</code></pre>
 <p>In this example, the test function says that it can’t handle an error condition:</p>
@@ -1151,19 +1183,19 @@ tryCatch(error = function(c) print(&quot;caught error&quot;), withCallingHandler
 <pre><code>## [1] &quot;here&quot;
 ## List of 6
 ##  $ name       : chr &quot;rst&quot;
-##  $ exit       :&lt;environment: 0x0000000018828eb8&gt; 
+##  $ exit       :&lt;environment: 0x00000000166bbdb0&gt; 
 ##  $ handler    :function (t)  
 ##   ..- attr(*, &quot;srcref&quot;)= 'srcref' int [1:8] 5 29 5 48 29 48 5 5
-##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000001844df78&gt; 
+##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000019e64508&gt; 
 ##  $ description: chr &quot;specified using list&quot;
 ##  $ test       :function (cnd)  
 ##   ..- attr(*, &quot;srcref&quot;)= 'srcref' int [1:8] 6 16 6 72 16 72 6 6
-##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000001844df78&gt; 
+##   .. ..- attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000019e64508&gt; 
 ##  $ interactive: NULL
 ##  - attr(*, &quot;class&quot;)= chr &quot;restart&quot;
 ## NULL
 ## function(cnd) if (inherits(cnd, &quot;error&quot;)) FALSE else TRUE
-## &lt;environment: 0x0000000018821590&gt;
+## &lt;environment: 0x00000000166c16e8&gt;
 ## [1] &quot;caught error&quot;</code></pre>
 </div>
 <div id="interactive-restarts" class="section level3">
@@ -1184,7 +1216,14 @@ withCallingHandlers(condition = function(c) invokeRestartInteractively(&quot;rst
 
 withCallingHandlers(condition = function(c) invokeRestartInteractively(&quot;rst&quot;), 
     f())</code></pre>
-<p>$interative</p>
+<p>We can also write our own function to interact with the user:</p>
+<pre class="r"><code>f &lt;- function() {
+    withRestarts(stop(&quot;error&quot;), rst = list(handler = function(x) print(as.integer(x)^2), 
+        interactive = function() list(x = readline(&quot;X: &quot;))))
+}
+
+withCallingHandlers(condition = function(c) invokeRestartInteractively(&quot;rst&quot;), 
+    f())</code></pre>
 </div>
 <div id="other-notes" class="section level3">
 <h3><span class="header-section-number">1.7.7</span> Other notes</h3>
@@ -1215,7 +1254,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 <pre class="r"><code>suppressMessages</code></pre>
 <pre><code>## function (expr) 
 ## withCallingHandlers(expr, message = function(c) invokeRestart(&quot;muffleMessage&quot;))
-## &lt;bytecode: 0x0000000019586848&gt;
+## &lt;bytecode: 0x0000000018fd7100&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>How does this work? Look at the code for <code>message()</code>:</p>
 <pre class="r"><code>message</code></pre>
@@ -1241,7 +1280,7 @@ suppressMessages(withCallingHandlers(message = function(cnd) cat(&quot;Level 2\n
 ##     }, muffleMessage = function() NULL)
 ##     invisible()
 ## }
-## &lt;bytecode: 0x000000001407cd50&gt;
+## &lt;bytecode: 0x000000001407be00&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Note this bit of code:</p>
 <pre><code>defaultHandler &lt;- function(c) {
@@ -1253,8 +1292,6 @@ withRestarts({
 }, muffleMessage = function() NULL)</code></pre>
 <p>If a condition is signaled and the applicable handler is a calling handler, then the handler is called by <code>signalCondition(cond)</code> in the context where the condition was signaled but with the available handlers restricted to those below the handler called in the handler stack. If the handler returns, then the next handler is tried; once the last handler has been tried, signalCondition returns <code>NULL</code>.</p>
 <p>What this means is that the call to <code>signalCondition()</code> in <code>withRestarts()</code> will call all available handlers in the call stack. However, when <code>invokeRestart(&quot;muffleMessage&quot;)</code> is called in a handler then execution is returned to <code>muffleMessage = function() NULL</code>. This also means that the function <code>defaultHandler(cond)</code> is not called, which would have printed the message to the screen.</p>
-<p><a href="https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html" class="uri">https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html</a> <a href="http://www.win-vector.com/blog/2012/10/error-handling-in-r/" class="uri">http://www.win-vector.com/blog/2012/10/error-handling-in-r/</a></p>
-<p>debugger browser traceback</p>
 </div>
 </div>
 </div>

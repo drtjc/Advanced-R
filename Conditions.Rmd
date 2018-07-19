@@ -627,7 +627,7 @@ signalCondition
 ### Custom conditions
 R has a powerful, but little used feature: the ability to create custom conditions that can contain additional metadata.
 
-```{r, tidy=FALSE}
+```{r, tidy=FALSE, eval=FALSE}
 stop_custom <- function(.subclass, message, call = NULL, ...) {
   err <- structure(
     list(
@@ -659,6 +659,46 @@ tryCatch(
   stop_custom("error_new", "This is a custom error", x = 10)
 )
 ```
+
+```
+> stop_custom <- function(.subclass, message, call = NULL, ...) {
++   err <- structure(
++     list(
++       message = message,
++       call = call,
++       ...
++     ),
++     class = c(.subclass, "error", "condition")
++   )
++   stop(err)
++ }
+> 
+> err <- tryCatch(
++   condition = identity, # same as condition = function(cnd) cnd
++   stop_custom("error_new", "This is a custom error", x = 10)
++ )
+> 
+> class(err)
+[1] "error_new" "error"     "condition"
+> err$x
+[1] 10
+> 
+> tryCatch(
++   error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
++   stop_custom("error_new", "This is a custom error", x = 10)
++ )
+[1] "This is a custom error"
+[1] 10
+> 
+> tryCatch(
++   condition = function(cnd) "hi",
++   error_new = function(cnd) {print(conditionMessage(cnd)); print(cnd$x)},
++   stop_custom("error_new", "This is a custom error", x = 10)
++ )
+[1] "hi"
+```
+
+
 
 ## Restarts
 One of R’s great features is its condition system. It serves a similar purpose to the exception handling systems in Java, Python, and C++ but is more flexible. In fact, its flexibility extends beyond error handling–conditions are more general than exceptions in that a condition can represent any occurrence during a program’s execution that may be of interest to code at different levels on the call stack. For example, conditions can be used to emit warnings without disrupting execution of the code that emits the warning while allowing code higher on the call stack to control whether the warning message is printed.
@@ -989,6 +1029,24 @@ withCallingHandlers(
 )
 ```
 
+We can also write our own function to interact with the user:
+
+```{r, eval=FALSE}
+f <- function() {
+  withRestarts(
+    stop("error"),
+    rst = list(handler = function(x) print(as.integer(x) ^ 2), interactive = function() list(x = readline("X: ")))
+  )
+}
+
+withCallingHandlers(
+  condition = function(c) invokeRestartInteractively("rst"),
+  f() 
+)
+```
+
+
+
 ### Other notes
 
 ```{r}
@@ -1070,16 +1128,3 @@ What this means is that the call to `signalCondition()` in `withRestarts()` will
 
 
 
-
-
-
-
-https://cran.r-project.org/web/packages/tryCatchLog/vignettes/tryCatchLog-intro.html
-http://www.win-vector.com/blog/2012/10/error-handling-in-r/
-
-
-
-
-debugger
-browser
-traceback

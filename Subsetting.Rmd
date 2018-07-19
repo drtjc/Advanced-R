@@ -23,7 +23,7 @@ library(dplyr)
 library(tidyverse)
 ```
 
-# Subsetting - multiple elements
+# Subsetting
 ## Atomic vectors
 Let’s explore the different types of subsetting with a simple vector, `x`.
 
