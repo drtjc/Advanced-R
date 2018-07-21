@@ -42,5 +42,8 @@ library(pryr)
 ```{r child_YAML, child = "Conditions.Rmd", results='markup'}
 ```
 
+```{r child_YAML, child = "Functionals.Rmd", results='markup'}
+```
+
 
 # DO RECURSIVE SUBSETTING

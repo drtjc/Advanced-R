@@ -6,21 +6,10 @@ library(pryr)
 library(rlang)
 library(rlist)
 
+outer(1:2, 1:2)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+simplify2array
+?outer
 
 # f1 <- factor("a")
 # f2 <- factor("b")
