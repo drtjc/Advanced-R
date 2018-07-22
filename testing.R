@@ -6,14 +6,22 @@ library(pryr)
 library(rlang)
 library(rlist)
 
-outer(1:2, 1:2)
 
 
+
+
+
+str(rep(list(1), 3))
+str(rep(1, 3))
+
+1 + 1 / (1 + 1 / 2)
 
 f <- function() {
   print("hi")
   recover()
 }
+
+
 
 #undebug(f)
 #debug(f, text="here")
@@ -32,7 +40,6 @@ debuggingState(TRUE)
 
 ?traceback()
 
-simplify2array
 
 
 # f1 <- factor("a")

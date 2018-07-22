@@ -268,18 +268,166 @@ fv <- matrix(data = NA_real_, nrow = 2, ncol = 2, dimnames = list(c("u", "v"), c
 vapply(list(a = 1:2, b = 3:4), function(x) outer(x, x), fv) #named 3d array
 ```
 
-
 ### Replicate
+`replicate()` is a wrapper for the common use of sapply for repeated evaluation of an expression (which will usually involve random number generation).
 
+```{r}
+replicate
+
+set.seed(456)
+replicate(5, mean(runif(2)))
+set.seed(456)
+sapply(integer(5), function(x) mean(runif(2)))
+set.seed(NULL)
+```
+
+Be careful about using replicate with additional parameters:
+
+```{r}
+foo <- function(x = 1, y = 2) c(x, y)
+
+bar <- function(n, ...) replicate(n, foo(...))
+bar(3, 4, 5)
+# does not work: Because integer 3 = (0,0,0), and 0 is passed to foo each time  
+
+# This works
+bar <- function(n, x, y) replicate(n, foo(x = x, y = y))
+bar(3, 4, 5)
+```
 
 ### Multiple inputs
+With `lapply()`, only one argument to the function varies; the others are fixed. This makes it poorly suited for some problems. For example, how would you find a weighted mean when you have two lists, one of observations and the other of weights?
+
+```{r}
+# Generate some sample data
+xs <- replicate(2, runif(3), simplify = FALSE) 
+xs
+ws <- replicate(2, rpois(3, 5) + 1, simplify = FALSE)
+
+# simplify = FALSE to stop output being matrix
+```
+
+It’s easy to use `lapply()` to compute the unweighted means:
+
+```{r}
+unlist(lapply(xs, mean))
+```
+
+But how could we supply the weights to `weighted.mean()`? `lapply(x, means, w)` won’t work because the additional arguments to `lapply()` are passed to every call. We could change looping forms:
+
+```{r}
+unlist(lapply(seq_along(xs), function(i) {
+  weighted.mean(xs[[i]], ws[[i]])
+}))
+```
+
+This works, but it’s a little clumsy. A cleaner alternative is to use `Map()`, a variant of `lapply()`, where all arguments can vary. This lets us write:
+
+```{r}
+unlist(Map(weighted.mean, xs, ws))
+```
+
+If some of the arguments should be fixed and constant, use an anonymous function:
+
+```{r}
+xs[[2]][[1]] <- NA
+xs
+Map(function(x, w) weighted.mean(x, w, na.rm = TRUE), xs, ws)
+```
+
+`Map()` is a simple wrapper to `mapply()`:
+
+```{r}
+Map
+```
+
+I prefer `Map()` because:
+
+* It’s equivalent to `mapply` with `simplify = FALSE`, which is almost always what you want.
+
+* Instead of using an anonymous function to provide constant inputs, mapply has the MoreArgs argument that takes a list of extra arguments that will be supplied, as is, to each call. This breaks R’s usual lazy evaluation semantics, and is inconsistent with other functions.
+
+```{r}
+mapply(weighted.mean, xs, ws, MoreArgs = list(na.rm = TRUE))
+```
+
+### Exercises
+TO DO
+
+## Vector fuctionals
+Another way of thinking about functionals is as a set of general tools for altering, subsetting, and collapsing vectors. Every functional programming language has three tools for this: `Map()`, `Reduce()`, and `Filter()`. We’ve seen `Map()` already, and the following sections describe `Reduce()`, a powerful tool for extending two-argument functions, and `Filter()`, a member of an important class of functionals that work with predicates, functions that return a single `TRUE` or `FALSE`.
+
+### `Reduce()`
+`Reduce()` reduces a vector, `x`, to a single value by recursively calling a function, `f`, two arguments at a time. It combines the first two elements with `f`, then combines the result of that call with the third element, and so on. Calling `Reduce(f, 1:3)` is equivalent to `f(f(1, 2), 3)`. `Reduce` is also known as fold, because it folds together adjacent elements in the list.
+
+The following two examples show what `Reduce` does with an infix and prefix function:
+
+```{r}
+Reduce(`+`, 1:3) # -> ((1 + 2) + 3)
+Reduce(sum, 1:3) # -> sum(sum(1, 2), 3)
+```
+
+The essence of `Reduce()` can be described by a simple for loop:
+
+```{r, eval=FALSE}
+Reduce2 <- function(f, x) {
+  out <- x[[1]]
+  for(i in seq(2, length(x))) {
+    out <- f(out, x[[i]])
+  }
+  out
+}
+```
+
+The real `Reduce()` is more complicated because it includes arguments to control whether the values are reduced from the left or from the right (`right`), an optional initial value (`init`), and an option to output intermediate results (`accumulate`).
+
+`educe()` is an elegant way of extending a function that works with two inputs into a function that can deal with any number of inputs. It’s useful for implementing many types of recursive operations, like merges and intersections. Imagine you have a list of numeric vectors, and you want to find the values that occur in every element:
+
+```{r}
+l <- replicate(5, sample(1:10, 15, replace = T), simplify = FALSE)
+str(l)
+```
+
+You could do that by intersecting each element in turn:
+
+```{r}
+intersect(intersect(intersect(intersect(l[[1]], l[[2]]), l[[3]]), l[[4]]), l[[5]])
+```
+
+That’s hard to read. With `Reduce()`, the equivalent is:
+
+```{r}
+Reduce(intersect, l)
+Reduce(intersect, l, accumulate = TRUE)
+```
+
+A more sophisticated example:
+
+```{r}
+Funcall <- function(f, ...) f(...)
+## n-fold iterate of a function, functional style:
+Iterate <- function(f, n = 1) function(y) Reduce(Funcall, rep.int(list(f), n), init = y, right = TRUE)
+## Continued fraction approximation to the golden ratio:
+Iterate(function(x) 1 + 1 / x, 30)(3)
+
+# what's going on
+Iterate(function(x) 1 + 1 / x, 2)(3)
+
+f <- function(x) 1 + 1 / x
+rep.int(list(f),2)
+
+r <- Funcall(function (x) 1+1/x, 3)
+Funcall(function (x) 1+1/x, r)
+```
+
+
 
 
 
 apply
 rapply
 tapply
-mapply
+
 eapply
 
 lengths
@@ -287,12 +435,7 @@ aggregate
 
 mclappy()
 
-Map, Reduce, Filter, Find, Negtate, Position
-
-
-outer
-replicate
-simplify2array
+Reduce, Filter, Find, Negtate, Position
 
 nested loops
 assignment
