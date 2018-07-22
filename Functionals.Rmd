@@ -268,6 +268,10 @@ fv <- matrix(data = NA_real_, nrow = 2, ncol = 2, dimnames = list(c("u", "v"), c
 vapply(list(a = 1:2, b = 3:4), function(x) outer(x, x), fv) #named 3d array
 ```
 
+
+### Replicate
+
+
 ### Multiple inputs
 
 
