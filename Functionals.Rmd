@@ -1,0 +1,296 @@
+---
+title: "Functionals"
+output:
+  html_document:
+    number_sections: yes
+    theme: sandstone
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, fig.align='center')
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(lobstr)
+library(pryr)
+library(knitr)
+library(kableExtra)
+library(magrittr)
+library(dplyr)
+library(tidyverse)
+library(rlang)
+```
+
+R has what’s known as first class functions. You can do anything with functions that you can do with vectors: you can assign them to variables, store them in lists, pass them as arguments to other functions, create them inside functions, and even return them as the result of a function. A higher-order function is a function that takes a function as an input or returns a function as output. This part of the book is broken down by the three types of higher-order functions:
+
+* **Functionals**, functions are the input. Functionals are by far and away the most immediately useful application of FP ideas, and you’ll use them all the time in data analyses.
+
+* **Function factories**, functions as output. You can almost always avoid function factories in favour of a different technique, but they are occassionally useful.
+
+* **Function operators**, functions as input and output. These are like adverbs, because they typically modify the operation of a function.
+
+# Functionals
+## Introduction
+A *functional* is a function that takes a function as an input and returns a vector as output. Here’s a simple functional: it calls the function provided as input with 1000 random uniform numbers.
+
+```{r}
+randomise <- function(f) f(runif(1e3))
+randomise(mean)
+randomise(mean)
+randomise(sum)
+```
+
+The three most frequently used are `lapply()`, `apply()`, and `tapply()`. All three take a function as input (among other things) and return a vector as output.
+
+## `lapply()`
+The simplest functional is `lapply()`, which you may already be familiar with. `lapply()` takes a function, applies it to each element in a list, and returns the results in the form of a list. `lapply()` is written in C for performance, but we can create a simple R implementation that does the same thing:
+
+```{r, eval=FALSE}
+lapply2 <- function(x, f, ...) {
+  out <- vector("list", length(x))
+  for (i in seq_along(x)) {
+    out[[i]] <- f(x[[i]], ...)
+  }
+  out
+}
+```
+
+## Looping patterns
+It’s useful to remember that there are three basic ways to loop over a vector:
+
+1. loop over the elements: `for (x in xs)`
+2. loop over the numeric indices: `for (i in seq_along(xs))`
+3. loop over the names: `for (nm in names(xs))`
+
+The first form is usually not a good choice for a for loop because it leads to inefficient ways of saving output. With this form it’s very natural to save the output by extending a data structure, like in this example:
+
+```{r, eval=FALSE}
+xs <- runif(1e3)
+res <- c()
+for (x in xs) {
+  # This is slow!
+  res <- c(res, sqrt(x))
+}
+```
+
+This is slow because each time you extend the vector, R has to copy all of the existing elements. Instead, it’s much better to create the space you’ll need for the output and then fill it in. This is easiest with the second form:
+
+```{r, eval=FALSE}
+res <- numeric(length(xs))
+for (i in seq_along(xs)) {
+  res[i] <- sqrt(xs[i])
+}
+```
+
+Just as there are three basic ways to use a for loop, there are three basic ways to use `lapply()`:
+
+1. `lapply(xs, function(x) {})`
+2. `lapply(seq_along(xs), function(i) {})`
+3. `lapply(names(xs), function(nm) {})`
+
+Typically you’d use the first form because `lapply()` takes care of saving the output for you. However, if you need to know the position or name of the element you’re working with, you should use the second or third form. Both give you an element’s position (`i`, `nm`) and value (`xs[[i]]`, `xs[[nm]]`).
+
+### Exercises
+1. Why are the following two invocations of `lapply()` equivalent?
+
+    ```{r, eval=FALSE}
+    trims <- c(0, 0.1, 0.2, 0.5)
+    x <- rcauchy(100)
+    
+    lapply(trims, function(trim) mean(x, trim = trim))
+    lapply(trims, mean, x = x)
+    ```
+**A**: `x = x` is passed to `mean()`, and so `trims` is positionally matched to the `trim` argument of `mean()`.
+
+2. The function below scales a vector so it falls in the range [0, 1]. How would you apply it to every column of a data frame? How would you apply it to every numeric column in a data frame?
+
+    ```{r}
+    scale01 <- function(x) {
+      rng <- range(x, na.rm = TRUE)
+      (x - rng[1]) / (rng[2] - rng[1])
+    }
+    ```
+**A**: 
+    ```{r}
+    lapply(mtcars, scale01) %>% data.frame() %>% head %>% print(digits = 2)
+    
+    mt2 <- mtcars %>% rownames_to_column()
+    lapply(mt2, function (x) if(is.numeric(x)) scale01(x) else x) %>% data.frame() %>% head %>% print(digits = 2)
+    ```
+
+3. Use both for loops and `lapply()` to fit linear models to the `mtcars` using the formulas stored in this list:
+
+    ```{r}
+    formulas <- list(
+      mpg ~ disp,
+      mpg ~ I(1 / disp),
+      mpg ~ disp + wt,
+      mpg ~ I(1 / disp) + wt
+    )
+    ```
+**A**: 
+    ```{r}
+    lapply(formulas, lm, mtcars)
+    
+    res <- vector("list", length(formulas))
+    for (i in seq_along(formulas)) {
+      res[[i]] <- lm(formulas[[i]], mtcars)
+    }
+    res
+    ```
+
+4. Fit the model `mpg ~ disp` to each of the bootstrap replicates of `mtcars` in the list below by using a `for` loop and `lapply()`. Can you do it without an anonymous function?
+
+    ```{r}
+    bootstraps <- lapply(1:3, function(i) {
+      rows <- sample(1:nrow(mtcars), rep = TRUE)
+      mtcars[rows, ]
+    })
+    ```
+**A**: 
+    ```{r}
+    lapply(bootstraps, function(x) lm(mpg ~ disp, x))
+    lapply(bootstraps, lm, formula = mpg ~ disp)
+    
+    res <- vector("list", length(bootstraps))
+    for (i in seq_along(bootstraps)) {
+      res[[i]] <- lm(mpg ~ disp, bootstraps[[i]])
+    }
+    res    
+    ```
+
+5. For each model in the previous two exercises, extract R^2^ using the function below.
+
+    ```{r}
+    rsq <- function(mod) summary(mod)$r.squared
+    
+    mod1 <- lapply(formulas, lm, mtcars)
+    mod2 <- lapply(bootstraps, lm, formula = mpg ~ disp)
+    lapply(mod1, rsq)
+    lapply(mod2, rsq)
+    ```
+
+## For loop functionals: friends of `lapply()`
+### Vector output: `sapply()` and `vapply()`
+`sapply()` and `vapply()` are very similar to `lapply()` except they simplify their output to produce an atomic vector. While `sapply()` guesses, `vapply()` takes an additional argument specifying the output type. `sapply()` is great for interactive use because it saves typing, but if you use it inside your functions you’ll get weird errors if you supply the wrong type of input. `vapply()` is more verbose, but gives more informative error messages and never fails silently. It is better suited for use inside other functions.
+
+```
+lapply(X, FUN, ...)
+sapply(X, FUN, ..., simplify = TRUE, USE.NAMES = TRUE)
+vapply(X, FUN, FUN.VALUE, ..., USE.NAMES = TRUE)
+```
+
+The following example illustrates these differences. When given a data frame, `sapply()` and `vapply()` return the same results. When given an empty list, `sapply()` returns another empty list instead of the more correct zero-length logical vector.
+
+```{r}
+sapply(mtcars, is.numeric)
+vapply(mtcars, is.numeric, logical(1))
+sapply(list(), is.numeric)
+vapply(list(), is.numeric, logical(1))
+```
+
+If the function returns results of different types or lengths, `sapply()` will silently return a list, while `vapply()` will throw an error. 
+
+```{r, error=TRUE}
+df <- data.frame(x = 1:10, y = letters[1:10])
+sapply(df, class)
+vapply(df, class, character(1))
+
+df2 <- data.frame(x = 1:10, y = Sys.time() + 1:10)
+sapply(df2, class)
+vapply(df2, class, character(1))
+```
+
+Simplification in `sapply()` is only attempted if `X` has length greater than zero and if the return values from all elements of `X` are all of the same (positive) length. If the common length is one the result is a vector, and if greater than one is a matrix with a column corresponding to each element of `X`.
+
+Simplification is always done in `vapply()`. This function checks that all values of `FUN` are compatible with the `FUN.VALUE`, in that they must have the same length and type.
+
+```{r}
+sapply(list(1:2, 3:4), sqrt)
+vapply(list(1:2, 3:4), sqrt, numeric(2))
+```
+
+`USE.NAMES` - logical; if `TRUE` and if `X` is character, use `X` as `names` for the result unless it had names already. 
+
+```{r}
+randomise <- function(f) match.fun(f)(runif(1e3))
+sapply(c("mean", "sum"), randomise)
+vapply(c("mean", "sum"), randomise, numeric(1))
+```
+
+Note, `sapply(*, simplify = FALSE, USE.NAMES = FALSE)` is equivalent to `lapply(*)`.
+
+`sapply()` is a thin wrapper around `lapply()` that transforms a list into a vector in the final step. `vapply()` is an implementation of `lapply()` that assigns results to a vector (or matrix) of appropriate type instead of as a list. The following code shows a pure R implementation of the essence of `sapply()` and `vapply()` (the real functions have better error handling and preserve names, among other things).
+
+```{r, eval=FALSE}
+sapply2 <- function(x, f, ...) {
+  res <- lapply2(x, f, ...)
+  simplify2array(res)
+}
+
+vapply2 <- function(x, f, f.value, ...) {
+  out <- matrix(rep(f.value, length(x)), nrow = length(f.value))
+  for (i in seq_along(x)) {
+    res <- f(x[[i]], ...)
+    stopifnot(
+      length(res) == length(f.value),
+      typeof(res) == typeof(f.value)
+    )
+    out[ ,i] <- res
+  }
+  out
+}
+```
+
+Some more complicated examples are:
+
+``` {r}
+lapply(list(1:2, 3:4), function(x) outer(x, x)) # list of 2 matrices
+sapply(list(1:2, 3:4), function(x) outer(x, x), simplify = FALSE) # list of 2 matrices
+
+(z <- sapply(list(1:2, 3:4), function(x) outer(x, x), simplify = TRUE)) # matrix
+dim(z)
+is.matrix(z)
+is.array(z)
+
+(z <- sapply(list(1:2, 3:4), function(x) outer(x, x), simplify = "array")) # 3d array
+# NOTE sapply calls simplify2array() with higher = (simplify == "array"))
+dim(z)
+is.matrix(z)
+is.array(z)
+
+vapply(list(1:2, 3:4), function(x) outer(x, x), outer(1:2, 1:2)) #3d array
+
+fv <- matrix(data = NA_real_, nrow = 2, ncol = 2, dimnames = list(c("u", "v"), c("x", "y")))
+vapply(list(a = 1:2, b = 3:4), function(x) outer(x, x), fv) #named 3d array
+```
+
+### Multiple inputs
+
+
+
+apply
+rapply
+tapply
+mapply
+eapply
+
+lengths
+aggregate
+
+mclappy()
+
+Map, Reduce, Filter, Find, Negtate, Position
+
+
+outer
+replicate
+simplify2array
+
+nested loops
+assignment
+
+

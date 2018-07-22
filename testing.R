@@ -6,7 +6,9 @@ library(pryr)
 library(rlang)
 library(rlist)
 
+outer(1:2, 1:2)
 
+<<<<<<< HEAD
 
 f <- function() {
   print("hi")
@@ -29,6 +31,10 @@ isdebugged(f)
 debuggingState(TRUE)
 
 ?traceback()
+=======
+simplify2array
+?outer
+>>>>>>> 197c913e2b28c58abb1d5f2bfb5543f51b3b9191
 
 # f1 <- factor("a")
 # f2 <- factor("b")
