@@ -8,6 +8,27 @@ library(rlist)
 
 
 
+f <- function() {
+  print("hi")
+  recover()
+}
+
+#undebug(f)
+#debug(f, text="here")
+
+f()
+class(sum)
+class(trace(sum))
+hist(rnorm(100)) # shows about 3-4 calls to sum()
+untrace(sum)
+
+
+# how to use debug in a nested function
+
+isdebugged(f)
+debuggingState(TRUE)
+
+?traceback()
 
 # f1 <- factor("a")
 # f2 <- factor("b")

@@ -29,5 +29,44 @@ library(rlang)
 
 
 debugger
+dump.frames
+
 browser
 traceback
+recover
+
+
+
+browserText(n = 1)
+browserCondition(n = 1)
+browserSetDebug(n = 1
+
+debug(fun, text = "", condition = NULL, signature = NULL)
+debugonce(fun, text = "", condition = NULL, signature = NULL)
+undebug(fun, signature = NULL)
+isdebugged(fun, signature = NULL)
+debuggingState(on = NULL)
+
+
+debugCall
+undebugcall
+trace(what, tracer, exit, at, print, signature,
+      where = topenv(parent.frame()), edit = FALSE)
+untrace(what, signature = NULL, where = topenv(parent.frame()))
+tracingState(on = NULL)
+.doTrace(expr, msg)
+returnValue(default = NULL)
+
+
+
+
+findLineNum(srcfile, line, nameonly = TRUE,
+            envir = parent.frame(), lastenv)
+
+setBreakpoint(srcfile, line, nameonly = TRUE,
+              envir = parent.frame(), lastenv, verbose = TRUE,
+              tracer, print = FALSE, clear = FALSE, ...)
+
+
+signature (S4 functions)
+
