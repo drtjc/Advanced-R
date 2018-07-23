@@ -7,14 +7,42 @@ library(rlang)
 library(rlist)
 
 
+x <- matrix(rnorm(20, 0, 10), nrow = 4)
+x
+apply(x, 1, min)
+
+
+x1 <- sweep(x, 1, apply(x, 1, min), `-`)
+x1
+
+x2 <- sweep(x1, 1, apply(x1, 1, max), `/`)
+x2
+
+x <- matrix(1:20, nrow = 4)
+x
+dims <- dim(x)
+dims
+
+perm <- c(1, seq_along(dims)[-1])
+seq_along(dims)
+seq_along(dims)[-1]
+
+perm
+
+aa <- array(4:1, dims[perm])
+aa
+aperm(aa, order(perm))
+
+sweep(x, 1, 4:1, `-`)
+sweep(x, 1, 4, `-`)
+
+
+
+str(array(4:1))
 
 
 
 
-str(rep(list(1), 3))
-str(rep(1, 3))
-
-1 + 1 / (1 + 1 / 2)
 
 f <- function() {
   print("hi")
