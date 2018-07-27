@@ -93,9 +93,6 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
-.html-widget {
-  margin-bottom: 20px;
-}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -236,11 +233,11 @@ div.tocify {
 <p>A <em>functional</em> is a function that takes a function as an input and returns a vector as output. Here’s a simple functional: it calls the function provided as input with 1000 random uniform numbers.</p>
 <pre class="r"><code>randomise &lt;- function(f) f(runif(1000))
 randomise(mean)</code></pre>
-<pre><code>## [1] 0.4980119</code></pre>
+<pre><code>## [1] 0.4920591</code></pre>
 <pre class="r"><code>randomise(mean)</code></pre>
-<pre><code>## [1] 0.4908629</code></pre>
+<pre><code>## [1] 0.496139</code></pre>
 <pre class="r"><code>randomise(sum)</code></pre>
-<pre><code>## [1] 504.1001</code></pre>
+<pre><code>## [1] 497.0975</code></pre>
 <p>The three most frequently used are <code>lapply()</code>, <code>apply()</code>, and <code>tapply()</code>. All three take a function as input (among other things) and return a vector as output.</p>
 </div>
 <div id="lapply" class="section level2">
@@ -415,7 +412,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    30.23213     -0.04409  
+##    28.06327     -0.03444  
 ## 
 ## 
 ## [[2]]
@@ -425,7 +422,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    29.74909     -0.04086  
+##     31.4608      -0.0488  
 ## 
 ## 
 ## [[3]]
@@ -435,7 +432,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    29.50648     -0.04004</code></pre>
+##    28.03942     -0.03668</code></pre>
 <pre class="r"><code>lapply(bootstraps, lm, formula = mpg ~ disp)</code></pre>
 <pre><code>## [[1]]
 ## 
@@ -444,7 +441,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    30.23213     -0.04409  
+##    28.06327     -0.03444  
 ## 
 ## 
 ## [[2]]
@@ -454,7 +451,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    29.74909     -0.04086  
+##     31.4608      -0.0488  
 ## 
 ## 
 ## [[3]]
@@ -464,7 +461,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    29.50648     -0.04004</code></pre>
+##    28.03942     -0.03668</code></pre>
 <pre class="r"><code>res &lt;- vector(&quot;list&quot;, length(bootstraps))
 for (i in seq_along(bootstraps)) {
     res[[i]] &lt;- lm(mpg ~ disp, bootstraps[[i]])
@@ -477,7 +474,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    30.23213     -0.04409  
+##    28.06327     -0.03444  
 ## 
 ## 
 ## [[2]]
@@ -487,7 +484,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    29.74909     -0.04086  
+##     31.4608      -0.0488  
 ## 
 ## 
 ## [[3]]
@@ -497,7 +494,7 @@ res</code></pre>
 ## 
 ## Coefficients:
 ## (Intercept)         disp  
-##    29.50648     -0.04004</code></pre></li>
+##    28.03942     -0.03668</code></pre></li>
 <li><p>For each model in the previous two exercises, extract R<sup>2</sup> using the function below.</p>
 <pre class="r"><code>rsq &lt;- function(mod) summary(mod)$r.squared
 
@@ -517,13 +514,13 @@ lapply(mod1, rsq)</code></pre>
 ## [1] 0.8838038</code></pre>
 <pre class="r"><code>lapply(mod2, rsq)</code></pre>
 <pre><code>## [[1]]
-## [1] 0.7160227
+## [1] 0.6965656
 ## 
 ## [[2]]
-## [1] 0.7076386
+## [1] 0.7699686
 ## 
 ## [[3]]
-## [1] 0.7507918</code></pre></li>
+## [1] 0.7518629</code></pre></li>
 </ol>
 </div>
 </div>
@@ -578,10 +575,10 @@ sapply(df2, class)</code></pre>
 <pre class="r"><code>randomise &lt;- function(f) match.fun(f)(runif(1000))
 sapply(c(&quot;mean&quot;, &quot;sum&quot;), randomise)</code></pre>
 <pre><code>##        mean         sum 
-##   0.4862207 477.7148460</code></pre>
+##   0.5000275 513.4579838</code></pre>
 <pre class="r"><code>vapply(c(&quot;mean&quot;, &quot;sum&quot;), randomise, numeric(1))</code></pre>
 <pre><code>##        mean         sum 
-##   0.4956585 493.6552845</code></pre>
+##   0.5043756 493.7967164</code></pre>
 <p>Note, <code>sapply(*, simplify = FALSE, USE.NAMES = FALSE)</code> is equivalent to <code>lapply(*)</code>.</p>
 <p><code>sapply()</code> is a thin wrapper around <code>lapply()</code> that transforms a list into a vector in the final step. <code>vapply()</code> is an implementation of <code>lapply()</code> that assigns results to a vector (or matrix) of appropriate type instead of as a list. The following code shows a pure R implementation of the essence of <code>sapply()</code> and <code>vapply()</code> (the real functions have better error handling and preserve names, among other things).</p>
 <pre class="r"><code>sapply2 &lt;- function(x, f, ...) {
@@ -684,7 +681,7 @@ vapply(list(a = 1:2, b = 3:4), function(x) outer(x, x), fv)  #named 3d array</co
 <pre><code>## function (n, expr, simplify = &quot;array&quot;) 
 ## sapply(integer(n), eval.parent(substitute(function(...) expr)), 
 ##     simplify = simplify)
-## &lt;bytecode: 0x000000000c164580&gt;
+## &lt;bytecode: 0x0000000018906048&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>set.seed(456)
 replicate(5, mean(runif(2)))</code></pre>
@@ -718,38 +715,38 @@ bar(3, 4, 5)</code></pre>
 xs &lt;- replicate(2, runif(3), simplify = FALSE)
 xs</code></pre>
 <pre><code>## [[1]]
-## [1] 0.6209296 0.7172168 0.8300775
+## [1] 0.3442566 0.3518234 0.5549271
 ## 
 ## [[2]]
-## [1] 0.9234650 0.3435779 0.3533804</code></pre>
+## [1] 0.8003888 0.4479254 0.2896426</code></pre>
 <pre class="r"><code>ws &lt;- replicate(2, rpois(3, 5) + 1, simplify = FALSE)
 
 # simplify = FALSE to stop output being matrix</code></pre>
 <p>It’s easy to use <code>lapply()</code> to compute the unweighted means:</p>
 <pre class="r"><code>unlist(lapply(xs, mean))</code></pre>
-<pre><code>## [1] 0.7227413 0.5401411</code></pre>
+<pre><code>## [1] 0.4170024 0.5126523</code></pre>
 <p>But how could we supply the weights to <code>weighted.mean()</code>? <code>lapply(x, means, w)</code> won’t work because the additional arguments to <code>lapply()</code> are passed to every call. We could change looping forms:</p>
 <pre class="r"><code>unlist(lapply(seq_along(xs), function(i) {
     weighted.mean(xs[[i]], ws[[i]])
 }))</code></pre>
-<pre><code>## [1] 0.7476181 0.5242668</code></pre>
+<pre><code>## [1] 0.4212815 0.5546777</code></pre>
 <p>This works, but it’s a little clumsy. A cleaner alternative is to use <code>Map()</code>, a variant of <code>lapply()</code>, where all arguments can vary. This lets us write:</p>
 <pre class="r"><code>unlist(Map(weighted.mean, xs, ws))</code></pre>
-<pre><code>## [1] 0.7476181 0.5242668</code></pre>
+<pre><code>## [1] 0.4212815 0.5546777</code></pre>
 <p>If some of the arguments should be fixed and constant, use an anonymous function:</p>
 <pre class="r"><code>xs[[2]][[1]] &lt;- NA
 xs</code></pre>
 <pre><code>## [[1]]
-## [1] 0.6209296 0.7172168 0.8300775
+## [1] 0.3442566 0.3518234 0.5549271
 ## 
 ## [[2]]
-## [1]        NA 0.3435779 0.3533804</code></pre>
+## [1]        NA 0.4479254 0.2896426</code></pre>
 <pre class="r"><code>Map(function(x, w) weighted.mean(x, w, na.rm = TRUE), xs, ws)</code></pre>
 <pre><code>## [[1]]
-## [1] 0.7476181
+## [1] 0.4212815
 ## 
 ## [[2]]
-## [1] 0.3468454</code></pre>
+## [1] 0.3759787</code></pre>
 <p><code>Map()</code> is a simple wrapper to <code>mapply()</code>:</p>
 <pre class="r"><code>Map</code></pre>
 <pre><code>## function (f, ...) 
@@ -757,7 +754,7 @@ xs</code></pre>
 ##     f &lt;- match.fun(f)
 ##     mapply(FUN = f, ..., SIMPLIFY = FALSE)
 ## }
-## &lt;bytecode: 0x0000000009d23830&gt;
+## &lt;bytecode: 0x000000001668fc58&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>I prefer <code>Map()</code> because:</p>
 <ul>
@@ -765,7 +762,7 @@ xs</code></pre>
 <li><p>Instead of using an anonymous function to provide constant inputs, mapply has the MoreArgs argument that takes a list of extra arguments that will be supplied, as is, to each call. This breaks R’s usual lazy evaluation semantics, and is inconsistent with other functions.</p></li>
 </ul>
 <pre class="r"><code>mapply(weighted.mean, xs, ws, MoreArgs = list(na.rm = TRUE))</code></pre>
-<pre><code>## [1] 0.7476181 0.3468454</code></pre>
+<pre><code>## [1] 0.4212815 0.3759787</code></pre>
 </div>
 <div id="exercises-1" class="section level3">
 <h3><span class="header-section-number">1.4.4</span> Exercises</h3>
@@ -796,32 +793,32 @@ xs</code></pre>
 <pre class="r"><code>l &lt;- replicate(5, sample(1:10, 15, replace = T), simplify = FALSE)
 str(l)</code></pre>
 <pre><code>## List of 5
-##  $ : int [1:15] 5 5 1 2 4 9 6 9 1 4 ...
-##  $ : int [1:15] 6 4 5 5 7 5 2 6 4 2 ...
-##  $ : int [1:15] 4 8 7 1 7 5 5 5 5 6 ...
-##  $ : int [1:15] 3 8 10 2 8 3 5 9 4 9 ...
-##  $ : int [1:15] 2 2 6 3 4 2 3 8 9 1 ...</code></pre>
+##  $ : int [1:15] 8 5 7 7 7 8 2 6 10 5 ...
+##  $ : int [1:15] 1 8 4 6 6 1 8 7 6 1 ...
+##  $ : int [1:15] 8 5 4 3 6 5 9 1 5 9 ...
+##  $ : int [1:15] 10 6 6 10 6 6 8 4 5 9 ...
+##  $ : int [1:15] 3 3 2 7 10 10 6 6 1 7 ...</code></pre>
 <p>You could do that by intersecting each element in turn:</p>
 <pre class="r"><code>intersect(intersect(intersect(intersect(l[[1]], l[[2]]), l[[3]]), l[[4]]), l[[5]])</code></pre>
-<pre><code>## [1] 2 4</code></pre>
+<pre><code>## [1] 8 7 6</code></pre>
 <p>That’s hard to read. With <code>Reduce()</code>, the equivalent is:</p>
 <pre class="r"><code>Reduce(intersect, l)</code></pre>
-<pre><code>## [1] 2 4</code></pre>
+<pre><code>## [1] 8 7 6</code></pre>
 <pre class="r"><code>Reduce(intersect, l, accumulate = TRUE)</code></pre>
 <pre><code>## [[1]]
-##  [1] 5 5 1 2 4 9 6 9 1 4 3 3 2 4 7
+##  [1]  8  5  7  7  7  8  2  6 10  5 10  5  8  2  8
 ## 
 ## [[2]]
-## [1] 5 1 2 4 9 6 7
+## [1] 8 7 2 6
 ## 
 ## [[3]]
-## [1] 5 1 2 4 6 7
+## [1] 8 7 6
 ## 
 ## [[4]]
-## [1] 5 2 4 7
+## [1] 8 7 6
 ## 
 ## [[5]]
-## [1] 2 4</code></pre>
+## [1] 8 7 6</code></pre>
 <p>A more sophisticated example:</p>
 <pre class="r"><code>Funcall &lt;- function(f, ...) f(...)
 ## n-fold iterate of a function, functional style:
@@ -883,7 +880,7 @@ where(is.factor, df)</code></pre>
 ##     f &lt;- match.fun(f)
 ##     function(...) !f(...)
 ## }
-## &lt;bytecode: 0x000000000d58e9c8&gt;
+## &lt;bytecode: 0x0000000019e26730&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 </div>
 <div id="exercises-2" class="section level3">
@@ -987,8 +984,8 @@ span(is.numeric, v)</code></pre>
 </div>
 <div id="manipulating-matrices-and-dataframes" class="section level2">
 <h2><span class="header-section-number">1.6</span> Manipulating matrices and dataframes</h2>
-<div id="matrix-and-array-operations" class="section level3">
-<h3><span class="header-section-number">1.6.1</span> Matrix and array operations</h3>
+<div id="apply" class="section level3">
+<h3><span class="header-section-number">1.6.1</span> <code>apply()</code></h3>
 <p>So far, all the functionals we’ve seen work with 1d input structures. The three functionals in this section provide useful tools for working with higher-dimensional data structures. <code>apply()</code> is a variant of <code>sapply()</code> that works with matrices and arrays. You can think of it as an operation that summarises a matrix or array by collapsing each row or column to a single number. It has four arguments:</p>
 <ul>
 <li><code>X</code>, the matrix or array to summarise</li>
@@ -1032,6 +1029,9 @@ dim(m2)</code></pre>
 <pre class="r"><code>m3 &lt;- apply(m, 2, identity)
 dim(m3)</code></pre>
 <pre><code>## [1] 5 4</code></pre>
+</div>
+<div id="sweep" class="section level3">
+<h3><span class="header-section-number">1.6.2</span> <code>sweep()</code></h3>
 <p><code>sweep()</code> applies the same operation to selected indices of an array,<br />
 <code>sweep(x, MARGIN, STATS, FUN = &quot;-&quot;, check.margin = TRUE, ...)</code>. <code>FUN</code> should be a function of two arguments: it will be called with arguments <code>x</code> and an array of the same dimensions generated from <code>STATS</code> by <code>aperm</code>.</p>
 <pre class="r"><code>x &lt;- matrix(1:20, nrow = 4)
@@ -1047,6 +1047,9 @@ sweep(x, 1, 4:1, `-`)  # subract 4 from row 1, 3 from row 2, etc.</code></pre>
 ## [2,]   -2    2    6   10   14
 ## [3,]   -1    3    7   11   15
 ## [4,]    0    4    8   12   16</code></pre>
+</div>
+<div id="split" class="section level3">
+<h3><span class="header-section-number">1.6.3</span> <code>split()</code></h3>
 <p><code>split()</code> divides the data in the vector <code>x</code> into the groups defined by <code>f</code>: <code>split(x, f, drop = FALSE)</code></p>
 <pre class="r"><code>x &lt;- 1:10
 f &lt;- factor(c(1, 1, 2, 3, 2, 3, 1, 2, 1, 3))
@@ -1123,12 +1126,226 @@ dff</code></pre>
 <pre><code>## function (x, f, drop = FALSE, ...) 
 ## lapply(split(x = seq_len(nrow(x)), f = f, drop = drop, ...), 
 ##     function(ind) x[ind, , drop = FALSE])
-## &lt;bytecode: 0x00000000087abe38&gt;
+## &lt;bytecode: 0x0000000014580688&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
-<p>rapply tapply</p>
-<p>eapply</p>
-<p>lengths aggregate by summary</p>
-<p>merge ave</p>
+</div>
+<div id="tapply" class="section level3">
+<h3><span class="header-section-number">1.6.4</span> <code>tapply()</code></h3>
+<p>Apply a function to each cell of a ragged array, that is to each (non-empty) group of values given by a unique combination of the levels of certain factors.</p>
+<p><code>tapply(X, INDEX, FUN = NULL, ..., default = NA, simplify = TRUE)</code></p>
+<pre class="r"><code>x &lt;- 1:10
+f &lt;- factor(c(1, 1, 2, 3, 2, 3, 1, 2, 1, 3))
+f</code></pre>
+<pre><code>##  [1] 1 1 2 3 2 3 1 2 1 3
+## Levels: 1 2 3</code></pre>
+<pre class="r"><code>tapply(x, f, cumsum)  # list</code></pre>
+<pre><code>## $`1`
+## [1]  1  3 10 19
+## 
+## $`2`
+## [1]  3  8 16
+## 
+## $`3`
+## [1]  4 10 20</code></pre>
+<pre class="r"><code>tapply(x, f, sum)  # matrix (1d)</code></pre>
+<pre><code>##  1  2  3 
+## 19 16 20</code></pre>
+<pre class="r"><code>tapply(x, f, sum, simplify = FALSE)  # list</code></pre>
+<pre><code>## $`1`
+## [1] 19
+## 
+## $`2`
+## [1] 16
+## 
+## $`3`
+## [1] 20</code></pre>
+<pre class="r"><code>tapply(x, f)  # returns f, but as integers</code></pre>
+<pre><code>##  [1] 1 1 2 3 2 3 1 2 1 3</code></pre>
+<p><code>tapply()</code> is just the combination of <code>split()</code> and <code>sapply()</code>. It works with data frames.</p>
+<pre class="r"><code>df &lt;- data.frame(x = c(1, 2, 3), y = c(4, 5, 6), z = c(7, 8, 9))
+f &lt;- factor(c(1, 2, 1))
+tapply(df, f, sum)</code></pre>
+<pre><code>##  1  2 
+## 30 15</code></pre>
+<pre class="r"><code>tapply(df, f, sum, simplify = FALSE)</code></pre>
+<pre><code>## $`1`
+## [1] 30
+## 
+## $`2`
+## [1] 15</code></pre>
+<pre class="r"><code>tapply(df, f)</code></pre>
+<pre><code>## [1] 1 2 1</code></pre>
+<p>Function <code>by</code> is an object-oriented wrapper for tapply applied to data frames:</p>
+<pre class="r"><code>df &lt;- data.frame(x = c(1, 2, 3), y = c(4, 5, 6), z = c(7, 8, 9))
+f &lt;- factor(c(1, 2, 1))
+tapply(df, f, sum)</code></pre>
+<pre><code>##  1  2 
+## 30 15</code></pre>
+<pre class="r"><code>attributes(tapply(df, f, sum))</code></pre>
+<pre><code>## $dim
+## [1] 2
+## 
+## $dimnames
+## $dimnames[[1]]
+## [1] &quot;1&quot; &quot;2&quot;</code></pre>
+<pre class="r"><code>by(df, f, sum)</code></pre>
+<pre><code>## f: 1
+## [1] 30
+## -------------------------------------------------------- 
+## f: 2
+## [1] 15</code></pre>
+<pre class="r"><code>attributes(by(df, f, sum))</code></pre>
+<pre><code>## $dim
+## [1] 2
+## 
+## $dimnames
+## $dimnames$f
+## [1] &quot;1&quot; &quot;2&quot;
+## 
+## 
+## $call
+## by.data.frame(data = df, INDICES = f, FUN = sum)
+## 
+## $class
+## [1] &quot;by&quot;</code></pre>
+</div>
+<div id="rapply" class="section level3">
+<h3><span class="header-section-number">1.6.5</span> <code>rapply()</code></h3>
+<p><code>rapply</code> is a recursive version of <code>lapply</code>. <code>rapply(object, f, classes = &quot;ANY&quot;, deflt = NULL, how = c(&quot;unlist&quot;, &quot;replace&quot;, &quot;list&quot;), ...)</code></p>
+<pre class="r"><code>r &lt;- list(x = list(1, 2, &quot;a&quot;), y = list(&quot;b&quot;, 3, &quot;c&quot;))
+
+# each numeric element that is has one added to it. Other elements remain
+# the same
+s &lt;- rapply(r, function(x) x + 1, &quot;numeric&quot;, how = &quot;replace&quot;)
+s</code></pre>
+<pre><code>## $x
+## $x[[1]]
+## [1] 2
+## 
+## $x[[2]]
+## [1] 3
+## 
+## $x[[3]]
+## [1] &quot;a&quot;
+## 
+## 
+## $y
+## $y[[1]]
+## [1] &quot;b&quot;
+## 
+## $y[[2]]
+## [1] 4
+## 
+## $y[[3]]
+## [1] &quot;c&quot;</code></pre>
+<pre class="r"><code># each numeric element that is has one added to it. Other elements set to
+# NULL
+t &lt;- rapply(r, function(x) x + 1, &quot;numeric&quot;, how = &quot;list&quot;)
+t</code></pre>
+<pre><code>## $x
+## $x[[1]]
+## [1] 2
+## 
+## $x[[2]]
+## [1] 3
+## 
+## $x[[3]]
+## NULL
+## 
+## 
+## $y
+## $y[[1]]
+## NULL
+## 
+## $y[[2]]
+## [1] 4
+## 
+## $y[[3]]
+## NULL</code></pre>
+<pre class="r"><code># each numeric element that is has one added to it. Other elements removed
+u &lt;- rapply(r, function(x) x + 1, &quot;numeric&quot;, how = &quot;unlist&quot;)
+u</code></pre>
+<pre><code>## x1 x2  y 
+##  2  3  4</code></pre>
+<pre class="r"><code># each numeric element that is has one added to it. Other elements set to
+# 'b'
+v &lt;- rapply(r, function(x) x + 1, &quot;numeric&quot;, deflt = &quot;b&quot;, how = &quot;unlist&quot;)
+v</code></pre>
+<pre><code>##  x1  x2  x3  y1  y2  y3 
+## &quot;2&quot; &quot;3&quot; &quot;b&quot; &quot;b&quot; &quot;4&quot; &quot;b&quot;</code></pre>
+</div>
+<div id="eapply" class="section level3">
+<h3><span class="header-section-number">1.6.6</span> <code>eapply()</code></h3>
+<p><code>eapply</code> applies <code>FUN</code> to the named values from an environment and returns the results as a list. The user can request that all named objects are used (normally names that begin with a dot are not). The output is not sorted and no enclosing environments are searched.</p>
+<p><code>eapply(env, FUN, ..., all.names = FALSE, USE.NAMES = TRUE)</code></p>
+<pre class="r"><code>env &lt;- new.env()
+env$a &lt;- 1:10
+env$beta &lt;- exp(-3:3)
+env$logic &lt;- c(TRUE, FALSE, FALSE, TRUE)
+# what have we there?
+utils::ls.str(env)</code></pre>
+<pre><code>## a :  int [1:10] 1 2 3 4 5 6 7 8 9 10
+## beta :  num [1:7] 0.0498 0.1353 0.3679 1 2.7183 ...
+## logic :  logi [1:4] TRUE FALSE FALSE TRUE</code></pre>
+<pre class="r"><code># compute the mean for each list element
+eapply(env, mean)</code></pre>
+<pre><code>## $a
+## [1] 5.5
+## 
+## $logic
+## [1] 0.5
+## 
+## $beta
+## [1] 4.535125</code></pre>
+<pre class="r"><code>unlist(eapply(env, mean))</code></pre>
+<pre><code>##        a    logic     beta 
+## 5.500000 0.500000 4.535125</code></pre>
+<pre class="r"><code># median and quartiles for each element (making use of '...' passing):
+eapply(env, quantile, probs = 1:3/4)</code></pre>
+<pre><code>## $a
+##  25%  50%  75% 
+## 3.25 5.50 7.75 
+## 
+## $logic
+## 25% 50% 75% 
+## 0.0 0.5 1.0 
+## 
+## $beta
+##       25%       50%       75% 
+## 0.2516074 1.0000000 5.0536690</code></pre>
+</div>
+<div id="interaction" class="section level3">
+<h3><span class="header-section-number">1.6.7</span> <code>interaction()</code></h3>
+<p><code>interaction</code> computes a factor which represents the interaction of the given factors.</p>
+<pre class="r"><code>interaction(c(1, 2, 2), c(&quot;A&quot;, &quot;A&quot;, &quot;B&quot;))</code></pre>
+<pre><code>## [1] 1.A 2.A 2.B
+## Levels: 1.A 2.A 1.B 2.B</code></pre>
+<pre class="r"><code>interaction(c(1, 2, 2), c(&quot;A&quot;, &quot;A&quot;, &quot;B&quot;), drop = TRUE)</code></pre>
+<pre><code>## [1] 1.A 2.A 2.B
+## Levels: 1.A 2.A 2.B</code></pre>
+</div>
+<div id="ave" class="section level3">
+<h3><span class="header-section-number">1.6.8</span> <code>ave()</code></h3>
+<p>Subsets of <code>x[]</code> are averaged, where each subset consist of those observations with the same factor levels.</p>
+<p><code>ave(x, ..., FUN = mean)</code></p>
+<p><code>ave()</code> is just <code>split()</code> and <code>lapply()</code>, and hence is essentially <code>tapply()</code> except the input vector is modified.</p>
+<pre class="r"><code>ave</code></pre>
+<pre><code>## function (x, ..., FUN = mean) 
+## {
+##     if (missing(...)) 
+##         x[] &lt;- FUN(x)
+##     else {
+##         g &lt;- interaction(...)
+##         split(x, g) &lt;- lapply(split(x, g), FUN)
+##     }
+##     x
+## }
+## &lt;bytecode: 0x0000000019f672f0&gt;
+## &lt;environment: namespace:stats&gt;</code></pre>
+<p>transform subset within</p>
+<p>lengths aggregate by</p>
+<p>merge</p>
+<p>table</p>
 <p>nested loops assignment</p>
 <p>cut match</p>
 <p>dplyr purrr</p>

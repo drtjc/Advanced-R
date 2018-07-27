@@ -7,19 +7,8 @@ library(rlang)
 library(rlist)
 
 
-env <- new.env() # so the order is fixed
-env$a <- 1:10
-env$beta <- exp(-3:3)
-env$logic <- c(TRUE, FALSE, FALSE, TRUE)
-# what have we there?
-utils::ls.str(env)
 
-# compute the mean for each list element
-eapply(env, mean)
-unlist(eapply(env, mean))
 
-# median and quartiles for each element (making use of "..." passing):
-eapply(env, quantile, probs = 1:3/4)
 
 
 
@@ -78,81 +67,24 @@ str(res)
 
 
 
-
-
-
-r <- list(x = list(1, 2, "a"), y = list("b", 3, "c")) 
-s <- rapply(r, function(x) x + 1, "numeric", how = "replace")
-s
-
-t <- rapply(r, function(x) x + 1, "numeric", how = "unlist")
-t
-
-u <- rapply(r, function(x) x + 1, "numeric", deflt = "b", how = "unlist")
-u
-
-
-df <- data.frame(x = c(1,2,3), y = c(4,5,6), z = c(7,8,9))
-f <- factor(c(1, 2, 1))
-dff <- split(df, f)
-dff
-
-split.data.frame
-
-
-class(1)
-
-
-split(x = seq_len(nrow(df)), f = f)
-
-how = c("unlist", 
-        "replace", "list")
-how <- match.arg("unlist")
-
-
-
-x <- 1:10
-f <- factor(c(1, 1, 2, 3, 2, 3, 1, 2, 1, 3))
-f
-
-xf <- split(x, f)
-xf
-
-tapply(x, f, cumsum)
-str(tapply(x, f, cumsum))
-str(tapply(x, f, sum, simplify = FALSE))
-tapply(x, f)
-
-
-df <- data.frame(x = c(1,2,3), y = c(4,5,6), z = c(7,8,9))
-f <- factor(c(1, 2, 1))
-tapply(df, f, sum)
-tapply(df, f, sum, simplify = FALSE)
-tapply(df, f)
-
-
-
-
-
-
 ?table
-
-
-
-
-
 ind <- list(c(1, 2, 2), c("A", "A", "B"))
 table(ind)
 tapply(1:3, ind) #-> the split vector
 
+str(table(ind))
+
 intt <- interaction(ind)
 str(intt)
-tapply(1:3, ind) #-> the split vector
-
+dim(intt) <- c(2,2)
 
 split(1:3, intt)
-str(tapply(1:3, ind, function(x) x^2))
-str(tapply(1:3, intt, function(x) x^2))
+tapply(1:3, ind, function(x) x^2)
+tapply(1:3, intt, function(x) x^2)
+
+
+
+
 
 
 
