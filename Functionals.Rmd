@@ -215,7 +215,7 @@ vapply(list(1:2, 3:4), sqrt, numeric(2))
 
 `USE.NAMES` - logical; if `TRUE` and if `X` is character, use `X` as `names` for the result unless it had names already. 
 
-```{r}
+```{r, error=TRUE}
 randomise <- function(f) match.fun(f)(runif(1e3))
 sapply(c("mean", "sum"), randomise)
 vapply(c("mean", "sum"), randomise, numeric(1))
@@ -247,7 +247,7 @@ vapply2 <- function(x, f, f.value, ...) {
 
 Some more complicated examples are:
 
-``` {r}
+``` {r, error=TRUE}
 lapply(list(1:2, 3:4), function(x) outer(x, x)) # list of 2 matrices
 sapply(list(1:2, 3:4), function(x) outer(x, x), simplify = FALSE) # list of 2 matrices
 
@@ -283,7 +283,7 @@ set.seed(NULL)
 
 Be careful about using replicate with additional parameters:
 
-```{r}
+```{r, error=TRUE}
 foo <- function(x = 1, y = 2) c(x, y)
 
 bar <- function(n, ...) replicate(n, foo(...))
@@ -432,7 +432,7 @@ A predicate is a function that returns a single `TRUE` or `FALSE`. There are thr
 
 `Filter()` applies the unary predicate function `f` to each element of `x` and returns the subset of `x` for which this gives `TRUE`.
 
-```{r}
+```{r, error=TRUE}
 df <- data.frame(x = 1:3, y = c("a", "b", "c"), z = c("u", "v", "w"))
 
 str(Filter(is.factor, df))
@@ -468,7 +468,7 @@ Negate
 ### Exercises
 1. Why isn’t `is.na()` a predicate function? What base R function is closest to being a predicate version of `is.na()`?  
 **A**: `is.na()` is a vectorised function. `AnyNA()` is a predicate version. 
-    ```{r, error = TRUE}
+    ```{r, error=TRUE}
     v <- c(1, NA, 3, NA)
     is.na(v)
     anyNA(v)
@@ -479,7 +479,7 @@ Negate
     ```
 
 2. Use `Filter()` and `vapply()` to create a function that applies a summary statistic to every numeric column in a data frame.
-    ```{r}
+    ```{r, error=TRUE}
     df <- data.frame(x = 1:3, y = c("a", "b", "c"), z = 4:6)
     ss <- function(f, df) vapply(Filter(is.numeric, df), f, numeric(1L))
     ss(sum, df)
@@ -494,7 +494,7 @@ Negate
     min(which(vapply(v, is.numeric, logical(1L)))) 
     ```
     `Filter(f, x) <=> x[where(f, x)]`
-    ```{r}
+    ```{r, error=TRUE}
     df <- data.frame(x = 1:3, y = c("a", "b", "c"), z = c("u", "v", "w"))
     
     Filter(is.factor, df)
@@ -522,7 +522,7 @@ Negate
 
 5. Implement the `span()` function from Haskell: given a list `x` and a predicate function `f`, span returns the location of the longest sequential run of elements where the predicate is true. (Hint: you might find `rle()` helpful.)
 **A**: 
-    ```{r}
+    ```{r, error=TRUE}
     x <- c(1,1,3,3,3,3,2,2,1,1,1,1,4,4,5,6)
     x
     y <- rle(x)
@@ -560,7 +560,7 @@ So far, all the functionals we’ve seen work with 1d input structures. The thre
 
 A typical example of `apply()` looks like this
 
-```{r}
+```{r, error=TRUE}
 m <- matrix(1:20, nrow = 5)
 apply(m, 1, mean)
 apply(m, 2, mean)
@@ -600,7 +600,7 @@ sweep(x, 1, 4, `-`) # subtract 4 from each row
 ### `split()`
 `split()` divides the data in the vector `x` into the groups defined by `f`: `split(x, f, drop = FALSE)`
 
-```{r}
+```{r, error=TRUE}
 x <- 1:10
 f <- factor(c(1, 1, 2, 3, 2, 3, 1, 2, 1, 3))
 f
@@ -636,7 +636,7 @@ Apply a function to each cell of a ragged array, that is to each (non-empty) gro
 
 `tapply(X, INDEX, FUN = NULL, ..., default = NA, simplify = TRUE)`
 
-```{r}
+```{r, error=TRUE}
 x <- 1:10
 f <- factor(c(1, 1, 2, 3, 2, 3, 1, 2, 1, 3))
 f
@@ -651,7 +651,7 @@ tapply(x, f) # returns f, but as integers
 
 `tapply()` is just the combination of `split()` and `sapply()`. It works with data frames.
 
-```{r}
+```{r, error=TRUE}
 df <- data.frame(x = c(1,2,3), y = c(4,5,6), z = c(7,8,9))
 f <- factor(c(1, 2, 1))
 tapply(df, f, sum)
@@ -661,7 +661,7 @@ tapply(df, f)
 
 Function `by` is an object-oriented wrapper for tapply applied to data frames:
 
-```{r}
+```{r, error=TRUE}
 df <- data.frame(x = c(1,2,3), y = c(4,5,6), z = c(7,8,9))
 f <- factor(c(1, 2, 1))
 tapply(df, f, sum)
@@ -676,7 +676,7 @@ attributes(by(df, f, sum))
 `rapply` is a recursive version of `lapply`. 
 `rapply(object, f, classes = "ANY", deflt = NULL, how = c("unlist", "replace", "list"), ...)`
 
-```{r}
+```{r, error=TRUE}
 r <- list(x = list(1, 2, "a"), y = list("b", 3, "c")) 
 
 # each numeric element that is has one added to it. Other elements remain the same
@@ -701,7 +701,7 @@ v
 
 `eapply(env, FUN, ..., all.names = FALSE, USE.NAMES = TRUE)`
 
-```{r}
+```{r, error=TRUE}
 env <- new.env() 
 env$a <- 1:10
 env$beta <- exp(-3:3)
@@ -720,7 +720,7 @@ eapply(env, quantile, probs = 1:3/4)
 ### `interaction()`
 `interaction` computes a factor which represents the interaction of the given factors.
 
-```{r}
+```{r, error=TRUE}
 interaction(c(1, 2, 2), c("A", "A", "B"))
 interaction(c(1, 2, 2), c("A", "A", "B"), drop = TRUE)
 ```
@@ -737,27 +737,114 @@ Subsets of `x[]` are averaged, where each subset consist of those observations w
 ave
 ```
 
-
-
 ## Invoking a function
 Suppose you had a list of function arguments:`args <- list(1:10, na.rm = TRUE)`. How could you then send that list to `mean()`? You need `do.call()`:
 
 ```{r}
+args <- list(1:10, na.rm = TRUE)
 do.call(mean, args)
 # Equivalent to
 mean(1:10, na.rm = TRUE)
 ```
 
+## Lists of functions
+A use for a list of functions is to summarise an object in multiple ways. To do that, we could store each summary function in a list, and then run them all with `lapply()`:
+
+```{r}
+x <- 1:10
+funs <- list(
+  sum = sum,
+  mean = mean,
+  median = median
+)
+lapply(funs, function(f) f(x))
+```
+
+### Moving lists of functions to the global environment
+Three options to eliminate the use of funs$:
+```{r}
+funs <- list(
+  sum1 = sum,
+  mean1 = mean,
+  median1 = median
+)
+
+funs$mean1(x)
+funs$sum1(x)
+
+with(funs, mean1(x))
+
+attach(funs)
+mean1(x)
+sum1(x)
+detach(funs)
+
+list2env(funs, environment())
+mean1(x)
+sum1(x)
+rm(list = names(funs), envir = environment())
+```
+
+## Loops that should be left as is
+Some loops have no natural functional equivalent. In this section you’ll learn about three common cases:
+
+* modifying in place
+* recursive functions
+* while loops
+
+It’s possible to torture these problems to use a functional, but it’s not a good idea. You’ll create code that is harder to understand, eliminating the main reason for using functionals in the first case.
+
+### Modifying in place
+If you need to modify part of an existing data frame, it’s often better to use a for loop. For example, the following code performs a variable-by-variable transformation by matching the names of a list of functions to the names of variables in a data frame.
+
+```{r, error=TRUE}
+trans <- list(
+  disp = function(x) x * 0.0163871,
+  am = function(x) factor(x, labels = c("auto", "manual"))
+)
+for(var in names(trans)) {
+  mtcars[[var]] <- trans[[var]](mtcars[[var]])
+}
+```
+
+We wouldn’t normally use `lapply()` to replace this loop directly, but it is possible. Just replace the loop with `lapply()` by using `<<-`:
+
+```{r, error=TRUE}
+lapply(names(trans), function(var) {
+  mtcars[[var]] <<- trans[[var]](mtcars[[var]])
+})
+```
+
+The for loop is gone, but the code is longer and much harder to understand. The reader needs to understand `<<`- and how `x[[y]] <<- z works` (it’s not simple!).
+
+### Recursive relationships
+It’s hard to convert a for loop into a functional when the relationship between elements is not independent, or is defined recursively. For example, exponential smoothing works by taking a weighted average of the current and previous data points. 
+
+### While loops
+Another type of looping construct in R is the `while` loop. It keeps running until some condition is met. `while` loops are more general than for loops: you can rewrite every `for` loop as a `while` loop, but you can’t do the reverse. For example, we could turn this for loop:
+
+```{r}
+for (i in 1:10) print(i)
+
+i <- 1
+while(i <= 10) {
+  print(i)
+  i <- i + 1
+}
+```
+
+Not every `while` loop can be turned into a `for` loop because many `while` loops don’t know in advance how many times they will be run:
+
+```{r}
+i <- 0
+while(TRUE) {
+  if (runif(1) > 0.9) break
+  i <- i + 1
+}
+```
+
+This is a common problem when you’re writing simulations.
 
 
 
-aggregate
 
-
-nested loops
-assignment
-
-
-
-dplyr
-purrr

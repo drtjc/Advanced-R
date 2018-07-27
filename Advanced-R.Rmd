@@ -42,7 +42,10 @@ library(pryr)
 ```{r child_YAML, child = "Conditions.Rmd", results='markup', cache=TRUE}
 ```
 
-```{r child_YAML, child = "Functionals.Rmd", results='markup'}
+```{r child_YAML, child = "Functionals.Rmd", results='markup', cache=TRUE}
+```
+
+```{r child_YAML, child = "Function_factories.Rmd", results='markup'}
 ```
 
 ```{r child_YAML, child = "Debugging.Rmd", results='markup'}
@@ -51,4 +54,11 @@ library(pryr)
 
 
 
-# DO RECURSIVE SUBSETTING
+DO RECURSIVE SUBSETTING
+
+aggregate
+match
+
+nested loops
+dplyr
+purrr

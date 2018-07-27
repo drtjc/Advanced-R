@@ -7,8 +7,17 @@ library(rlang)
 library(rlist)
 
 
+trans <- list(
+  disp = function(x) x * 0.0163871,
+  am = function(x) factor(x, labels = c("auto", "manual"))
+)
+for(var in names(trans)) {
+  mtcars[[var]] <- trans[[var]](mtcars[[var]])
+}
 
-
+trans
+names(trans)
+mtcars[["disp"]]
 
 
 
