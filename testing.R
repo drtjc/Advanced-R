@@ -7,89 +7,11 @@ library(rlang)
 library(rlist)
 
 
-trans <- list(
-  disp = function(x) x * 0.0163871,
-  am = function(x) factor(x, labels = c("auto", "manual"))
-)
-for(var in names(trans)) {
-  mtcars[[var]] <- trans[[var]](mtcars[[var]])
-}
-
-trans
-names(trans)
-mtcars[["disp"]]
-
-
-
-df <- data.frame(x = c(1:5), y = 6:11)
 
 
 
 
-aggregate(state.x77, list(Region = state.region), mean)
-str(state.region)
-state.x77
-
-df <- data.frame(x = c(1:5, NA), y = 6:11)
-df
-
-by <- as.factor(c("a", "b", "a", "a", "b", "b"))
-
-str(by)
-res <- aggregate(df, list(by), sum, na.rm = TRUE)
-res
-str(res)
-
-res <- aggregate(df, list(by), sum, na.rm = TRUE, simplify = FALSE)
-res
-str(res)
-
-
-
-df <- data.frame(x = 1:5, y = 6:10)
-by <- as.factor(c("a", "b", "a", "a", "b"))
-
-res <- aggregate(df, list(by), function(x) c(sum(x), mean(x)))
-res
-str(res)
-res
-
-
-res <- aggregate(df, list(by), function(x) c(sum(x), mean(x)), simplify = FALSE)
-res
-str(res)
-
-
-
-res <- aggregate(df, list(by), function(x) {y <- c(sum(x), mean(x), sd(x), median(x)); y})
-res
-str(res)
-res$x[1, ]
-
-
-
-res <- aggregate(df, list(by), function(x) {y <- c(sum(x), mean(x), sd(x), median(x)); dim(y) <- c(2,2); y}, simplify = FALSE)
-res
-str(res)
-
-
-
-
-
-?table
-ind <- list(c(1, 2, 2), c("A", "A", "B"))
-table(ind)
-tapply(1:3, ind) #-> the split vector
-
-str(table(ind))
-
-intt <- interaction(ind)
-str(intt)
-dim(intt) <- c(2,2)
-
-split(1:3, intt)
-tapply(1:3, ind, function(x) x^2)
-tapply(1:3, intt, function(x) x^2)
+mtcars[5, ]
 
 
 
@@ -97,30 +19,90 @@ tapply(1:3, intt, function(x) x^2)
 
 
 
-f <- function() {
-  print("hi")
-  recover()
-}
 
 
 
-#undebug(f)
-#debug(f, text="here")
-
-f()
-class(sum)
-class(trace(sum))
-hist(rnorm(100)) # shows about 3-4 calls to sum()
-untrace(sum)
 
 
-# how to use debug in a nested function
 
-isdebugged(f)
-debuggingState(TRUE)
 
-?traceback()
-
+# df <- data.frame(x = c(1:5), y = 6:11)
+# 
+# aggregate(state.x77, list(Region = state.region), mean)
+# str(state.region)
+# state.x77
+# 
+# df <- data.frame(x = c(1:5, NA), y = 6:11)
+# df
+# 
+# by <- as.factor(c("a", "b", "a", "a", "b", "b"))
+# 
+# str(by)
+# res <- aggregate(df, list(by), sum, na.rm = TRUE)
+# res
+# str(res)
+# 
+# res <- aggregate(df, list(by), sum, na.rm = TRUE, simplify = FALSE)
+# res
+# str(res)
+# 
+# 
+# 
+# df <- data.frame(x = 1:5, y = 6:10)
+# by <- as.factor(c("a", "b", "a", "a", "b"))
+# 
+# res <- aggregate(df, list(by), function(x) c(sum(x), mean(x)))
+# res
+# str(res)
+# res
+# 
+# 
+# res <- aggregate(df, list(by), function(x) c(sum(x), mean(x)), simplify = FALSE)
+# res
+# str(res)
+# 
+# 
+# 
+# res <- aggregate(df, list(by), function(x) {y <- c(sum(x), mean(x), sd(x), median(x)); y})
+# res
+# str(res)
+# res$x[1, ]
+# 
+# 
+# 
+# res <- aggregate(df, list(by), function(x) {y <- c(sum(x), mean(x), sd(x), median(x)); dim(y) <- c(2,2); y}, simplify = FALSE)
+# res
+# str(res)
+# 
+# 
+# 
+# 
+# 
+# 
+# f <- function() {
+#   print("hi")
+#   recover()
+# }
+# 
+# 
+# 
+# #undebug(f)
+# #debug(f, text="here")
+# 
+# f()
+# class(sum)
+# class(trace(sum))
+# hist(rnorm(100)) # shows about 3-4 calls to sum()
+# untrace(sum)
+# 
+# 
+# # how to use debug in a nested function
+# 
+# isdebugged(f)
+# debuggingState(TRUE)
+# 
+# ?traceback()
+# 
 
 
 # f1 <- factor("a")
