@@ -222,6 +222,36 @@ div.tocify {
 
 <div id="function-operators" class="section level1">
 <h1><span class="header-section-number">1</span> Function operators</h1>
+<div id="introduction" class="section level2">
+<h2><span class="header-section-number">1.1</span> Introduction</h2>
+<p>A function operator is a function that takes one (or more) functions as input and returns a function as output. In some ways, function operators are similar to functionals: there’s nothing you can’t do without them, but they can make your code more readable and expressive, and they can help you write code faster. The main difference is that functionals extract common patterns of loop use, where function operators extract common patterns of anonymous function use.</p>
+<p>The following code shows a simple function operator, <code>chatty()</code>. It wraps a function, making a new function that prints out its first argument. It’s useful because it gives you a window to see how functionals, like <code>vapply()</code>, work.</p>
+<pre class="r"><code>chatty &lt;- function(f) {
+    function(x, ...) {
+        res &lt;- f(x, ...)
+        cat(&quot;Processing &quot;, x, &quot;\n&quot;, sep = &quot;&quot;)
+        res
+    }
+}
+
+f &lt;- function(x) x^2
+chatty(f)(1)</code></pre>
+<pre><code>## Processing 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>s &lt;- c(3, 2, 1)
+vapply(s, chatty(f), numeric(1))</code></pre>
+<pre><code>## Processing 3
+## Processing 2
+## Processing 1</code></pre>
+<pre><code>## [1] 9 4 1</code></pre>
+<p>The chapter covers four important types of FO: behaviour, input, output, and combining.</p>
+<ul>
+<li><p><strong>Behavioural FOs</strong> introduces you to FOs that change the behaviour of a function like automatically logging usage to disk or ensuring that a function is run only once.</p></li>
+<li><p><strong>Output FOs</strong> shows you how to write FOs that manipulate the output of a function. These can do simple things like capturing errors, or fundamentally change what the function does.</p></li>
+<li><p><strong>Input FOs</strong> describes how to modify the inputs to a function using a FO like <code>Vectorize()</code> or <code>partial()</code>.</p></li>
+<li><p><strong>Combining FOs</strong> shows the power of FOs that combine multiple functions with function composition and logical operations.</p></li>
+</ul>
+</div>
 </div>
 
 
