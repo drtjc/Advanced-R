@@ -45,7 +45,10 @@ library(pryr)
 ```{r child_YAML, child = "Functionals.Rmd", results='markup', cache=TRUE}
 ```
 
-```{r child_YAML, child = "Function_factories.Rmd", results='markup'}
+```{r child_YAML, child = "Function_factories.Rmd", results='markup', cache=TRUE}
+```
+
+```{r child_YAML, child = "Function_operators.Rmd", results='markup'}
 ```
 
 ```{r child_YAML, child = "Debugging.Rmd", results='markup'}

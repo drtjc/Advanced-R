@@ -25,7 +25,7 @@ library(rlang)
 ```
 
 # Function factories
-## Inttroduction
+## Introduction
 A function factory is a function that makes functions. Here’s a simple example: we use a function factory (`power1()`) to make two child functions (`square()` and `cube()`). You have seen all the components individual before; what’s new is that we have a function that returns a function:
 
 ```{r}
