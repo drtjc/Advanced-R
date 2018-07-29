@@ -252,6 +252,124 @@ vapply(s, chatty(f), numeric(1))</code></pre>
 <li><p><strong>Combining FOs</strong> shows the power of FOs that combine multiple functions with function composition and logical operations.</p></li>
 </ul>
 </div>
+<div id="behavourial-fos" class="section level2">
+<h2><span class="header-section-number">1.2</span> Behavourial FOs</h2>
+<p>Behavioural FOs leave the inputs and outputs of a function unchanged, but add some extra behaviour. In this section, we’ll look at functions which implement three useful behaviours:</p>
+<ul>
+<li>Add a delay to avoid swamping a server with requests.</li>
+<li>Print to console every n invocations to check on a long running process.</li>
+<li>Cache previous computations to improve performance.</li>
+</ul>
+<p>To motivate these behaviours, imagine we want to download a long vector of URLs. That’s pretty simple with <code>lapply()</code> and <code>download_file()</code>:</p>
+<pre class="r"><code>download_file &lt;- function(url, ...) {
+    download.file(url, basename(url), ...)
+}
+lapply(urls, download_file)</code></pre>
+<p>(<code>download_file()</code> is a simple wrapper around <code>utils::download.file()</code> which provides a reasonable default for the file name.)</p>
+<p>There are a number of useful behaviours we might want to add to this function. If the list was long, we might want to print a <code>.</code> every ten URLs so we know that the function’s still working. If we’re downloading files over the internet, we might want to add a small delay between each request to avoid hammering the server. Implementing these behaviours in a <code>for</code> loop is rather complicated. We can no longer use <code>lapply()</code> because we need an external counter:</p>
+<pre class="r"><code>i &lt;- 1
+for (url in urls) {
+    i &lt;- i + 1
+    if (i%%10 == 0) 
+        cat(&quot;.&quot;)
+    Sys.sleep(1)
+    download_file(url)
+}</code></pre>
+<p>Understanding this code is hard because different concerns (iteration, printing, and downloading) are interleaved. In the remainder of this section we’ll create FOs that encapsulate each behaviour and allow us to write code like this:</p>
+<pre class="r"><code>lapply(urls, dot_every(10, delay_by(1, download_file)))</code></pre>
+<p>Implementing <code>delay_by()</code> is straightforward, and follows the same basic template that we’ll see for the majority of FOs in this chapter:</p>
+<pre class="r"><code>delay_by &lt;- function(delay, f) {
+    function(...) {
+        Sys.sleep(delay)
+        f(...)
+    }
+}
+system.time(runif(100))</code></pre>
+<pre><code>##    user  system elapsed 
+##       0       0       0</code></pre>
+<pre class="r"><code>system.time(delay_by(1, runif)(100))</code></pre>
+<pre><code>##    user  system elapsed 
+##       0       0       1</code></pre>
+<p><code>dot_every()</code> is a little bit more complicated because it needs to manage a counter. Fortunately, we saw how to do that in mutable state.</p>
+<pre class="r"><code>dot_every &lt;- function(n, f) {
+    i &lt;- 1
+    function(...) {
+        if (i%%n == 0) 
+            cat(&quot;.&quot;)
+        i &lt;&lt;- i + 1
+        f(...)
+    }
+}
+x &lt;- lapply(1:100, runif)
+x &lt;- lapply(1:100, dot_every(10, runif))</code></pre>
+<pre><code>## ..........</code></pre>
+<p>Notice that I’ve made the function the last argument in each FO. This makes it easier to read when we compose multiple function operators. If the function were the first argument, then instead of:</p>
+<pre class="r"><code>download &lt;- dot_every(10, delay_by(1, download_file))</code></pre>
+<p>we’d have</p>
+<pre class="r"><code>download &lt;- dot_every(delay_by(download_file, 1), 10)</code></pre>
+<p>That’s harder to follow because (e.g.) the argument of <code>dot_every()</code> is far away from its call.</p>
+<div id="memoisation" class="section level3">
+<h3><span class="header-section-number">1.2.1</span> Memoisation</h3>
+<p>Another thing you might worry about when downloading multiple files is accidentally downloading the same file multiple times. You could avoid this by calling <code>unique()</code> on the list of input URLs, or manually managing a data structure that mapped the URL to the result. An alternative approach is to use memoisation: modify a function to automatically cache its results.</p>
+<pre class="r"><code>download &lt;- dot_every(10, memoise(delay_by(1, download_file)))</code></pre>
+</div>
+<div id="capturing-function-invocations" class="section level3">
+<h3><span class="header-section-number">1.2.2</span> Capturing function invocations</h3>
+<p>One challenge with functionals is that it can be hard to see what’s going on inside of them. It’s not easy to pry open their internals like it is with a for loop. Fortunately we can use FOs to peer behind the curtain with <code>tee()</code>.</p>
+<p><code>tee()</code>, defined below, has three arguments, all functions: <code>f</code>, the function to modify; <code>on_input</code>, a function that’s called with the inputs to <code>f</code>; and <code>on_output</code>, a function that’s called with the output from <code>f</code>.</p>
+<pre class="r"><code>ignore &lt;- function(...) NULL
+tee &lt;- function(f, on_input = ignore, on_output = ignore) {
+    function(...) {
+        on_input(...)
+        output &lt;- f(...)
+        on_output(output)
+        output
+    }
+}</code></pre>
+<p>We can use <code>tee()</code> to look inside the <code>uniroot()</code> functional, and see how it iterates its way to a solution. The following example finds where <code>x</code> and <code>cos(x)</code> intersect:</p>
+<pre class="r"><code>g &lt;- function(x) cos(x) - x
+zero &lt;- uniroot(g, c(-5, 5))
+zero</code></pre>
+<pre><code>## $root
+## [1] 0.7390853
+## 
+## $f.root
+## [1] -2.603993e-07
+## 
+## $iter
+## [1] 6
+## 
+## $init.it
+## [1] NA
+## 
+## $estim.prec
+## [1] 6.103516e-05</code></pre>
+<pre class="r"><code>show_x &lt;- function(x, ...) cat(sprintf(&quot;%+.08f&quot;, x), &quot;\n&quot;)
+
+# The location where the function is evaluated:
+zero &lt;- uniroot(tee(g, on_input = show_x), c(-5, 5))</code></pre>
+<pre><code>## -5.00000000 
+## +5.00000000 
+## +0.28366219 
+## +0.87520341 
+## +0.72298040 
+## +0.73863091 
+## +0.73908529 
+## +0.73902425 
+## +0.73908529</code></pre>
+<pre class="r"><code># The value of the function:
+zero &lt;- uniroot(tee(g, on_output = show_x), c(-5, 5))</code></pre>
+<pre><code>## +5.28366219 
+## -4.71633781 
+## +0.67637474 
+## -0.23436269 
+## +0.02685676 
+## +0.00076012 
+## -0.00000026 
+## +0.00010189 
+## -0.00000026</code></pre>
+</div>
+</div>
 </div>
 
 

@@ -58,5 +58,119 @@ The chapter covers four important types of FO: behaviour, input, output, and com
 * **Combining FOs** shows the power of FOs that combine multiple functions with function composition and logical operations.
 
 ## Behavourial FOs
+Behavioural FOs leave the inputs and outputs of a function unchanged, but add some extra behaviour. In this section, we’ll look at functions which implement three useful behaviours:
 
+* Add a delay to avoid swamping a server with requests.
+* Print to console every n invocations to check on a long running process.
+* Cache previous computations to improve performance.
+
+To motivate these behaviours, imagine we want to download a long vector of URLs. That’s pretty simple with `lapply()` and `download_file()`:
+
+```{r, eval=FALSE}
+download_file <- function(url, ...) {
+  download.file(url, basename(url), ...)
+}
+lapply(urls, download_file)
+```
+
+(`download_file()` is a simple wrapper around `utils::download.file()` which provides a reasonable default for the file name.)
+
+There are a number of useful behaviours we might want to add to this function. If the list was long, we might want to print a `.` every ten URLs so we know that the function’s still working. If we’re downloading files over the internet, we might want to add a small delay between each request to avoid hammering the server. Implementing these behaviours in a `for` loop is rather complicated. We can no longer use `lapply()` because we need an external counter:
+
+```{r, eval=FALSE}
+i <- 1
+for(url in urls) {
+  i <- i + 1
+  if (i %% 10 == 0) cat(".")
+  Sys.sleep(1)
+  download_file(url)
+}
+```
+
+Understanding this code is hard because different concerns (iteration, printing, and downloading) are interleaved. In the remainder of this section we’ll create FOs that encapsulate each behaviour and allow us to write code like this:
+
+```{r, eval=FALSE}
+lapply(urls, dot_every(10, delay_by(1, download_file)))
+```
+
+Implementing `delay_by()` is straightforward, and follows the same basic template that we’ll see for the majority of FOs in this chapter:
+
+```{r}
+delay_by <- function(delay, f) {
+  function(...) {
+    Sys.sleep(delay)
+    f(...)
+  }
+}
+system.time(runif(100))
+system.time(delay_by(1, runif)(100))
+```
+
+`dot_every()` is a little bit more complicated because it needs to manage a counter. Fortunately, we saw how to do that in mutable state.
+
+```{r}
+dot_every <- function(n, f) {
+  i <- 1
+  function(...) {
+    if (i %% n == 0) cat(".")
+    i <<- i + 1
+    f(...)
+  }
+}
+x <- lapply(1:100, runif)
+x <- lapply(1:100, dot_every(10, runif))
+```
+
+Notice that I’ve made the function the last argument in each FO. This makes it easier to read when we compose multiple function operators. If the function were the first argument, then instead of:
+
+```{r, eval=FALSE}
+download <- dot_every(10, delay_by(1, download_file))
+```
+
+we’d have
+
+```{r,eval=FALSE}
+download <- dot_every(delay_by(download_file, 1), 10)
+```
+
+That’s harder to follow because (e.g.) the argument of `dot_every()` is far away from its call.
+
+### Memoisation
+Another thing you might worry about when downloading multiple files is accidentally downloading the same file multiple times. You could avoid this by calling `unique()` on the list of input URLs, or manually managing a data structure that mapped the URL to the result. An alternative approach is to use memoisation: modify a function to automatically cache its results.
+
+```{r, eval=FALSE}
+download <- dot_every(10, memoise(delay_by(1, download_file)))
+```
+
+### Capturing function invocations
+One challenge with functionals is that it can be hard to see what’s going on inside of them. It’s not easy to pry open their internals like it is with a for loop. Fortunately we can use FOs to peer behind the curtain with `tee()`.
+
+`tee()`, defined below, has three arguments, all functions: `f`, the function to modify; `on_input`, a function that’s called with the inputs to `f`; and `on_output`, a function that’s called with the output from `f`.
+
+```{r}
+ignore <- function(...) NULL
+tee <- function(f, on_input = ignore, on_output = ignore) {
+  function(...) {
+    on_input(...)
+    output <- f(...)
+    on_output(output)
+    output
+  }
+}
+```
+
+We can use `tee()` to look inside the `uniroot()` functional, and see how it iterates its way to a solution. The following example finds where `x` and `cos(x)` intersect:
+
+```{r}
+g <- function(x) cos(x) - x
+zero <- uniroot(g, c(-5, 5))
+zero
+
+show_x <- function(x, ...) cat(sprintf("%+.08f", x), "\n")
+
+# The location where the function is evaluated:
+zero <- uniroot(tee(g, on_input = show_x), c(-5, 5))
+# The value of the function:
+zero <- uniroot(tee(g, on_output = show_x), c(-5, 5))
+```
 
