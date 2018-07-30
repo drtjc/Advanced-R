@@ -23,6 +23,7 @@ library(dplyr)
 library(tidyverse)
 library(rlang)
 library(memoise)
+library(purrr)
 ```
 
 # Function operators
@@ -173,4 +174,247 @@ zero <- uniroot(tee(g, on_input = show_x), c(-5, 5))
 # The value of the function:
 zero <- uniroot(tee(g, on_output = show_x), c(-5, 5))
 ```
+
+`cat()` allows us to see what’s happening as the function runs, but it doesn’t give us a way to work with the values after the function as completed. To do that, we could capture the sequence of calls by creating a function, `remember()`, that records every argument called and retrieves them when coerced into a list. The small amount of S3 code needed is explained in S3.
+
+```{r}
+remember <- function() {
+  memory <- list()
+  f <- function(...) {
+    # This is inefficient!
+    memory <<- append(memory, list(...))
+    invisible()
+  }
+
+  structure(f, class = "remember")
+}
+as.list.remember <- function(x, ...) {
+  environment(x)$memory
+}
+print.remember <- function(x, ...) {
+  cat("Remembering...\n")
+  str(as.list(x))
+}
+```
+
+Now we can draw a picture showing how uniroot zeroes in on the final answer:
+
+```{r}
+locs <- remember()
+vals <- remember()
+zero <- uniroot(tee(g, locs, vals), c(-5, 5))
+x <- unlist(as.list(locs))
+error <- unlist(as.list(vals))
+plot(x, type = "b"); abline(h = 0.739, col = "grey50")
+plot(error, type = "b"); abline(h = 0, col = "grey50")
+```
+
+### Laziness
+The function operators we’ve seen so far follow a common pattern:
+
+```{r, eval=FALSE}
+funop <- function(f, otherargs) {
+  function(...) {
+    # maybe do something
+    res <- f(...)
+    # maybe do something else
+    res
+  }
+}
+```
+
+Unfortunately there’s a problem with this implementation because function arguments are lazily evaluated: `f()` may have changed between applying the FO and evaluating the function. This is a particular problem if you’re using a for loop to create multiple function operators. 
+
+```{r}
+funs <- list(mean = mean, sum = sum)
+funs_m <- vector("list", length(funs))
+names(funs_m) <- names(funs)
+
+g <- function(f) function(...) f(...)
+for (fun in names(funs)) {
+  funs_m[[fun]] <- g(funs[[fun]])
+}
+
+funs_m$mean(1:10) #55
+environment(funs_m[[1]])$f # sum, since fun is sum (end of loop) when g(funs[[fun]]) is evaluated
+parent.env(environment(funs_m[[1]]))$fun # "sum"
+```
+
+We can avoid that problem by explicitly forcing the evaluation of `f()`:
+
+```{r}
+g <- function(f) {force(f); function(...) f(...)}
+for (fun in names(funs)) {
+  funs_m[[fun]] <- g(funs[[fun]])
+}
+
+funs_m$mean(1:10) #5.5
+environment(funs_m[[1]])$f # mean 
+parent.env(environment(funs_m[[1]]))$fun # "sum"
+
+```
+
+Note that `force()` just evaluates its argument:
+
+```{r}
+force
+```
+
+Another example is:
+
+```{r}
+f <- function(y) function() y
+lf <- vector("list", 5)
+for (i in seq_along(lf)) lf[[i]] <- f(i)
+lf[[1]]()  # returns 5 since i is 5 when f(i) is evaluated
+
+environment(lf[[1]])$y #5 
+parent.env(environment(lf[[1]]))$i #5
+
+
+g <- function(y) {force(y); function() y}
+lg <- vector("list", 5)
+for (i in seq_along(lg)) lg[[i]] <- g(i)
+lg[[1]]()  # returns 1
+
+environment(lg[[1]])$y #1
+parent.env(environment(lg[[1]]))$i #5
+```
+
+## Output FOs
+The next step up in complexity is to modify the output of a function. This could be quite simple, or it could fundamentally change the operation of the function by returning something completely different to its usual output. In this section you’ll learn about two simple modifications, `Negate()` and `failwith()`, and two fundamental modifications, `capture_it()` and `time_it()`.
+
+### Minor modifications
+`base::Negate()` and `plyr::failwith()` offer two minor, but useful, modifications of a function that are particularly handy in conjunction with functionals.
+
+`Negate()` takes a function that returns a logical vector (a predicate function), and returns the negation of that function. This can be a useful shortcut when a function returns the opposite of what you need. The essence of `Negate()` is very simple:
+
+```{r}
+Negate <- function(f) {
+  force(f)
+  function(...) !f(...)
+}
+
+(Negate(is.null))(NULL)
+```
+
+`plyr::failwith()` turns a function that throws an error into a function that returns a default value when there’s an error. Again, the essence of `failwith()` is simple; it’s just a wrapper around `try()`, the function that captures errors and allows execution to continue.
+
+```{r, error=TRUE}
+failwith <- function(default = NULL, f, quiet = FALSE) {
+  force(f)
+  function(...) {
+    out <- default
+    try(out <- f(...), silent = quiet)
+    out
+  }
+}
+log("a")
+failwith(NA, log)("a")
+failwith(NA, log, quiet = TRUE)("a")
+```
+
+`failwith()` is very useful in conjunction with functionals: instead of the failure propagating and terminating the higher-level loop, you can complete the iteration and then find out what went wrong. For example, imagine you’re fitting a set of generalised linear models (GLMs) to a list of data frames. While GLMs can sometimes fail because of optimisation problems, you’d still want to be able to try to fit all the models, and later look back at those that failed:
+
+```{r, eval=FALSE}
+# If any model fails, all models fail to fit:
+models <- lapply(datasets, glm, formula = y ~ x1 + x2 * x3)
+# If a model fails, it will get a NULL value
+models <- lapply(datasets, failwith(NULL, glm),
+  formula = y ~ x1 + x2 * x3)
+
+# remove failed models (NULLs) with compact
+ok_models <- compact(models)
+# extract the datasets corresponding to failed models
+failed_data <- datasets[vapply(models, is.null, logical(1))]
+```
+
+### Changing what a function does
+Other output function operators can have a more profound effect on the operation of the function. Instead of returning the original return value, we can return some other effect of the function evaluation. Here are two examples:
+
+Return text that the function `print()`ed:
+
+```{r}
+capture_it <- function(f) {
+  force(f)
+  function(...) {
+    capture.output(f(...))
+  }
+}
+str_out <- capture_it(str)
+str(1:10)
+str_out(1:10)
+
+```
+
+Return how long a function took to run:
+
+```{r}
+time_it <- function(f) {
+  force(f)
+  function(...) {
+    system.time(f(...))
+  }
+}
+
+compute_mean <- list(
+  base = function(x) mean(x),
+  sum = function(x) sum(x) / length(x)
+)
+x <- runif(1e7)
+
+call_fun <- function(f, ...) f(...)
+lapply(compute_mean, time_it(call_fun), x)
+```
+
+## Input FOs
+The next step up in complexity is to modify the inputs of a function. Again, you can modify how a function works in a minor way (e.g., setting default argument values), or in a major way (e.g., converting inputs from scalars to vectors, or vectors to matrices).
+
+`base::Vectorize()` converts a scalar function to a vector function. It takes a non-vectorised function and vectorises it with respect to the arguments specified in the `vectorize.args` argument. This doesn’t give you any magical performance improvements, but it’s useful if you want a quick and dirty way of making a vectorised function.
+
+A mildly useful extension to `sample()` would be to vectorize it with respect to size. Doing so would allow you to generate multiple samples in one call.
+
+```{r}
+sample2 <- Vectorize(sample, "size", SIMPLIFY = FALSE)
+str(sample2(1:5, c(1, 1, 3)))
+str(sample2(1:5, 5:3))
+```
+
+
+In this example we have used `SIMPLIFY = FALSE` to ensure that our newly vectorised function always returns a list. This is usually what you want.
+
+`splat()` converts a function that takes multiple arguments to a function that takes a single list of arguments.
+
+```{r}
+splat <- function (f) {
+  force(f)
+  function(args) {
+    do.call(f, args)
+  }
+}
+```
+
+This is useful if you want to invoke a function with varying arguments:
+
+```{r}
+x <- c(NA, runif(100), 1000)
+args <- list(
+  list(x),
+  list(x, na.rm = TRUE),
+  list(x, na.rm = TRUE, trim = 0.1)
+)
+lapply(args, splat(mean))
+```
+
+`plyr::colwise()` converts a vector function to one that works with data frames:
+
+```{r, error=TRUE}
+median(mtcars)
+median(mtcars$mpg)
+plyr::colwise(median)(mtcars)
+
+```
+
+
+
 

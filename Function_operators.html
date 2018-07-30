@@ -368,7 +368,233 @@ zero &lt;- uniroot(tee(g, on_output = show_x), c(-5, 5))</code></pre>
 ## -0.00000026 
 ## +0.00010189 
 ## -0.00000026</code></pre>
+<p><code>cat()</code> allows us to see what’s happening as the function runs, but it doesn’t give us a way to work with the values after the function as completed. To do that, we could capture the sequence of calls by creating a function, <code>remember()</code>, that records every argument called and retrieves them when coerced into a list. The small amount of S3 code needed is explained in S3.</p>
+<pre class="r"><code>remember &lt;- function() {
+    memory &lt;- list()
+    f &lt;- function(...) {
+        # This is inefficient!
+        memory &lt;&lt;- append(memory, list(...))
+        invisible()
+    }
+    
+    structure(f, class = &quot;remember&quot;)
+}
+as.list.remember &lt;- function(x, ...) {
+    environment(x)$memory
+}
+print.remember &lt;- function(x, ...) {
+    cat(&quot;Remembering...\n&quot;)
+    str(as.list(x))
+}</code></pre>
+<p>Now we can draw a picture showing how uniroot zeroes in on the final answer:</p>
+<pre class="r"><code>locs &lt;- remember()
+vals &lt;- remember()
+zero &lt;- uniroot(tee(g, locs, vals), c(-5, 5))
+x &lt;- unlist(as.list(locs))
+error &lt;- unlist(as.list(vals))
+plot(x, type = &quot;b&quot;)
+abline(h = 0.739, col = &quot;grey50&quot;)</code></pre>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAAZlBMVEUAAAAAADoAAGYAOmYAOpAAZmYAZpAAZrY6AAA6kJA6kNtmAABmOgBmOpBmZjpmtv9/f3+QOgCQOmaQkDqQ29uQ2/+2ZgC225C2/7a2///bkDrb/7bb////tmb/25D//7b//9v///8P0vNQAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAeeklEQVR4nO3d62Jbx3KgUUhxRh4pGY0nMSdmTMl8/5cMLryAEkkBhY3dVV1r/Ti6YXdX64CfABCkN/cAhGxGDwBQlYACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKEBQ7oBuABazfKIWX3FBo/+2gbks3qilF1zSFf7BANoSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAU3oWt8oC1iWgOZzvW81CCxKQNN5CqeCQnICms1RNgtMC60JaDbHIxYYFzoT0GwE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" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>plot(error, type = &quot;b&quot;)
+abline(h = 0, col = &quot;grey50&quot;)</code></pre>
+<p><img src="data:image/png;base64,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JKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQ1C6gAMtZvFFLn3BJo3+zgbks3qilT9hS99ca7H/0BGM13n/fnS+p8R3owP5HTzBW4/333fmSGt+BDux/9ARjNd5/350vqfEd6MD+R08wVuP99935khrfgQ7sf/QEYzXef9+dL6nxHejA/kdPMFbj/ffd+ZIa34EO7H/0BGM13n/fnS+p8R3owP5HTzBW4/333fmSGt+BDux/9ARjNd5/350vqfEd6MD+R08wVuP99935khrfgQ7sf/QEYzXef9+dL6nxHejA/kdPMFbj/ffd+ZIa34EO7H/0BGM13n/fnS+p8R3owP5HTzBW4/333fmSGt+BDux/9ARjNd5/350vqfEd6MD+R08wVuP99935khrfgQ7sf/QEYzXef9+dL6nxHejA/kdPMFbj/ffd+ZIa34EO7H/0BGM13n/fnQN8kIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAAgQJKECQgAIECShAkIACBAkoQJCAftiPL7s7n/4cPcdQd78J30fPMMrN/r9/3+0f7/+fR48xiIB+0D/fdie//TV6lnH2vwtNC3LsR9v//v/+cX//7/nfX0A/5rGfXf8EHVy1/QP00M/d7ve/Rw8zwNXj/b/lHUBAP+b67o7zdf/FVeOnMccnsS3//Oz/B3oI58MdoZeb091+//vQ8gGEgH7I2VPX66b3oNv7h+EtA3r98MDzpuVD0Kv7/210fRFHQD/k5vFh5/7FoI73oMPOf/u/PTd/t/X7dw/Pvmzk6mHT1y0fgQvox5zfa656NuTwm/D9uufmf3zp+7rNwZOAdrwHCOhirjo+Ark9RORr1z8+Nz0fdj16eATR8wG4gC7nn28dXwM7/Mm523fTgB62fbySp+P2jy99fj77dzsCupSmrwGdHng3Deh+89etr2J7vI6vZT8FdCl3T2RbPgA9PYntG9D/3f064KvGV4EK6FLu+tnyz8/9Cxc9A3p88n74Dbhp+hjs8UL6li+BCugybro+/rg67btxQE8v3Nz9L7RhQq5OvwH734mG2xfQZbTt50M3ewZ034+HF246XsZ29n+N65YfJBDQJVz1vO+cXwbZN6AP7xx2vKTp7J3TptcxCeiH7Z+9dHz16/b4AfBznQPSMqDn1z73/H+ogH7U/tvxtPuDc9I+oGcf5RVQAeVyPd87OGkf0POLLzq+Bvr0KXy//QvoR/3zrXE/z/R8+HGo5ukhaMsL2W52528i9du/gH5Q0//tPtc1oPsXcB6uA233APzxOq7zC7paEdAPuXn6FLZlQw66BvT8VYyOV2KcfUP+lvsX0A95/AthBLTr5m9a9+Pss/A99y+gH3H+NyIJ6OgZRrlq/EH42/sHoV33L6AAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAAQQIKECSgAEECChAkoABBAgoQJKAk98+33e9/L3AbWJ6AkpyAkpeAkpyAkpeAkpyAkpeAkpyAkpeAkpyAkpeAktx9HP/9Y/fbX7fXuzuPsbz7xd3u83lAb/Y32H0/fP3jy/6Q47Gf/tx+dKYnoCR3HtD/92W3OwvkMad3Qf3/9wH9cX+DYzjvfv3r+b9hWQJKcmcBfXR8PHl9/8P/frrNQz9PBT098vQMn5UIKMk9Dej+oee+m1+Pv3L4pZv7p/X7mxzSenN4Yn/84u7fV57Asw4BJbnzgB6fmO8L+vn4r8cn7qeSnh5p3h10bOa+nTenmsLSBJTkzgN6eiHzLph3P3X2ztAppWePNG9ON747+n/8cR9eWJiAktxZQO/zeAzo3S/ch/HhJx5e6rz7meOjzuuz95xgYQJKcm8F9L6Xxy8P1zQ9Ov7i/oGrJ/CsREBJ7tWAHv95dpuz9+DPrha9ElBWI6Ak9/5HoGdFfXTjKTzrEVCSu+g10GfvFt0d9d/+l6tAWYmAktyrAd2/uvn4iaSnP/Hg7le+3/gcEisRUJJ7NaCP14HeX1F//XCl6P1lTIdb+iQ8axFQkns9oPtu7oN5ePPo/ieOj0GvTh9JOl4Z+nBNEyxLQEnu9YCevvPSnf/57aefOH3Y8/4zSFfeR2IVAkpybwT0PpgvfDemQz//vf8Mku8mwjoElOTeCujxO4w8+X6gx+/Q9PAppK+3P30FCxJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgCABBQgSUIAgAQUIElCAIAEFCBJQgKD/AuUjJSJ4q0UsAAAAAElFTkSuQmCC" width="672" style="display: block; margin: auto;" /></p>
 </div>
+<div id="laziness" class="section level3">
+<h3><span class="header-section-number">1.2.3</span> Laziness</h3>
+<p>The function operators we’ve seen so far follow a common pattern:</p>
+<pre class="r"><code>funop &lt;- function(f, otherargs) {
+    function(...) {
+        # maybe do something
+        res &lt;- f(...)
+        # maybe do something else
+        res
+    }
+}</code></pre>
+<p>Unfortunately there’s a problem with this implementation because function arguments are lazily evaluated: <code>f()</code> may have changed between applying the FO and evaluating the function. This is a particular problem if you’re using a for loop to create multiple function operators.</p>
+<pre class="r"><code>funs &lt;- list(mean = mean, sum = sum)
+funs_m &lt;- vector(&quot;list&quot;, length(funs))
+names(funs_m) &lt;- names(funs)
+
+g &lt;- function(f) function(...) f(...)
+for (fun in names(funs)) {
+    funs_m[[fun]] &lt;- g(funs[[fun]])
+}
+
+funs_m$mean(1:10)  #55</code></pre>
+<pre><code>## [1] 55</code></pre>
+<pre class="r"><code>environment(funs_m[[1]])$f  # sum, since fun is sum (end of loop) when g(funs[[fun]]) is evaluated</code></pre>
+<pre><code>## function (..., na.rm = FALSE)  .Primitive(&quot;sum&quot;)</code></pre>
+<pre class="r"><code>parent.env(environment(funs_m[[1]]))$fun  # 'sum'</code></pre>
+<pre><code>## [1] &quot;sum&quot;</code></pre>
+<p>We can avoid that problem by explicitly forcing the evaluation of <code>f()</code>:</p>
+<pre class="r"><code>g &lt;- function(f) {
+    force(f)
+    function(...) f(...)
+}
+for (fun in names(funs)) {
+    funs_m[[fun]] &lt;- g(funs[[fun]])
+}
+
+funs_m$mean(1:10)  #5.5</code></pre>
+<pre><code>## [1] 5.5</code></pre>
+<pre class="r"><code>environment(funs_m[[1]])$f  # mean </code></pre>
+<pre><code>## function (x, ...) 
+## UseMethod(&quot;mean&quot;)
+## &lt;bytecode: 0x000000001c985250&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>parent.env(environment(funs_m[[1]]))$fun  # 'sum'</code></pre>
+<pre><code>## [1] &quot;sum&quot;</code></pre>
+<p>Note that <code>force()</code> just evaluates its argument:</p>
+<pre class="r"><code>force</code></pre>
+<pre><code>## function (x) 
+## x
+## &lt;bytecode: 0x00000000136e17b0&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<p>Another example is:</p>
+<pre class="r"><code>f &lt;- function(y) function() y
+lf &lt;- vector(&quot;list&quot;, 5)
+for (i in seq_along(lf)) lf[[i]] &lt;- f(i)
+lf[[1]]()  # returns 5 since i is 5 when f(i) is evaluated</code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>environment(lf[[1]])$y  #5 </code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>parent.env(environment(lf[[1]]))$i  #5</code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>g &lt;- function(y) {
+    force(y)
+    function() y
+}
+lg &lt;- vector(&quot;list&quot;, 5)
+for (i in seq_along(lg)) lg[[i]] &lt;- g(i)
+lg[[1]]()  # returns 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>environment(lg[[1]])$y  #1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>parent.env(environment(lg[[1]]))$i  #5</code></pre>
+<pre><code>## [1] 5</code></pre>
+</div>
+</div>
+<div id="output-fos" class="section level2">
+<h2><span class="header-section-number">1.3</span> Output FOs</h2>
+<p>The next step up in complexity is to modify the output of a function. This could be quite simple, or it could fundamentally change the operation of the function by returning something completely different to its usual output. In this section you’ll learn about two simple modifications, <code>Negate()</code> and <code>failwith()</code>, and two fundamental modifications, <code>capture_it()</code> and <code>time_it()</code>.</p>
+<div id="minor-modifications" class="section level3">
+<h3><span class="header-section-number">1.3.1</span> Minor modifications</h3>
+<p><code>base::Negate()</code> and <code>plyr::failwith()</code> offer two minor, but useful, modifications of a function that are particularly handy in conjunction with functionals.</p>
+<p><code>Negate()</code> takes a function that returns a logical vector (a predicate function), and returns the negation of that function. This can be a useful shortcut when a function returns the opposite of what you need. The essence of <code>Negate()</code> is very simple:</p>
+<pre class="r"><code>Negate &lt;- function(f) {
+    force(f)
+    function(...) !f(...)
+}
+
+(Negate(is.null))(NULL)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p><code>plyr::failwith()</code> turns a function that throws an error into a function that returns a default value when there’s an error. Again, the essence of <code>failwith()</code> is simple; it’s just a wrapper around <code>try()</code>, the function that captures errors and allows execution to continue.</p>
+<pre class="r"><code>failwith &lt;- function(default = NULL, f, quiet = FALSE) {
+    force(f)
+    function(...) {
+        out &lt;- default
+        try(out &lt;- f(...), silent = quiet)
+        out
+    }
+}
+log(&quot;a&quot;)</code></pre>
+<pre><code>## Error in log(&quot;a&quot;): non-numeric argument to mathematical function</code></pre>
+<pre class="r"><code>failwith(NA, log)(&quot;a&quot;)</code></pre>
+<pre><code>## [1] NA</code></pre>
+<pre class="r"><code>failwith(NA, log, quiet = TRUE)(&quot;a&quot;)</code></pre>
+<pre><code>## [1] NA</code></pre>
+<p><code>failwith()</code> is very useful in conjunction with functionals: instead of the failure propagating and terminating the higher-level loop, you can complete the iteration and then find out what went wrong. For example, imagine you’re fitting a set of generalised linear models (GLMs) to a list of data frames. While GLMs can sometimes fail because of optimisation problems, you’d still want to be able to try to fit all the models, and later look back at those that failed:</p>
+<pre class="r"><code># If any model fails, all models fail to fit:
+models &lt;- lapply(datasets, glm, formula = y ~ x1 + x2 * x3)
+# If a model fails, it will get a NULL value
+models &lt;- lapply(datasets, failwith(NULL, glm), formula = y ~ x1 + x2 * x3)
+
+# remove failed models (NULLs) with compact
+ok_models &lt;- compact(models)
+# extract the datasets corresponding to failed models
+failed_data &lt;- datasets[vapply(models, is.null, logical(1))]</code></pre>
+</div>
+<div id="changing-what-a-function-does" class="section level3">
+<h3><span class="header-section-number">1.3.2</span> Changing what a function does</h3>
+<p>Other output function operators can have a more profound effect on the operation of the function. Instead of returning the original return value, we can return some other effect of the function evaluation. Here are two examples:</p>
+<p>Return text that the function <code>print()</code>ed:</p>
+<pre class="r"><code>capture_it &lt;- function(f) {
+    force(f)
+    function(...) {
+        capture.output(f(...))
+    }
+}
+str_out &lt;- capture_it(str)
+str(1:10)</code></pre>
+<pre><code>##  int [1:10] 1 2 3 4 5 6 7 8 9 10</code></pre>
+<pre class="r"><code>str_out(1:10)</code></pre>
+<pre><code>## [1] &quot; int [1:10] 1 2 3 4 5 6 7 8 9 10&quot;</code></pre>
+<p>Return how long a function took to run:</p>
+<pre class="r"><code>time_it &lt;- function(f) {
+    force(f)
+    function(...) {
+        system.time(f(...))
+    }
+}
+
+compute_mean &lt;- list(base = function(x) mean(x), sum = function(x) sum(x)/length(x))
+x &lt;- runif(1e+07)
+
+call_fun &lt;- function(f, ...) f(...)
+lapply(compute_mean, time_it(call_fun), x)</code></pre>
+<pre><code>## $base
+##    user  system elapsed 
+##    0.02    0.00    0.02 
+## 
+## $sum
+##    user  system elapsed 
+##    0.01    0.00    0.02</code></pre>
+</div>
+</div>
+<div id="input-fos" class="section level2">
+<h2><span class="header-section-number">1.4</span> Input FOs</h2>
+<p>The next step up in complexity is to modify the inputs of a function. Again, you can modify how a function works in a minor way (e.g., setting default argument values), or in a major way (e.g., converting inputs from scalars to vectors, or vectors to matrices).</p>
+<p><code>base::Vectorize()</code> converts a scalar function to a vector function. It takes a non-vectorised function and vectorises it with respect to the arguments specified in the <code>vectorize.args</code> argument. This doesn’t give you any magical performance improvements, but it’s useful if you want a quick and dirty way of making a vectorised function.</p>
+<p>A mildly useful extension to <code>sample()</code> would be to vectorize it with respect to size. Doing so would allow you to generate multiple samples in one call.</p>
+<pre class="r"><code>sample2 &lt;- Vectorize(sample, &quot;size&quot;, SIMPLIFY = FALSE)
+str(sample2(1:5, c(1, 1, 3)))</code></pre>
+<pre><code>## List of 3
+##  $ : int 2
+##  $ : int 1
+##  $ : int [1:3] 2 3 4</code></pre>
+<pre class="r"><code>str(sample2(1:5, 5:3))</code></pre>
+<pre><code>## List of 3
+##  $ : int [1:5] 4 3 1 5 2
+##  $ : int [1:4] 1 5 4 2
+##  $ : int [1:3] 4 1 2</code></pre>
+<p>In this example we have used <code>SIMPLIFY = FALSE</code> to ensure that our newly vectorised function always returns a list. This is usually what you want.</p>
+<p><code>splat()</code> converts a function that takes multiple arguments to a function that takes a single list of arguments.</p>
+<pre class="r"><code>splat &lt;- function(f) {
+    force(f)
+    function(args) {
+        do.call(f, args)
+    }
+}</code></pre>
+<p>This is useful if you want to invoke a function with varying arguments:</p>
+<pre class="r"><code>x &lt;- c(NA, runif(100), 1000)
+args &lt;- list(list(x), list(x, na.rm = TRUE), list(x, na.rm = TRUE, trim = 0.1))
+lapply(args, splat(mean))</code></pre>
+<pre><code>## [[1]]
+## [1] NA
+## 
+## [[2]]
+## [1] 10.36791
+## 
+## [[3]]
+## [1] 0.4730656</code></pre>
+<p><code>plyr::colwise()</code> converts a vector function to one that works with data frames:</p>
+<pre class="r"><code>median(mtcars)</code></pre>
+<pre><code>## Error in median.default(mtcars): need numeric data</code></pre>
+<pre class="r"><code>median(mtcars$mpg)</code></pre>
+<pre><code>## [1] 19.2</code></pre>
+<pre class="r"><code>(plyr::colwise(median))(mtcars)</code></pre>
+<pre><code>##    mpg cyl  disp  hp  drat    wt  qsec vs am gear carb
+## 1 19.2   6 196.3 123 3.695 3.325 17.71  0  0    4    2</code></pre>
 </div>
 </div>
 

@@ -7,29 +7,6 @@ library(rlang)
 library(rlist)
 
 
-dot_every <- function(n, f) {
-  i <- 1
-  function(...) {
-    if (i %% n == 0) cat(".")
-    i <<- i + 1
-    f(...)
-  }
-}
-
-
-delay_by <- function(delay, f) {
-  function(...) {
-    Sys.sleep(delay)
-    f(...)
-  }
-}
-
-
-X <- lapply(1:100, dot_every(10, delay_by(.1, runif)))
-
-
-
-
 
 dot_every <- function(f, n) {
   i <- 1
@@ -65,6 +42,25 @@ y <- lapply(1:100, g)
 z <- lapply(1:100, h)
 
 force(mean)
+
+
+
+
+
+
+
+
+
+
+
+f <- function() {
+  try(log("a"))
+  2
+}
+f()
+
+
+
 
 
 
