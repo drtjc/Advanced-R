@@ -32,7 +32,7 @@ A function operator is a function that takes one (or more) functions as input an
 
 The following code shows a simple function operator, `chatty()`. It wraps a function, making a new function that prints out its first argument. It’s useful because it gives you a window to see how functionals, like `vapply()`, work.
 
-```{r}
+```{r, error=TRUE}
 chatty <- function(f) {
   function(x, ...) {
     res <- f(x, ...)
@@ -361,7 +361,7 @@ compute_mean <- list(
   base = function(x) mean(x),
   sum = function(x) sum(x) / length(x)
 )
-x <- runif(1e7)
+x <- runif(1e6)
 
 call_fun <- function(f, ...) f(...)
 lapply(compute_mean, time_it(call_fun), x)
@@ -415,6 +415,48 @@ plyr::colwise(median)(mtcars)
 
 ```
 
+## Combining FOs
+Besides just operating on single functions, function operators can take multiple functions as input. One simple example of this is `plyr::each()`. It takes a list of vectorised functions and combines them into a single function.
 
+```{r}
+summaries <- plyr::each(mean, sd, median)
+summaries(1:10)
+```
+
+Two more complicated examples are combining functions through composition, or through boolean algebra. These capabilities are the glue that allow us to join multiple functions together.
+
+### Function composition
+An important way of combining functions is through composition: `f(g(x))`. Composition takes a list of functions and applies them sequentially to the input. It’s a replacement for the common pattern of anonymous function that chains multiple functions together to get the result you want:
+
+```{r}
+sapply(mtcars, function(x) length(unique(x)))
+```
+
+A simple version of compose looks like this:
+
+```{r}
+compose <- function(f, g) {
+  function(...) f(g(...))
+}
+```
+
+(`pryr::compose() `provides a more full-featured alternative that can accept multiple functions and is used for the rest of the examples.)
+
+This allows us to write:
+
+```{r}
+sapply(mtcars, compose(length, unique))
+```
+
+Mathematically, function composition is often denoted with the infix operator, `o`, `(f o g)(x)`. Haskell, a popular functional programming language, uses `.` to the same end. In R, we can create our own infix composition function:
+
+```{r}
+"%o%" <- compose
+sapply(mtcars, length %o% unique)
+
+sqrt(1 + 8)
+compose(sqrt, `+`)(1, 8)
+(sqrt %o% `+`)(1, 8)
+```
 
 

@@ -440,7 +440,7 @@ funs_m$mean(1:10)  #5.5</code></pre>
 <pre class="r"><code>environment(funs_m[[1]])$f  # mean </code></pre>
 <pre><code>## function (x, ...) 
 ## UseMethod(&quot;mean&quot;)
-## &lt;bytecode: 0x000000001c985250&gt;
+## &lt;bytecode: 0x000000001c937130&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code>parent.env(environment(funs_m[[1]]))$fun  # 'sum'</code></pre>
 <pre><code>## [1] &quot;sum&quot;</code></pre>
@@ -448,7 +448,7 @@ funs_m$mean(1:10)  #5.5</code></pre>
 <pre class="r"><code>force</code></pre>
 <pre><code>## function (x) 
 ## x
-## &lt;bytecode: 0x00000000136e17b0&gt;
+## &lt;bytecode: 0x00000000124116d0&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>Another example is:</p>
 <pre class="r"><code>f &lt;- function(y) function() y
@@ -544,11 +544,11 @@ call_fun &lt;- function(f, ...) f(...)
 lapply(compute_mean, time_it(call_fun), x)</code></pre>
 <pre><code>## $base
 ##    user  system elapsed 
-##    0.02    0.00    0.02 
+##    0.03    0.00    0.03 
 ## 
 ## $sum
 ##    user  system elapsed 
-##    0.01    0.00    0.02</code></pre>
+##    0.01    0.00    0.01</code></pre>
 </div>
 </div>
 <div id="input-fos" class="section level2">
@@ -559,14 +559,14 @@ lapply(compute_mean, time_it(call_fun), x)</code></pre>
 <pre class="r"><code>sample2 &lt;- Vectorize(sample, &quot;size&quot;, SIMPLIFY = FALSE)
 str(sample2(1:5, c(1, 1, 3)))</code></pre>
 <pre><code>## List of 3
+##  $ : int 3
 ##  $ : int 2
-##  $ : int 1
-##  $ : int [1:3] 2 3 4</code></pre>
+##  $ : int [1:3] 4 3 1</code></pre>
 <pre class="r"><code>str(sample2(1:5, 5:3))</code></pre>
 <pre><code>## List of 3
-##  $ : int [1:5] 4 3 1 5 2
-##  $ : int [1:4] 1 5 4 2
-##  $ : int [1:3] 4 1 2</code></pre>
+##  $ : int [1:5] 3 4 1 2 5
+##  $ : int [1:4] 1 5 2 3
+##  $ : int [1:3] 5 3 1</code></pre>
 <p>In this example we have used <code>SIMPLIFY = FALSE</code> to ensure that our newly vectorised function always returns a list. This is usually what you want.</p>
 <p><code>splat()</code> converts a function that takes multiple arguments to a function that takes a single list of arguments.</p>
 <pre class="r"><code>splat &lt;- function(f) {
@@ -583,10 +583,10 @@ lapply(args, splat(mean))</code></pre>
 ## [1] NA
 ## 
 ## [[2]]
-## [1] 10.36791
+## [1] 10.40651
 ## 
 ## [[3]]
-## [1] 0.4730656</code></pre>
+## [1] 0.5174199</code></pre>
 <p><code>plyr::colwise()</code> converts a vector function to one that works with data frames:</p>
 <pre class="r"><code>median(mtcars)</code></pre>
 <pre><code>## Error in median.default(mtcars): need numeric data</code></pre>
@@ -595,6 +595,42 @@ lapply(args, splat(mean))</code></pre>
 <pre class="r"><code>(plyr::colwise(median))(mtcars)</code></pre>
 <pre><code>##    mpg cyl  disp  hp  drat    wt  qsec vs am gear carb
 ## 1 19.2   6 196.3 123 3.695 3.325 17.71  0  0    4    2</code></pre>
+</div>
+<div id="combining-fos" class="section level2">
+<h2><span class="header-section-number">1.5</span> Combining FOs</h2>
+<p>Besides just operating on single functions, function operators can take multiple functions as input. One simple example of this is <code>plyr::each()</code>. It takes a list of vectorised functions and combines them into a single function.</p>
+<pre class="r"><code>summaries &lt;- plyr::each(mean, sd, median)
+summaries(1:10)</code></pre>
+<pre><code>##    mean      sd  median 
+## 5.50000 3.02765 5.50000</code></pre>
+<p>Two more complicated examples are combining functions through composition, or through boolean algebra. These capabilities are the glue that allow us to join multiple functions together.</p>
+<div id="function-composition" class="section level3">
+<h3><span class="header-section-number">1.5.1</span> Function composition</h3>
+<p>An important way of combining functions is through composition: <code>f(g(x))</code>. Composition takes a list of functions and applies them sequentially to the input. It’s a replacement for the common pattern of anonymous function that chains multiple functions together to get the result you want:</p>
+<pre class="r"><code>sapply(mtcars, function(x) length(unique(x)))</code></pre>
+<pre><code>##  mpg  cyl disp   hp drat   wt qsec   vs   am gear carb 
+##   25    3   27   22   22   29   30    2    2    3    6</code></pre>
+<p>A simple version of compose looks like this:</p>
+<pre class="r"><code>compose &lt;- function(f, g) {
+    function(...) f(g(...))
+}</code></pre>
+<p>(<code>pryr::compose()</code>provides a more full-featured alternative that can accept multiple functions and is used for the rest of the examples.)</p>
+<p>This allows us to write:</p>
+<pre class="r"><code>sapply(mtcars, compose(length, unique))</code></pre>
+<pre><code>##  mpg  cyl disp   hp drat   wt qsec   vs   am gear carb 
+##   25    3   27   22   22   29   30    2    2    3    6</code></pre>
+<p>Mathematically, function composition is often denoted with the infix operator, <code>o</code>, <code>(f o g)(x)</code>. Haskell, a popular functional programming language, uses <code>.</code> to the same end. In R, we can create our own infix composition function:</p>
+<pre class="r"><code>&quot;%o%&quot; &lt;- compose
+sapply(mtcars, length %o% unique)</code></pre>
+<pre><code>##  mpg  cyl disp   hp drat   wt qsec   vs   am gear carb 
+##   25    3   27   22   22   29   30    2    2    3    6</code></pre>
+<pre class="r"><code>sqrt(1 + 8)</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code>compose(sqrt, `+`)(1, 8)</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code>(sqrt %o% `+`)(1, 8)</code></pre>
+<pre><code>## [1] 3</code></pre>
+</div>
 </div>
 </div>
 

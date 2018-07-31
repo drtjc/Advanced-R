@@ -6990,9 +6990,401 @@ funs$root(64)</code></pre>
 </div>
 <div id="function-operators" class="section level1">
 <h1><span class="header-section-number">9</span> Function operators</h1>
+<div id="introduction-3" class="section level2">
+<h2><span class="header-section-number">9.1</span> Introduction</h2>
+<p>A function operator is a function that takes one (or more) functions as input and returns a function as output. In some ways, function operators are similar to functionals: there’s nothing you can’t do without them, but they can make your code more readable and expressive, and they can help you write code faster. The main difference is that functionals extract common patterns of loop use, where function operators extract common patterns of anonymous function use.</p>
+<p>The following code shows a simple function operator, <code>chatty()</code>. It wraps a function, making a new function that prints out its first argument. It’s useful because it gives you a window to see how functionals, like <code>vapply()</code>, work.</p>
+<pre class="r"><code>chatty &lt;- function(f) {
+    function(x, ...) {
+        res &lt;- f(x, ...)
+        cat(&quot;Processing &quot;, x, &quot;\n&quot;, sep = &quot;&quot;)
+        res
+    }
+}
+
+f &lt;- function(x) x^2
+chatty(f)(1)</code></pre>
+<pre><code>## Processing 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>s &lt;- c(3, 2, 1)</code></pre>
+<pre><code>## Error in c(3, 2, 1): unused arguments (2, 1)</code></pre>
+<pre class="r"><code>vapply(s, chatty(f), numeric(1))</code></pre>
+<pre><code>## Error in x^2: non-numeric argument to binary operator</code></pre>
+<p>The chapter covers four important types of FO: behaviour, input, output, and combining.</p>
+<ul>
+<li><p><strong>Behavioural FOs</strong> introduces you to FOs that change the behaviour of a function like automatically logging usage to disk or ensuring that a function is run only once.</p></li>
+<li><p><strong>Output FOs</strong> shows you how to write FOs that manipulate the output of a function. These can do simple things like capturing errors, or fundamentally change what the function does.</p></li>
+<li><p><strong>Input FOs</strong> describes how to modify the inputs to a function using a FO like <code>Vectorize()</code> or <code>partial()</code>.</p></li>
+<li><p><strong>Combining FOs</strong> shows the power of FOs that combine multiple functions with function composition and logical operations.</p></li>
+</ul>
+</div>
+<div id="behavourial-fos" class="section level2">
+<h2><span class="header-section-number">9.2</span> Behavourial FOs</h2>
+<p>Behavioural FOs leave the inputs and outputs of a function unchanged, but add some extra behaviour. In this section, we’ll look at functions which implement three useful behaviours:</p>
+<ul>
+<li>Add a delay to avoid swamping a server with requests.</li>
+<li>Print to console every n invocations to check on a long running process.</li>
+<li>Cache previous computations to improve performance.</li>
+</ul>
+<p>To motivate these behaviours, imagine we want to download a long vector of URLs. That’s pretty simple with <code>lapply()</code> and <code>download_file()</code>:</p>
+<pre class="r"><code>download_file &lt;- function(url, ...) {
+    download.file(url, basename(url), ...)
+}
+lapply(urls, download_file)</code></pre>
+<p>(<code>download_file()</code> is a simple wrapper around <code>utils::download.file()</code> which provides a reasonable default for the file name.)</p>
+<p>There are a number of useful behaviours we might want to add to this function. If the list was long, we might want to print a <code>.</code> every ten URLs so we know that the function’s still working. If we’re downloading files over the internet, we might want to add a small delay between each request to avoid hammering the server. Implementing these behaviours in a <code>for</code> loop is rather complicated. We can no longer use <code>lapply()</code> because we need an external counter:</p>
+<pre class="r"><code>i &lt;- 1
+for (url in urls) {
+    i &lt;- i + 1
+    if (i%%10 == 0) 
+        cat(&quot;.&quot;)
+    Sys.sleep(1)
+    download_file(url)
+}</code></pre>
+<p>Understanding this code is hard because different concerns (iteration, printing, and downloading) are interleaved. In the remainder of this section we’ll create FOs that encapsulate each behaviour and allow us to write code like this:</p>
+<pre class="r"><code>lapply(urls, dot_every(10, delay_by(1, download_file)))</code></pre>
+<p>Implementing <code>delay_by()</code> is straightforward, and follows the same basic template that we’ll see for the majority of FOs in this chapter:</p>
+<pre class="r"><code>delay_by &lt;- function(delay, f) {
+    function(...) {
+        Sys.sleep(delay)
+        f(...)
+    }
+}
+system.time(runif(100))</code></pre>
+<pre><code>##    user  system elapsed 
+##       0       0       0</code></pre>
+<pre class="r"><code>system.time(delay_by(1, runif)(100))</code></pre>
+<pre><code>##    user  system elapsed 
+##       0       0       1</code></pre>
+<p><code>dot_every()</code> is a little bit more complicated because it needs to manage a counter. Fortunately, we saw how to do that in mutable state.</p>
+<pre class="r"><code>dot_every &lt;- function(n, f) {
+    i &lt;- 1
+    function(...) {
+        if (i%%n == 0) 
+            cat(&quot;.&quot;)
+        i &lt;&lt;- i + 1
+        f(...)
+    }
+}
+x &lt;- lapply(1:100, runif)
+x &lt;- lapply(1:100, dot_every(10, runif))</code></pre>
+<pre><code>## ..........</code></pre>
+<p>Notice that I’ve made the function the last argument in each FO. This makes it easier to read when we compose multiple function operators. If the function were the first argument, then instead of:</p>
+<pre class="r"><code>download &lt;- dot_every(10, delay_by(1, download_file))</code></pre>
+<p>we’d have</p>
+<pre class="r"><code>download &lt;- dot_every(delay_by(download_file, 1), 10)</code></pre>
+<p>That’s harder to follow because (e.g.) the argument of <code>dot_every()</code> is far away from its call.</p>
+<div id="memoisation" class="section level3">
+<h3><span class="header-section-number">9.2.1</span> Memoisation</h3>
+<p>Another thing you might worry about when downloading multiple files is accidentally downloading the same file multiple times. You could avoid this by calling <code>unique()</code> on the list of input URLs, or manually managing a data structure that mapped the URL to the result. An alternative approach is to use memoisation: modify a function to automatically cache its results.</p>
+<pre class="r"><code>download &lt;- dot_every(10, memoise(delay_by(1, download_file)))</code></pre>
+</div>
+<div id="capturing-function-invocations" class="section level3">
+<h3><span class="header-section-number">9.2.2</span> Capturing function invocations</h3>
+<p>One challenge with functionals is that it can be hard to see what’s going on inside of them. It’s not easy to pry open their internals like it is with a for loop. Fortunately we can use FOs to peer behind the curtain with <code>tee()</code>.</p>
+<p><code>tee()</code>, defined below, has three arguments, all functions: <code>f</code>, the function to modify; <code>on_input</code>, a function that’s called with the inputs to <code>f</code>; and <code>on_output</code>, a function that’s called with the output from <code>f</code>.</p>
+<pre class="r"><code>ignore &lt;- function(...) NULL
+tee &lt;- function(f, on_input = ignore, on_output = ignore) {
+    function(...) {
+        on_input(...)
+        output &lt;- f(...)
+        on_output(output)
+        output
+    }
+}</code></pre>
+<p>We can use <code>tee()</code> to look inside the <code>uniroot()</code> functional, and see how it iterates its way to a solution. The following example finds where <code>x</code> and <code>cos(x)</code> intersect:</p>
+<pre class="r"><code>g &lt;- function(x) cos(x) - x
+zero &lt;- uniroot(g, c(-5, 5))</code></pre>
+<pre><code>## Error in c(-5, 5): unused argument (5)</code></pre>
+<pre class="r"><code>zero</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'zero' not found</code></pre>
+<pre class="r"><code>show_x &lt;- function(x, ...) cat(sprintf(&quot;%+.08f&quot;, x), &quot;\n&quot;)
+
+# The location where the function is evaluated:
+zero &lt;- uniroot(tee(g, on_input = show_x), c(-5, 5))</code></pre>
+<pre><code>## Error in c(-5, 5): unused argument (5)</code></pre>
+<pre class="r"><code># The value of the function:
+zero &lt;- uniroot(tee(g, on_output = show_x), c(-5, 5))</code></pre>
+<pre><code>## Error in c(-5, 5): unused argument (5)</code></pre>
+<p><code>cat()</code> allows us to see what’s happening as the function runs, but it doesn’t give us a way to work with the values after the function as completed. To do that, we could capture the sequence of calls by creating a function, <code>remember()</code>, that records every argument called and retrieves them when coerced into a list. The small amount of S3 code needed is explained in S3.</p>
+<pre class="r"><code>remember &lt;- function() {
+    memory &lt;- list()
+    f &lt;- function(...) {
+        # This is inefficient!
+        memory &lt;&lt;- append(memory, list(...))
+        invisible()
+    }
+    
+    structure(f, class = &quot;remember&quot;)
+}
+as.list.remember &lt;- function(x, ...) {
+    environment(x)$memory
+}
+print.remember &lt;- function(x, ...) {
+    cat(&quot;Remembering...\n&quot;)
+    str(as.list(x))
+}</code></pre>
+<p>Now we can draw a picture showing how uniroot zeroes in on the final answer:</p>
+<pre class="r"><code>locs &lt;- remember()
+vals &lt;- remember()
+zero &lt;- uniroot(tee(g, locs, vals), c(-5, 5))</code></pre>
+<pre><code>## Error in c(-5, 5): unused argument (5)</code></pre>
+<pre class="r"><code>x &lt;- unlist(as.list(locs))
+error &lt;- unlist(as.list(vals))
+plot(x, type = &quot;b&quot;)</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf</code></pre>
+<pre><code>## Warning in max(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf</code></pre>
+<pre><code>## Warning in max(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre><code>## Error in plot.window(...): need finite 'xlim' values</code></pre>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAAA1BMVEX///+nxBvIAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAE+klEQVR4nO3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4MtN0AAf6Y3a0AAAAASUVORK5CYII=" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>abline(h = 0.739, col = &quot;grey50&quot;)
+plot(error, type = &quot;b&quot;)</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf
+
+## Warning in min(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre><code>## Warning in min(x): no non-missing arguments to min; returning Inf</code></pre>
+<pre><code>## Warning in max(x): no non-missing arguments to max; returning -Inf</code></pre>
+<pre><code>## Error in plot.window(...): need finite 'xlim' values</code></pre>
+<pre class="r"><code>abline(h = 0, col = &quot;grey50&quot;)</code></pre>
+</div>
+<div id="laziness" class="section level3">
+<h3><span class="header-section-number">9.2.3</span> Laziness</h3>
+<p>The function operators we’ve seen so far follow a common pattern:</p>
+<pre class="r"><code>funop &lt;- function(f, otherargs) {
+    function(...) {
+        # maybe do something
+        res &lt;- f(...)
+        # maybe do something else
+        res
+    }
+}</code></pre>
+<p>Unfortunately there’s a problem with this implementation because function arguments are lazily evaluated: <code>f()</code> may have changed between applying the FO and evaluating the function. This is a particular problem if you’re using a for loop to create multiple function operators.</p>
+<pre class="r"><code>funs &lt;- list(mean = mean, sum = sum)
+funs_m &lt;- vector(&quot;list&quot;, length(funs))
+names(funs_m) &lt;- names(funs)
+
+g &lt;- function(f) function(...) f(...)
+for (fun in names(funs)) {
+    funs_m[[fun]] &lt;- g(funs[[fun]])
+}
+
+funs_m$mean(1:10)  #55</code></pre>
+<pre><code>## [1] 55</code></pre>
+<pre class="r"><code>environment(funs_m[[1]])$f  # sum, since fun is sum (end of loop) when g(funs[[fun]]) is evaluated</code></pre>
+<pre><code>## function (..., na.rm = FALSE)  .Primitive(&quot;sum&quot;)</code></pre>
+<pre class="r"><code>parent.env(environment(funs_m[[1]]))$fun  # 'sum'</code></pre>
+<pre><code>## [1] &quot;sum&quot;</code></pre>
+<p>We can avoid that problem by explicitly forcing the evaluation of <code>f()</code>:</p>
+<pre class="r"><code>g &lt;- function(f) {
+    force(f)
+    function(...) f(...)
+}
+for (fun in names(funs)) {
+    funs_m[[fun]] &lt;- g(funs[[fun]])
+}
+
+funs_m$mean(1:10)  #5.5</code></pre>
+<pre><code>## [1] 5.5</code></pre>
+<pre class="r"><code>environment(funs_m[[1]])$f  # mean </code></pre>
+<pre><code>## function (x, ...) 
+## UseMethod(&quot;mean&quot;)
+## &lt;bytecode: 0x000000001c8177e8&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code>parent.env(environment(funs_m[[1]]))$fun  # 'sum'</code></pre>
+<pre><code>## [1] &quot;sum&quot;</code></pre>
+<p>Note that <code>force()</code> just evaluates its argument:</p>
+<pre class="r"><code>force</code></pre>
+<pre><code>## function (x) 
+## x
+## &lt;bytecode: 0x00000000136e17b0&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<p>Another example is:</p>
+<pre class="r"><code>f &lt;- function(y) function() y
+lf &lt;- vector(&quot;list&quot;, 5)
+for (i in seq_along(lf)) lf[[i]] &lt;- f(i)
+lf[[1]]()  # returns 5 since i is 5 when f(i) is evaluated</code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>environment(lf[[1]])$y  #5 </code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>parent.env(environment(lf[[1]]))$i  #5</code></pre>
+<pre><code>## [1] 5</code></pre>
+<pre class="r"><code>g &lt;- function(y) {
+    force(y)
+    function() y
+}
+lg &lt;- vector(&quot;list&quot;, 5)
+for (i in seq_along(lg)) lg[[i]] &lt;- g(i)
+lg[[1]]()  # returns 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>environment(lg[[1]])$y  #1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>parent.env(environment(lg[[1]]))$i  #5</code></pre>
+<pre><code>## [1] 5</code></pre>
+</div>
+</div>
+<div id="output-fos" class="section level2">
+<h2><span class="header-section-number">9.3</span> Output FOs</h2>
+<p>The next step up in complexity is to modify the output of a function. This could be quite simple, or it could fundamentally change the operation of the function by returning something completely different to its usual output. In this section you’ll learn about two simple modifications, <code>Negate()</code> and <code>failwith()</code>, and two fundamental modifications, <code>capture_it()</code> and <code>time_it()</code>.</p>
+<div id="minor-modifications" class="section level3">
+<h3><span class="header-section-number">9.3.1</span> Minor modifications</h3>
+<p><code>base::Negate()</code> and <code>plyr::failwith()</code> offer two minor, but useful, modifications of a function that are particularly handy in conjunction with functionals.</p>
+<p><code>Negate()</code> takes a function that returns a logical vector (a predicate function), and returns the negation of that function. This can be a useful shortcut when a function returns the opposite of what you need. The essence of <code>Negate()</code> is very simple:</p>
+<pre class="r"><code>Negate &lt;- function(f) {
+    force(f)
+    function(...) !f(...)
+}
+
+(Negate(is.null))(NULL)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p><code>plyr::failwith()</code> turns a function that throws an error into a function that returns a default value when there’s an error. Again, the essence of <code>failwith()</code> is simple; it’s just a wrapper around <code>try()</code>, the function that captures errors and allows execution to continue.</p>
+<pre class="r"><code>failwith &lt;- function(default = NULL, f, quiet = FALSE) {
+    force(f)
+    function(...) {
+        out &lt;- default
+        try(out &lt;- f(...), silent = quiet)
+        out
+    }
+}
+log(&quot;a&quot;)</code></pre>
+<pre><code>## Error in log(&quot;a&quot;): non-numeric argument to mathematical function</code></pre>
+<pre class="r"><code>failwith(NA, log)(&quot;a&quot;)</code></pre>
+<pre><code>## [1] NA</code></pre>
+<pre class="r"><code>failwith(NA, log, quiet = TRUE)(&quot;a&quot;)</code></pre>
+<pre><code>## [1] NA</code></pre>
+<p><code>failwith()</code> is very useful in conjunction with functionals: instead of the failure propagating and terminating the higher-level loop, you can complete the iteration and then find out what went wrong. For example, imagine you’re fitting a set of generalised linear models (GLMs) to a list of data frames. While GLMs can sometimes fail because of optimisation problems, you’d still want to be able to try to fit all the models, and later look back at those that failed:</p>
+<pre class="r"><code># If any model fails, all models fail to fit:
+models &lt;- lapply(datasets, glm, formula = y ~ x1 + x2 * x3)
+# If a model fails, it will get a NULL value
+models &lt;- lapply(datasets, failwith(NULL, glm), formula = y ~ x1 + x2 * x3)
+
+# remove failed models (NULLs) with compact
+ok_models &lt;- compact(models)
+# extract the datasets corresponding to failed models
+failed_data &lt;- datasets[vapply(models, is.null, logical(1))]</code></pre>
+</div>
+<div id="changing-what-a-function-does" class="section level3">
+<h3><span class="header-section-number">9.3.2</span> Changing what a function does</h3>
+<p>Other output function operators can have a more profound effect on the operation of the function. Instead of returning the original return value, we can return some other effect of the function evaluation. Here are two examples:</p>
+<p>Return text that the function <code>print()</code>ed:</p>
+<pre class="r"><code>capture_it &lt;- function(f) {
+    force(f)
+    function(...) {
+        capture.output(f(...))
+    }
+}
+str_out &lt;- capture_it(str)
+str(1:10)</code></pre>
+<pre><code>##  int [1:10] 1 2 3 4 5 6 7 8 9 10</code></pre>
+<pre class="r"><code>str_out(1:10)</code></pre>
+<pre><code>## [1] &quot; int [1:10] 1 2 3 4 5 6 7 8 9 10&quot;</code></pre>
+<p>Return how long a function took to run:</p>
+<pre class="r"><code>time_it &lt;- function(f) {
+    force(f)
+    function(...) {
+        system.time(f(...))
+    }
+}
+
+compute_mean &lt;- list(base = function(x) mean(x), sum = function(x) sum(x)/length(x))
+x &lt;- runif(1e+06)
+
+call_fun &lt;- function(f, ...) f(...)
+lapply(compute_mean, time_it(call_fun), x)</code></pre>
+<pre><code>## $base
+##    user  system elapsed 
+##       0       0       0 
+## 
+## $sum
+##    user  system elapsed 
+##       0       0       0</code></pre>
+</div>
+</div>
+<div id="input-fos" class="section level2">
+<h2><span class="header-section-number">9.4</span> Input FOs</h2>
+<p>The next step up in complexity is to modify the inputs of a function. Again, you can modify how a function works in a minor way (e.g., setting default argument values), or in a major way (e.g., converting inputs from scalars to vectors, or vectors to matrices).</p>
+<p><code>base::Vectorize()</code> converts a scalar function to a vector function. It takes a non-vectorised function and vectorises it with respect to the arguments specified in the <code>vectorize.args</code> argument. This doesn’t give you any magical performance improvements, but it’s useful if you want a quick and dirty way of making a vectorised function.</p>
+<p>A mildly useful extension to <code>sample()</code> would be to vectorize it with respect to size. Doing so would allow you to generate multiple samples in one call.</p>
+<pre class="r"><code>sample2 &lt;- Vectorize(sample, &quot;size&quot;, SIMPLIFY = FALSE)
+str(sample2(1:5, c(1, 1, 3)))</code></pre>
+<pre><code>## Error in c(1, 1, 3): unused arguments (1, 3)</code></pre>
+<pre class="r"><code>str(sample2(1:5, 5:3))</code></pre>
+<pre><code>## List of 3
+##  $ : int [1:5] 1 3 2 4 5
+##  $ : int [1:4] 4 1 3 2
+##  $ : int [1:3] 4 5 1</code></pre>
+<p>In this example we have used <code>SIMPLIFY = FALSE</code> to ensure that our newly vectorised function always returns a list. This is usually what you want.</p>
+<p><code>splat()</code> converts a function that takes multiple arguments to a function that takes a single list of arguments.</p>
+<pre class="r"><code>splat &lt;- function(f) {
+    force(f)
+    function(args) {
+        do.call(f, args)
+    }
+}</code></pre>
+<p>This is useful if you want to invoke a function with varying arguments:</p>
+<pre class="r"><code>x &lt;- c(NA, runif(100), 1000)</code></pre>
+<pre><code>## Error in c(NA, runif(100), 1000): unused arguments (runif(100), 1000)</code></pre>
+<pre class="r"><code>args &lt;- list(list(x), list(x, na.rm = TRUE), list(x, na.rm = TRUE, trim = 0.1))
+lapply(args, splat(mean))</code></pre>
+<pre><code>## [[1]]
+## [1] 0.5002694
+## 
+## [[2]]
+## [1] 0.5002694
+## 
+## [[3]]
+## [1] 0.5003748</code></pre>
+<p><code>plyr::colwise()</code> converts a vector function to one that works with data frames:</p>
+<pre class="r"><code>median(mtcars)</code></pre>
+<pre><code>## Error in median.default(mtcars): need numeric data</code></pre>
+<pre class="r"><code>median(mtcars$mpg)</code></pre>
+<pre><code>## [1] 19.2</code></pre>
+<pre class="r"><code>(plyr::colwise(median))(mtcars)</code></pre>
+<pre><code>##    mpg cyl     disp  hp  drat    wt  qsec vs am gear carb
+## 1 19.2   6 3.216788 123 3.695 3.325 17.71  0  0    4    2</code></pre>
+</div>
+<div id="combining-fos" class="section level2">
+<h2><span class="header-section-number">9.5</span> Combining FOs</h2>
+<p>Besides just operating on single functions, function operators can take multiple functions as input. One simple example of this is <code>plyr::each()</code>. It takes a list of vectorised functions and combines them into a single function.</p>
+<pre class="r"><code>summaries &lt;- plyr::each(mean, sd, median)
+summaries(1:10)</code></pre>
+<pre><code>##    mean      sd  median 
+## 5.50000 3.02765 5.50000</code></pre>
+<p>Two more complicated examples are combining functions through composition, or through boolean algebra. These capabilities are the glue that allow us to join multiple functions together.</p>
+<div id="function-composition" class="section level3">
+<h3><span class="header-section-number">9.5.1</span> Function composition</h3>
+<p>An important way of combining functions is through composition: <code>f(g(x))</code>. Composition takes a list of functions and applies them sequentially to the input. It’s a replacement for the common pattern of anonymous function that chains multiple functions together to get the result you want:</p>
+<pre class="r"><code>sapply(mtcars, function(x) length(unique(x)))</code></pre>
+<pre><code>##  mpg  cyl disp   hp drat   wt qsec   vs   am gear carb 
+##   25    3   27   22   22   29   30    2    2    3    6</code></pre>
+<p>A simple version of compose looks like this:</p>
+<pre class="r"><code>compose &lt;- function(f, g) {
+    function(...) f(g(...))
+}</code></pre>
+<p>(<code>pryr::compose()</code>provides a more full-featured alternative that can accept multiple functions and is used for the rest of the examples.)</p>
+<p>This allows us to write:</p>
+<pre class="r"><code>sapply(mtcars, compose(length, unique))</code></pre>
+<pre><code>##  mpg  cyl disp   hp drat   wt qsec   vs   am gear carb 
+##   25    3   27   22   22   29   30    2    2    3    6</code></pre>
+<p>Mathematically, function composition is often denoted with the infix operator, <code>o</code>, <code>(f o g)(x)</code>. Haskell, a popular functional programming language, uses <code>.</code> to the same end. In R, we can create our own infix composition function:</p>
+<pre class="r"><code>&quot;%o%&quot; &lt;- compose
+sapply(mtcars, length %o% unique)</code></pre>
+<pre><code>##  mpg  cyl disp   hp drat   wt qsec   vs   am gear carb 
+##   25    3   27   22   22   29   30    2    2    3    6</code></pre>
+<pre class="r"><code>sqrt(1 + 8)</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code>compose(sqrt, `+`)(1, 8)</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code>(sqrt %o% `+`)(1, 8)</code></pre>
+<pre><code>## [1] 3</code></pre>
+</div>
+</div>
+</div>
+<div id="expressions" class="section level1">
+<h1><span class="header-section-number">10</span> Expressions</h1>
 </div>
 <div id="debugging" class="section level1">
-<h1><span class="header-section-number">10</span> Debugging</h1>
+<h1><span class="header-section-number">11</span> Debugging</h1>
 <p>debugger dump.frames</p>
 <p>browser traceback recover</p>
 <p>browserText(n = 1) browserCondition(n = 1) browserSetDebug(n = 1</p>
