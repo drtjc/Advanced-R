@@ -7,6 +7,16 @@ library(rlang)
 library(rlist)
 
 
+z <- expr(y <- x * 10)
+z
+typeof(z)
+class(z)
+str(z)
+View(z)
+attributes(z)
+
+
+
 
 dot_every <- function(f, n) {
   i <- 1
