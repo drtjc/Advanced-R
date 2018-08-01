@@ -15,8 +15,27 @@ str(z)
 View(z)
 attributes(z)
 
+x <- 2
+y = 2
+
+lobstr::ast((z = y = 2)) 
+lobstr::ast(z <- y <- 2) 
+lobstr::ast(x <- 1)
+x
+
+a <- NULL
+f <- function(a) a + 1
+f(a <- 1)  # evaluates because a argument of function is evaluated in the function
+a  # a is 1
+f(a = 2)  # returns 3
+a  # a is still 1
 
 
+
+
+a <- 1
+lobstr::ast(x = (a <- 2)) 
+a
 
 z <- substitute(y <- x * 10)
 z

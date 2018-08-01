@@ -163,8 +163,35 @@ Compare and contrast the two uses by referencing the AST.
     lobstr::ast((1 + 1)) # bracket appears as not part of function syntax
     ```
 
+2. `=` can also be used in two ways. Construct a simple example that shows both uses.  
+**a**: `=` can be used for assignment or two match to named arguments.
+    ```{r}
+    lobstr::ast(x = 1) # just the leaf 1
+    lobstr::ast(x = (a = 1))
+    lobstr::ast((a = 1)) # same as one above
+    ```
 
+3. What does `!1 + !1` return? Why?  
+    ```{r}
+    !1 + !1
+    !(1 + (!1)) # same as above
+    lobstr::ast(!1 + !1)
+    (!1) + (!1) # = 0 as is FALSE + FALSE
+    ```
 
+4. Why does `x1 <- x2 <- x3 <- 0` work? There are two reasons.  
+**A**: `<-` is right associative. Assignment returns the value being assigned.
+    ```{r}
+    lobstr::ast(x1 <- x2 <- x3 <- 0)
+    lobstr::ast(0 -> x3 -> x2 -> x3)
+    ```
+
+5. Compare the ASTs `x + y %+% z` and `x ^ y %+% z`. What does that tell you about the precedence of custom infix functions?  
+**A**: Custom infix functions have a precedence between addition and exponentiation
+    ```{r}
+    lobstr::ast(x + y %+% z)
+    lobstr::ast(x ^ y %+% z)
+    ```
 
 
 
