@@ -8,6 +8,32 @@ library(rlist)
 
 
 
+z <- substitute(y <- x * 10)
+z
+str(z)
+View(z)
+
+x <- 4
+eval(z)
+y
+
+ast(z)
+ast(!!z)
+
+
+lobstr::ast(f(x, "y", 1))
+
+
+
+quote(x) %>% class()
+quote(x)
+
+
+
+
+
+
+
 dot_every <- function(f, n) {
   i <- 1
   function(...) {
