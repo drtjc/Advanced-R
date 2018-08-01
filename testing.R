@@ -7,6 +7,16 @@ library(rlang)
 library(rlist)
 
 
+z <- expr(y <- x * 10)
+z
+typeof(z)
+class(z)
+str(z)
+View(z)
+attributes(z)
+
+
+
 
 z <- substitute(y <- x * 10)
 z

@@ -27,3 +27,144 @@ library(purrr)
 ```
 
 # Expressions
+It would be nice if we could capture the intent of the code, without executing the code. In other words, how can we separate our description of the action from performing it? One way is to use `rlang::expr()`:
+
+```{r}
+z <- expr(y <- x * 10)
+z
+typeof(z)
+class(z)
+str(z)
+
+u <- quote(y <- x * 10)
+u
+typeof(u)
+class(u)
+str(u)
+```
+
+`expr()` returns a quoted expression: the R code that captures our intent.
+
+## Abstract syntax trees
+Quoted expressions are also called abstract syntax trees (AST).  To make that more obvious we’re going to introduce some graphical conventions, illustrated with the very simple call `f(x, "y", 1)`.
+
+```{r, out.width="200px", echo=FALSE}
+knitr::include_graphics("Images/simple.png")
+```
+
+* Function **calls** define the hierarchy of the tree. Calls are shown with an orange square. The first child (`f`) is the function that gets called; the second and subsequent children (`x`, `"y"`, and `1`) are the arguments.
+
+* The leaves of the tree are either **symbols**, like `f` and `x`, or **constants** like `1` or `"y"`. Symbols have a purple border and rounded corners. Constants, which are atomic vectors of length one, have black borders and square corners. Strings are always surrounded in quotes to emphasise their difference from symbols.
+
+```{r}
+lobstr::ast(f(x, "y", 1))
+```
+
+`ast()` supports “unquoting” with `!!` (pronounced bang-bang). We’ll talk about unquoting in detail in the next chapter; for now note that it’s useful if you’ve already used `expr()` to capture the expression.
+
+```{r}
+x <- expr(f(x, "y", 1))
+
+# not useful!
+lobstr::ast(x)
+#> x
+
+# what we want
+lobstr::ast(!!x)
+```
+
+### Infix vs. prefix calls
+In R, any infix call can be converted to a prefix call if you escape the function name with backticks. That means that these two lines of code are equivalent:
+
+```{r, eval=FALSE}
+y <- x * 10
+`<-`(y, `*`(x, 10))
+```
+
+```{r}
+lobstr::ast(y <- x * 10)
+lobstr::ast(`<-`(y, `*`(x, 10)))
+```
+
+### Special forms
+R has a small number of other syntactical constructs that don’t look like either prefix or infix function calls. These are called special forms and include `function`, the control flow operators (`if`, `for`, `while`, `repeat`), and parentheses (`{`, `(`, `[[`, and `[`). These can also be written in prefix form, and hence appear in the same way in the AST:
+
+```{r}
+lobstr::ast(function(x, y) {
+  if (x > y) {
+    x
+  } else {
+    y
+  }
+})
+```
+
+### Function factories
+Another small detail we need to consider are calls like `f()()`. The first component of the call is usually a symbol:
+
+```{r}
+lobstr::ast(f(a, 1))
+lobstr::ast(f()(a, 1))
+lobstr::ast(f(b, 2)(a, 1))
+```
+
+### Argument names
+So far the examples have only used unnamed arguments. Named arguments don’t change the parsing rules, but just add some additional metadata:
+
+```{r}
+lobstr::ast(mean(x = mtcars$cyl, na.rm = TRUE))
+```
+
+## R's grammar
+The process by which a computer language takes a sequence of tokens (like `x`, +, `y`) and constructs a tree is called **parsing**, and it is governed by a set of rules known as a **grammar**.
+
+### Operator precedence
+Infix functions introduce ambiguity in a way that prefix functions do not. The parser has to resolve two sources of ambiguity when parsing infix operators. First, what does `1 + 2 * 3` yield? Programming langauges use conventions called **operator precedence** to resolve this ambiguity.
+
+```{r}
+lobstr::ast(1 + 2 * 3)
+```
+
+Predicting the precedence of arithmetic operations is usually easy because it’s drilled into you in school and is consistent across the vast majority of programming languages. Predicting the precedence of other operators is harder. There’s one particularly surprising case in R: `!` has a much lower precedence (i.e. it binds less tightly) than you might expect. This allows you to write useful operations like:
+
+```{r}
+lobstr::ast(!x %in% y)
+```
+
+### Associativity
+Ano`ther source of ambiguity is introduced by repeated usage of the same infix function. For example, is `1 + 2 + 3` equivalent to `(1 + 2) + 3 or to `1 + (2 + 3)`? This normally doesn’t matter because `x + (y + z) == (x + y) + z`, i.e. addition is associative, but is needed because some S3 classes define `+` in a non-associative way.
+
+In R, most operators are left-associative, i.e. the operations on the left are evaluated first:
+```{r}
+lobstr::ast(1 + 2 + 3)
+```
+
+There are two exceptions: exponentiation and assignment.
+
+```{r}
+lobstr::ast(2 ^ 3 ^ 4)
+lobstr::ast(x <- y <- z)
+```
+
+### Exercises
+1. R uses parentheses in two slightly different ways as illustrated by these two calls:
+    ```{r, eval=FALSE}
+    f((1))
+    `(`(1 + 1)
+    ```
+Compare and contrast the two uses by referencing the AST.
+**A**: `(` can represent a primitive function but also be a part of R’s general prefix function syntax.
+    ```{r}
+    lobstr::ast(f((1)))
+    lobstr::ast(`(`(1 + 1))
+    
+    lobstr::ast(f(1)) # same as lobstr::ast(f((1)))
+    lobstr::ast(1 + 1)
+    lobstr::ast((1 + 1)) # bracket appears as not part of function syntax
+    ```
+
+
+
+
+
+
