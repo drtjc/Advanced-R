@@ -7,31 +7,39 @@ library(rlang)
 library(rlist)
 
 
-z <- expr(y <- x * 10)
-z
-typeof(z)
-class(z)
-str(z)
-View(z)
-attributes(z)
 
-x <- 2
-y = 2
+(quote(f(,)))[[2]]
 
-lobstr::ast((z = y = 2)) 
-lobstr::ast(z <- y <- 2) 
-lobstr::ast(x <- 1)
-x
-
-a <- NULL
-f <- function(a) a + 1
-f(a <- 1)  # evaluates because a argument of function is evaluated in the function
-a  # a is 1
-f(a = 2)  # returns 3
-a  # a is still 1
+t <- quote(f(,))
+typeof(t)
+class(t)
+View(t)
+t[[2]]
 
 
+typeof(quote(2))
+typeof(quote("a"))
+typeof(quote(TRUE))
 
+
+typeof(quote(x))
+
+
+s <- quote(f(g()))
+View(s)
+typeof(s)
+
+"x"
+sym("x")
+class(sym("x"))
+
+x <- 3
+class(x)
+
+
+f <- function(x) x + 1
+q <-quote()
+q
 
 a <- 1
 lobstr::ast(x = (a <- 2)) 

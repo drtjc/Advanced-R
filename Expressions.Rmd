@@ -193,5 +193,57 @@ Compare and contrast the two uses by referencing the AST.
     lobstr::ast(x ^ y %+% z)
     ```
 
+## Data structures
+In this section you’ll learn about the data structures that appear in the AST:
+
+* Constants and symbols form the leaves of the tree.
+* Calls form the branches of the tree.
+* Pairlists are a largely historical data structure that are now only used for function arguments.
+
+### Naming conventions
+Before we continue, a word of caution about the naming conventions used in this book. Because base R evolved organically, it does not have a set of names that are used consistently throughout all functions. Instead, we’ve adopted our own set of conventions, and used them consistently throughout the book and in rlang. You will need to remember some translations when reading base R documentation.
+
+The biggest difference is the use of the term “expression”. We use expression to refer to the set containing **constants**, **symbols**, **calls**, and **pairlists**. In base R, “expression” is a special type that is basically equivalent to a list of what we call expressions. To avoid confusion we’ll call these expression objects, and we’ll discuss them in expression objects. Base R does not have an equivalent term for our “expression”. The closest is “language object”, which includes symbols and calls, but not constants or pairlists.
+
+But note that `typeof()` and `str()` use “language” not for language objects, but instead to mean calls. Base R uses symbol and name interchangeably; we prefer symbol because “name” has other common meanings (e.g. the name of a variable).
+
+### Constants
+Constants occurred in the leaves of the AST. They are the simplest data structure found in the AST because they are atomic vectors of length 1. Constants are “self-quoting” in the sense that the expression used to represent a constant is the constant itself:
+
+```{r}
+identical(expr("x"), "x")
+identical(expr(TRUE), TRUE)
+identical(expr(1), 1)
+identical(expr(2), 2)
+```
+
+### Symbols
+Symbols represent variable names. They are basically a single string stored in a special way. You can convert back and forth between symbols and the strings that represent them with `sym()` and `as_string()`:
+
+```{r}
+"x"
+sym("x")
+class(sym("x"))
+typeof(sym("x"))
+as_string(sym("x"))
+
+class(quote(x))
+typeof(quote(x))
+identical(sym("x"), quote(x))
+```
+
+There’s one special symbol that needs a little extra discussion: the empty symbol which is used to represent missing arguments (not missing values!). You can make it with `missing_arg()` (or `expr()`):
+
+```{r}
+missing_arg()
+typeof(missing_arg())
+as_string(missing_arg())
+
+quote(...)
+typeof(quote(...))
+
+is_missing(missing_arg())
+
+```
 
 
