@@ -239,11 +239,254 @@ missing_arg()
 typeof(missing_arg())
 as_string(missing_arg())
 
-quote(...)
-typeof(quote(...))
-
+# how to get missing arg in base R
+quote(f(,))[[2]]
+identical(missing_arg(), quote(f(,))[[2]])
 is_missing(missing_arg())
-
 ```
+
+This symbol has a peculiar property: if you bind it to a variable, then access that variable, you will get an error:
+
+```{r, error=TRUE}
+m1 <- missing_arg()
+m1 # error
+```
+
+But you won’t get an error if it’s stored inside another data structure!
+
+```{r, error=TRUE}
+m2 <- list(missing_arg())
+m2[[1]] # no error - empty argument
+
+m3 <- m2[[1]]
+m3 # error
+```
+
+This is the magic that makes missing arguments work in functions. If you do need to work with a missing argument stored in a variable, you can use `rlang::maybe_missing()`:
+
+```{r, error=TRUE}
+maybe_missing(m1)
+maybe_missing
+
+m1 <- missing_arg()
+m1
+m2 <- m1 # error
+m2 <- maybe_missing(m1) # empty argument
+```
+
+You only need to care about the missing symbol if you’re programmatically creating functions with missing arguments.
+
+### Calls
+Calls define the tree in AST. A call behaves similarly to a list:
+
+* It has a `length()`.
+* You can extract elements with `[[`, `[`, and `$`.
+* Calls can contain other calls.
+
+The main difference is that the first element of a call is special: it’s the function that will get called. Let’s explore these ideas with a simple example:
+
+```{r}
+x <- expr(read.table("important.csv", row = FALSE))
+lobstr::ast(!!x)
+
+typeof(x)
+class(x)
+```
+
+The length of a call minus one gives the number of arguments:
+
+```{r}
+length(x) - 1
+```
+
+The names of a call are empty, except for named arguments:
+
+```{r}
+names(x)
+```
+
+You can extract the leaves of the call by position and by name using [[ and $ in the usual way:
+
+```{r}
+x[[1]]
+x[[2]]
+x$row
+```
+
+Extracting specific arguments from calls is challenging because of R’s flexible rules for argument matching: it could potentially be in any location, with the full name, with an abbreviated name, or with no name. To work around this problem, you can use `rlang::call_standardise()` which standardises all arguments to use the full name:
+
+```{r}
+rlang::call_standardise(x)
+```
+
+(Note that if the function uses ... it’s not possible to standardise all arguments.)
+
+You can use [ to extract multiple components, but if you drop the the first element, you’re going to end up with a weird call:
+
+```{r}
+x[2:3]
+```
+
+If you do want to extract multiple elements in this way, it’s good practice to coerce the results to a list:
+
+```{r}
+as.list(x[2:3])
+```
+
+Calls can be modified in the same way as lists:
+```{r}
+x$header <- TRUE
+x
+```
+
+You can construct a call from its children by using `rlang::lang()`. The first argument should be the function to be called (supplied either as a string or a symbol), and the subsequent arguments are the call to that function:
+
+```{r}
+lang("mean", x = expr(x), na.rm = TRUE)
+lang(expr(mean), x = expr(x), na.rm = TRUE)
+```
+
+### Pairlists
+There is one data structure we need to discuss for completeness: the pairlist. Pairlists are a remnant of R’s past and have been replaced by lists almost everywhere. The only place you are likely to see pairlists in R is when working with function arguments:
+
+```{r}
+f <- function(x = 10) x + 1
+typeof(formals(f))
+```
+
+(If you’re working in C, you’ll encounter pairlists more often. For example, calls are also implemented using pairlists.)
+
+Fortunately, whenever you encounter a pairlist, you can treat it just like a regular list:
+
+```{r}
+pl <- pairlist(x = 1, y = 2)
+length(pl)
+pl$x
+```
+
+### Expression objects
+Finally, we need to briefly discuss the expression object. Expression objects are produced by only two base functions: `expression()` and `parse()`:
+
+```{r}
+exp1 <- parse(text = "x <- 4 \n x")
+exp1
+typeof(exp1)
+length(exp1)
+exp1[[1]]
+exp1[[2]]
+typeof(exp1[[1]])
+
+x1 <- expr(x <- 4)
+typeof(x1)
+identical(exp1[[1]], x1)
+
+exp2 <- expression(x <-4, x)
+exp2
+```
+
+Conceptually, an expression object is just a list of expressions. The only difference is that calling `eval()` on an expression evaluates each individual expression. We don’t believe this advantage merits introducing a new data structure, so instead of expression objects we always use regular lists of expressions.
+
+```{r}
+eval(exp1)
+```
+
+### Exercises
+1. Which two of the six types of atomic vector can’t appear in an expression? Why? Why can’t you create an expression that contains an atomic vector of length greater than one?  
+**A**: Raw and Complex are not self quoting. A call to a function is needed to construct a vector longer than length 1.
+    ```{r}
+    is.atomic(1 + 2i) # true
+    is.atomic(expr(1 + 2i)) # false
+    identical(1 + 2i, expr(1 + 2i)) # false
+    identical(1, expr(1))  # true
+    
+    is.call(1 + 2i) # false
+    lobstr::ast(1 + 2i)
+    
+    is.atomic(as.raw(2)) # true
+    is.atomic(expr(as.raw(2))) # false
+    lobstr::ast(raw(2))
+    identical(1, expr(1))  # true
+    
+    ######################################
+
+    lobstr::ast(1L)
+    lobstr::ast(1:1)
+    
+    identical(1L, 1:1)
+    
+    is.atomic(expr(1L)) # true
+    is.atomic(expr(1:1)) # false
+    
+    is.call(expr(1L)) # false
+    is.call(expr(1:1)) # true
+    ```
+
+2. How is `rlang::maybe_missing()` implemented? Why does it work?  
+**A**: obvious from code:
+    ```{r}
+    maybe_missing
+    ```
+
+3. `rlang::call_standardise()` doesn’t work so well for the following calls. Why? What makes `mean()` special?  
+    ```{r, eval=FALSE}
+    call_standardise(quote(mean(1:10, na.rm = TRUE)))
+    #> mean(x = 1:10, na.rm = TRUE)
+    call_standardise(quote(mean(n = T, 1:10)))
+    #> mean(x = 1:10, n = T)
+    call_standardise(quote(mean(x = 1:10, , TRUE)))
+    #> mean(x = 1:10, , TRUE)
+    ```
+**A**: `mean()` uses `...` after only one named argument - `mean(x, ...)`. It works better on `mean.default()` - `mean(x, trim = 0, na.rm = FALSE, ...)`.
+    ```{r}
+    call_standardise(quote(mean.default(1:10, na.rm = TRUE)))
+    call_standardise(quote(mean.default(n = T, 1:10)))
+    call_standardise(quote(mean.default(x = 1:10, , TRUE)))
+    ```
+
+4. Why does this code not make sense?
+    ```{r, eval=FALSE}
+    x <- expr(foo(x = 1))
+    names(x) <- c("x", "")
+    ```
+**A**: The first element of a call is always the function that gets called.
+    ```{r}
+    x <- expr(foo(x = 1))
+    names(x) <- c("x", "")
+    x
+    
+    names(x) <- c("", "x")
+    x
+    ```
+
+5. Construct the expression `if(x > 1) "a" else "b"` using multiple calls to `lang()`. How does the structure code reflect the structure of the AST?  
+**A**:
+```{r}
+y <- call2('if', expr(x > 1), "a", "b")
+y
+lobstr::ast(!!y)
+
+x <- 2
+eval(y)
+x <- 0
+eval(y)
+```
+
+
+
+
+substitute
+enquote
+deparse
+delayedAssign
+call
+do.call
+function
+is.language etc
+bquote
+sQuote, dQuote, Quotes, shQuote
+missing
+eval
+getParseData
+srcfile
 
 

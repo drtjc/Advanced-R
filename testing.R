@@ -6,35 +6,9 @@ library(pryr)
 library(rlang)
 library(rlist)
 
+lang(`if`)
 
 
-(quote(f(,)))[[2]]
-
-t <- quote(f(,))
-typeof(t)
-class(t)
-View(t)
-t[[2]]
-
-
-typeof(quote(2))
-typeof(quote("a"))
-typeof(quote(TRUE))
-
-
-typeof(quote(x))
-
-
-s <- quote(f(g()))
-View(s)
-typeof(s)
-
-"x"
-sym("x")
-class(sym("x"))
-
-x <- 3
-class(x)
 
 
 f <- function(x) x + 1
