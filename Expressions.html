@@ -555,7 +555,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000000bf257e8&gt;
+## &lt;bytecode: 0x000000000c75c370&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -589,7 +589,7 @@ lobstr::ast(!!x)</code></pre>
 <p>The names of a call are empty, except for named arguments:</p>
 <pre class="r"><code>names(x)</code></pre>
 <pre><code>## [1] &quot;&quot;    &quot;&quot;    &quot;row&quot;</code></pre>
-<p>You can extract the leaves of the call by position and by name using [[ and $ in the usual way:</p>
+<p>You can extract the leaves of the call by position and by name using <code>[[</code> and <code>$</code> in the usual way:</p>
 <pre class="r"><code>x[[1]]</code></pre>
 <pre><code>## read.table</code></pre>
 <pre class="r"><code>x[[2]]</code></pre>
@@ -599,8 +599,8 @@ lobstr::ast(!!x)</code></pre>
 <p>Extracting specific arguments from calls is challenging because of R’s flexible rules for argument matching: it could potentially be in any location, with the full name, with an abbreviated name, or with no name. To work around this problem, you can use <code>rlang::call_standardise()</code> which standardises all arguments to use the full name:</p>
 <pre class="r"><code>rlang::call_standardise(x)</code></pre>
 <pre><code>## read.table(file = &quot;important.csv&quot;, row.names = FALSE)</code></pre>
-<p>(Note that if the function uses … it’s not possible to standardise all arguments.)</p>
-<p>You can use [ to extract multiple components, but if you drop the the first element, you’re going to end up with a weird call:</p>
+<p>(Note that if the function uses <code>...</code> it’s not possible to standardise all arguments.)</p>
+<p>You can use <code>[</code> to extract multiple components, but if you drop the the first element, you’re going to end up with a weird call:</p>
 <pre class="r"><code>x[2:3]</code></pre>
 <pre><code>## &quot;important.csv&quot;(row = FALSE)</code></pre>
 <p>If you do want to extract multiple elements in this way, it’s good practice to coerce the results to a list:</p>
@@ -624,7 +624,12 @@ x</code></pre>
 <h3><span class="header-section-number">1.3.5</span> Pairlists</h3>
 <p>There is one data structure we need to discuss for completeness: the pairlist. Pairlists are a remnant of R’s past and have been replaced by lists almost everywhere. The only place you are likely to see pairlists in R is when working with function arguments:</p>
 <pre class="r"><code>f &lt;- function(x = 10) x + 1
-typeof(formals(f))</code></pre>
+formals(f)</code></pre>
+<pre><code>## $x
+## [1] 10</code></pre>
+<pre class="r"><code>typeof(formals(f))</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code>class(formals(f))</code></pre>
 <pre><code>## [1] &quot;pairlist&quot;</code></pre>
 <p>(If you’re working in C, you’ll encounter pairlists more often. For example, calls are also implemented using pairlists.)</p>
 <p>Fortunately, whenever you encounter a pairlist, you can treat it just like a regular list:</p>
@@ -662,8 +667,81 @@ exp2</code></pre>
 <pre class="r"><code>eval(exp1)</code></pre>
 <pre><code>## [1] 4</code></pre>
 </div>
+<div id="examples" class="section level3">
+<h3><span class="header-section-number">1.3.7</span> Examples</h3>
+<pre class="r"><code>e1 &lt;- expression(a + 1)
+e1[[1]]</code></pre>
+<pre><code>## a + 1</code></pre>
+<pre class="r"><code>e1[[1]][[1]]</code></pre>
+<pre><code>## `+`</code></pre>
+<pre class="r"><code>e1[[1]][[2]]</code></pre>
+<pre><code>## a</code></pre>
+<pre class="r"><code>e1[[1]][[3]]</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>is.expression(e1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.call(e1[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.expression(e1[[1]])</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>is.symbol(e1[[1]][[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.symbol(e1[[1]][[2]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.numeric(e1[[1]][[3]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>q1 &lt;- quote(a + 1)
+typeof(q1)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>mode(q1)</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>class(q1)</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>identical(q1, e1[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code># is.language(x) returns TRUE if x is a name (symbol), call or an expression
+is.language(e1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]][[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]][[2]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]][[3]])  # FALSE, 1 is a constant</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>and this:</p>
+<pre class="r"><code>e2 &lt;- expression(function(x) x)
+q2 &lt;- quote(function(x) x)
+
+q2[[1]]</code></pre>
+<pre><code>## `function`</code></pre>
+<pre class="r"><code>typeof(q2[[1]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>q2[[2]]</code></pre>
+<pre><code>## $x</code></pre>
+<pre class="r"><code>typeof(q2[[2]])</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code>q2[[3]]</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>typeof(q2[[3]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>q2[[4]]</code></pre>
+<pre><code>## function(x) x</code></pre>
+<pre class="r"><code>class(q2[[4]])</code></pre>
+<pre><code>## [1] &quot;srcref&quot;</code></pre>
+<pre class="r"><code>str(q2[[4]])</code></pre>
+<pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000000c5ebe18&gt;</code></pre>
+<pre class="r"><code>identical(q2, e2[[1]])</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
+e2[[1]][[4]] &lt;- NULL  # srcref for function
+identical(q2, e2[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
 <div id="exercises-1" class="section level3">
-<h3><span class="header-section-number">1.3.7</span> Exercises</h3>
+<h3><span class="header-section-number">1.3.8</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Which two of the six types of atomic vector can’t appear in an expression? Why? Why can’t you create an expression that contains an atomic vector of length greater than one?<br />
 <strong>A</strong>: Raw and Complex are not self quoting. A call to a function is needed to construct a vector longer than length 1.</p>
@@ -723,7 +801,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000000bf257e8&gt;
+## &lt;bytecode: 0x000000000c75c370&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -751,8 +829,7 @@ x</code></pre>
 x</code></pre>
 <pre><code>## foo(x = 1)</code></pre></li>
 <li><p>Construct the expression <code>if(x &gt; 1) &quot;a&quot; else &quot;b&quot;</code> using multiple calls to <code>lang()</code>. How does the structure code reflect the structure of the AST?<br />
-<strong>A</strong>:</p></li>
-</ol>
+<strong>A</strong>:</p>
 <pre class="r"><code>y &lt;- call2(&quot;if&quot;, expr(x &gt; 1), &quot;a&quot;, &quot;b&quot;)
 y</code></pre>
 <pre><code>## if (x &gt; 1) &quot;a&quot; else &quot;b&quot;</code></pre>
@@ -768,7 +845,8 @@ eval(y)</code></pre>
 <pre><code>## [1] &quot;a&quot;</code></pre>
 <pre class="r"><code>x &lt;- 0
 eval(y)</code></pre>
-<pre><code>## [1] &quot;b&quot;</code></pre>
+<pre><code>## [1] &quot;b&quot;</code></pre></li>
+</ol>
 <p>substitute substitute_q SubstututeDirect</p>
 <p>enquote deparse delayedAssign call recall all.names do.call function is.language etc bquote sQuote, dQuote, Quotes, shQuote missing eval getParseData srcfile</p>
 </div>

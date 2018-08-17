@@ -8,6 +8,8 @@ library(rlist)
 library(pryr)
 
 
+
+
 x <- quote(a + b)
 substitute(x, list(a = 1, b = 2))
 substitute_q(x, list(a = 1, b = 2))
@@ -72,57 +74,11 @@ rm(ex3)
 
 
 
-aa <- quote(a+b)
-View(aa)
-typeof(aa)
-mode(aa)
-class(aa)
-identical(aa, ee[[1]])
-
-bb <- quote(1)
-View(bb)
-typeof(bb)
-class(bb)
-mode(bb)
-identical(bb, mm[[1]])
-
-cc <- quote(c)
-nn <- expression(c)
-typeof(cc)
-class(cc)
-mode(cc)
-identical(cc, nn[[1]])
-
-
-dd <- quote(function(x) x)
-oo<- expression(function(x) x)
-View(dd)
-View(oo)
-identical(dd, oo[[1]])
-dd[[4]] <- NULL
-oo[[1]][[4]] <- NULL
-identical(dd, oo[[1]])
 
 
 
-ee <- expression(a+b)
-ee
-View(ee)
-is.expression(ee)
-is.call(ee[[1]])
-is.expression(ee[[1]])
-is.symbol(ee[[1]][[1]])
-ee[[1]][[2]]
-is.symbol(ee[[1]][[2]])
 
 
-
-mm <- expression(1)
-View(mm)
-is.call(mm[[1]])
-is.language(mm[[1]])
-is.symbol(mm[[1]])
-is.numeric(mm[[1]])
 
 
 A <- 2
@@ -147,21 +103,6 @@ eval(call("f", quote(A)), envir = env)  # 100
 
 
 
-
-
-
-
-
-
-
-
-x1 <- "y <- x + 10"
-lobstr::ast(x1)
-lobstr::ast(!!x1)
-
-x2 <- 4
-lobstr::ast(x2)
-lobstr::ast(!!x2)
 
 
 

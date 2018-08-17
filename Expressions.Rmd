@@ -305,7 +305,7 @@ The names of a call are empty, except for named arguments:
 names(x)
 ```
 
-You can extract the leaves of the call by position and by name using [[ and $ in the usual way:
+You can extract the leaves of the call by position and by name using `[[` and `$` in the usual way:
 
 ```{r}
 x[[1]]
@@ -319,9 +319,9 @@ Extracting specific arguments from calls is challenging because of R’s flexibl
 rlang::call_standardise(x)
 ```
 
-(Note that if the function uses ... it’s not possible to standardise all arguments.)
+(Note that if the function uses `...` it’s not possible to standardise all arguments.)
 
-You can use [ to extract multiple components, but if you drop the the first element, you’re going to end up with a weird call:
+You can use `[` to extract multiple components, but if you drop the the first element, you’re going to end up with a weird call:
 
 ```{r}
 x[2:3]
@@ -351,7 +351,9 @@ There is one data structure we need to discuss for completeness: the pairlist. P
 
 ```{r}
 f <- function(x = 10) x + 1
+formals(f)
 typeof(formals(f))
+class(formals(f))
 ```
 
 (If you’re working in C, you’ll encounter pairlists more often. For example, calls are also implemented using pairlists.)
@@ -389,6 +391,61 @@ Conceptually, an expression object is just a list of expressions. The only diffe
 ```{r}
 eval(exp1)
 ```
+
+### Examples
+```{r}
+e1 <- expression(a + 1)
+e1[[1]]
+e1[[1]][[1]]
+e1[[1]][[2]]
+e1[[1]][[3]]
+is.expression(e1)
+is.call(e1[[1]])
+is.expression(e1[[1]])
+is.symbol(e1[[1]][[1]])
+is.symbol(e1[[1]][[2]])
+is.numeric(e1[[1]][[3]])
+
+q1 <- quote(a + 1)
+typeof(q1)
+mode(q1)
+class(q1)
+identical(q1, e1[[1]])
+
+# is.language(x) returns TRUE if x is a name (symbol), call or an expression
+is.language(e1)
+is.language(e1[[1]])
+is.language(e1[[1]][[1]])
+is.language(e1[[1]][[2]])
+is.language(e1[[1]][[3]]) # FALSE, 1 is a constant
+```
+
+and this:
+
+```{r}
+e2<- expression(function(x) x)
+q2 <- quote(function(x) x)
+
+q2[[1]]
+typeof(q2[[1]])
+
+q2[[2]]
+typeof(q2[[2]])
+
+
+q2[[3]]
+typeof(q2[[3]])
+
+q2[[4]]
+class(q2[[4]])
+str(q2[[4]])
+
+identical(q2, e2[[1]])
+q2[[4]] <- NULL # srcref for function
+e2[[1]][[4]] <- NULL # srcref for function
+identical(q2, e2[[1]])
+```
+
 
 ### Exercises
 1. Which two of the six types of atomic vector can’t appear in an expression? Why? Why can’t you create an expression that contains an atomic vector of length greater than one?  
@@ -460,16 +517,16 @@ eval(exp1)
 
 5. Construct the expression `if(x > 1) "a" else "b"` using multiple calls to `lang()`. How does the structure code reflect the structure of the AST?  
 **A**:
-```{r}
-y <- call2('if', expr(x > 1), "a", "b")
-y
-lobstr::ast(!!y)
-
-x <- 2
-eval(y)
-x <- 0
-eval(y)
-```
+    ```{r}
+    y <- call2('if', expr(x > 1), "a", "b")
+    y
+    lobstr::ast(!!y)
+    
+    x <- 2
+    eval(y)
+    x <- 0
+    eval(y)
+    ```
 
 
 
