@@ -76,7 +76,7 @@ lobstr::ast(!!x)
 ### Infix vs. prefix calls
 In R, any infix call can be converted to a prefix call if you escape the function name with backticks. That means that these two lines of code are equivalent:
 
-```{r, eval=FALSE}
+```{r, eval=FALSE, tidy=FALSE}
 y <- x * 10
 `<-`(y, `*`(x, 10))
 ```
@@ -132,7 +132,7 @@ lobstr::ast(!x %in% y)
 ```
 
 ### Associativity
-Ano`ther source of ambiguity is introduced by repeated usage of the same infix function. For example, is `1 + 2 + 3` equivalent to `(1 + 2) + 3 or to `1 + (2 + 3)`? This normally doesn’t matter because `x + (y + z) == (x + y) + z`, i.e. addition is associative, but is needed because some S3 classes define `+` in a non-associative way.
+Another source of ambiguity is introduced by repeated usage of the same infix function. For example, is `1 + 2 + 3` equivalent to `(1 + 2) + 3` or to `1 + (2 + 3)`? This normally doesn’t matter because `x + (y + z) == (x + y) + z`, i.e. addition is associative, but is needed because some S3 classes define `+` in a non-associative way.
 
 In R, most operators are left-associative, i.e. the operations on the left are evaluated first:
 ```{r}
@@ -474,11 +474,17 @@ eval(y)
 
 
 
+
 substitute
+substitute_q
+SubstututeDirect
+
 enquote
 deparse
 delayedAssign
 call
+recall
+all.names
 do.call
 function
 is.language etc

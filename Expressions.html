@@ -276,7 +276,7 @@ lobstr::ast(!!x)</code></pre>
 <h3><span class="header-section-number">1.1.1</span> Infix vs. prefix calls</h3>
 <p>In R, any infix call can be converted to a prefix call if you escape the function name with backticks. That means that these two lines of code are equivalent:</p>
 <pre class="r"><code>y &lt;- x * 10
-y &lt;- x * 10</code></pre>
+`&lt;-`(y, `*`(x, 10))</code></pre>
 <pre class="r"><code>lobstr::ast(y &lt;- x * 10)</code></pre>
 <pre><code>## o-`&lt;-` 
 ## +-y 
@@ -364,7 +364,7 @@ y &lt;- x * 10</code></pre>
 </div>
 <div id="associativity" class="section level3">
 <h3><span class="header-section-number">1.2.2</span> Associativity</h3>
-<p>Ano<code>ther source of ambiguity is introduced by repeated usage of the same infix function. For example, is</code>1 + 2 + 3<code>equivalent to</code>(1 + 2) + 3 or to <code>1 + (2 + 3)</code>? This normally doesn’t matter because <code>x + (y + z) == (x + y) + z</code>, i.e. addition is associative, but is needed because some S3 classes define <code>+</code> in a non-associative way.</p>
+<p>Another source of ambiguity is introduced by repeated usage of the same infix function. For example, is <code>1 + 2 + 3</code> equivalent to <code>(1 + 2) + 3</code> or to <code>1 + (2 + 3)</code>? This normally doesn’t matter because <code>x + (y + z) == (x + y) + z</code>, i.e. addition is associative, but is needed because some S3 classes define <code>+</code> in a non-associative way.</p>
 <p>In R, most operators are left-associative, i.e. the operations on the left are evaluated first:</p>
 <pre class="r"><code>lobstr::ast(1 + 2 + 3)</code></pre>
 <pre><code>## o-`+` 
@@ -555,7 +555,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000000d6f9518&gt;
+## &lt;bytecode: 0x000000000bf257e8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -723,7 +723,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000000d6f9518&gt;
+## &lt;bytecode: 0x000000000bf257e8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -750,8 +750,27 @@ x</code></pre>
 <pre class="r"><code>names(x) &lt;- c(&quot;&quot;, &quot;x&quot;)
 x</code></pre>
 <pre><code>## foo(x = 1)</code></pre></li>
+<li><p>Construct the expression <code>if(x &gt; 1) &quot;a&quot; else &quot;b&quot;</code> using multiple calls to <code>lang()</code>. How does the structure code reflect the structure of the AST?<br />
+<strong>A</strong>:</p></li>
 </ol>
-<p>substitute enquote deparse delayedAssign call do.call function is.language etc bquote sQuote, dQuote, Quotes, shQuote missing eval getParseData srcfile</p>
+<pre class="r"><code>y &lt;- call2(&quot;if&quot;, expr(x &gt; 1), &quot;a&quot;, &quot;b&quot;)
+y</code></pre>
+<pre><code>## if (x &gt; 1) &quot;a&quot; else &quot;b&quot;</code></pre>
+<pre class="r"><code>lobstr::ast(!!y)</code></pre>
+<pre><code>## o-`if` 
+## +-o-`&gt;` 
+## | +-x 
+## | \-1 
+## +-&quot;a&quot; 
+## \-&quot;b&quot;</code></pre>
+<pre class="r"><code>x &lt;- 2
+eval(y)</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>x &lt;- 0
+eval(y)</code></pre>
+<pre><code>## [1] &quot;b&quot;</code></pre>
+<p>substitute substitute_q SubstututeDirect</p>
+<p>enquote deparse delayedAssign call recall all.names do.call function is.language etc bquote sQuote, dQuote, Quotes, shQuote missing eval getParseData srcfile</p>
 </div>
 </div>
 </div>

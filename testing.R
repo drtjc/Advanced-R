@@ -5,42 +5,193 @@ library(purrr)
 library(pryr)
 library(rlang)
 library(rlist)
-
-lang(`if`)
-
+library(pryr)
 
 
+x <- quote(a + b)
+substitute(x, list(a = 1, b = 2))
+substitute_q(x, list(a = 1, b = 2))
 
-f <- function(x) x + 1
-q <-quote()
-q
+substitute(a + b, list(a = 1, b = 2))
 
-a <- 1
-lobstr::ast(x = (a <- 2)) 
-a
+y <- expression(a+b)
+substitute(y, list(a = 1, b = 2))
 
-z <- substitute(y <- x * 10)
-z
-str(z)
-View(z)
+substituteDirect(x, list(a = 1, b = 2))
 
-x <- 4
-eval(z)
-y
+f <- function(x) x
+gg <- substituteDirect(f)
+is.function(gg)
+environment(gg)
 
-ast(z)
-ast(!!z)
-
-
-lobstr::ast(f(x, "y", 1))
+substituteDirect
 
 
 
-quote(x) %>% class()
-quote(x)
+#function (x, env) 
+#{
+#  stopifnot(is.language(x))
+#  env <- to_env(env)
+#  call <- substitute(substitute(x, env), list(x = x))
+#  eval(call)
+#}
+
+#call <- substitute(substitute(x, env), list(x = x))
+#eval(call)
+
+
+eval(substitute(substitute(x, list(a = 1, b = 2)), list(x = x)))
+eval(substitute(substitute(x, list(a = 1, b = 2)), list(x = quote(a + b))))
+
+
+substitute(substitute(x, list(a = 1, b = 2)), list(x = x))
+substitute(x, list(a = 1, b = 2))
+
+eval(substitute(substitute(x), list(x = x))) # a +  b
+
+substitute(x, list(a = 1, b = 2)) #x 
+
+t <- substitute(x, list(a = 1, b = 2))
+View(t)
+
+#eval(substitute(, list(x = x)))
+
+
+length(ex1 <- expression(1 + 0:9)) # 1
+ex1
+eval(ex1) # 1:10
+
+length(ex3 <- expression(u, v, 1+ 0:9)) # 3
+mode(ex3 [3])   # expression
+mode(ex3[[3]])  # call
+View(ex3)
+rm(ex3)
 
 
 
+
+
+
+aa <- quote(a+b)
+View(aa)
+typeof(aa)
+mode(aa)
+class(aa)
+identical(aa, ee[[1]])
+
+bb <- quote(1)
+View(bb)
+typeof(bb)
+class(bb)
+mode(bb)
+identical(bb, mm[[1]])
+
+cc <- quote(c)
+nn <- expression(c)
+typeof(cc)
+class(cc)
+mode(cc)
+identical(cc, nn[[1]])
+
+
+dd <- quote(function(x) x)
+oo<- expression(function(x) x)
+View(dd)
+View(oo)
+identical(dd, oo[[1]])
+dd[[4]] <- NULL
+oo[[1]][[4]] <- NULL
+identical(dd, oo[[1]])
+
+
+
+ee <- expression(a+b)
+ee
+View(ee)
+is.expression(ee)
+is.call(ee[[1]])
+is.expression(ee[[1]])
+is.symbol(ee[[1]][[1]])
+ee[[1]][[2]]
+is.symbol(ee[[1]][[2]])
+
+
+
+mm <- expression(1)
+View(mm)
+is.call(mm[[1]])
+is.language(mm[[1]])
+is.symbol(mm[[1]])
+is.numeric(mm[[1]])
+
+
+A <- 2
+f <- function(x) print(x^2)
+env <- new.env()
+parent.env(env)
+assign("A", 10, envir = env)
+assign("f", f, envir = env)
+f <- function(x) print(x)
+f(A)                                      # 2
+do.call("f", list(A))                     # 2
+do.call("f", list(A), envir = env)        # 4
+do.call(f, list(A), envir = env)          # 2
+do.call("f", list(quote(A)), envir = env) # 100
+do.call(f, list(quote(A)), envir = env)   # 10
+do.call("f", list(as.name("A")), envir = env) # 100
+
+eval(call("f", A))                      # 2
+eval(call("f", quote(A)))               # 2
+eval(call("f", A), envir = env)         # 4
+eval(call("f", quote(A)), envir = env)  # 100
+
+
+
+
+
+
+
+
+
+
+
+x1 <- "y <- x + 10"
+lobstr::ast(x1)
+lobstr::ast(!!x1)
+
+x2 <- 4
+lobstr::ast(x2)
+lobstr::ast(!!x2)
+
+
+
+
+enq <-function(cl) as.call(list(as.name("quote"), cl))
+
+enq2 <- function(cl) call("quote", cl) 
+
+q <- as.name("quote")
+typeof(q)
+
+enq(dd)
+enq2(dd)
+identical(enq(dd), enq2(dd))
+
+f <- function(x) x
+typeof(f)
+is.call(f(2))
+
+dd <- call("f", 2)
+View(dd)
+enquote(dd)
+
+is.call(enq(dd))
+is.call(dd)
+
+g <- as.call(f)
+enquote(f)
+
+View(enq)
 
 
 
