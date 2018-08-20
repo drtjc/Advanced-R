@@ -528,6 +528,70 @@ identical(q2, e2[[1]])
     eval(y)
     ```
 
+### Parsing and deparsing
+Most of the time you type code into the console, and R takes care of turning the characters you’ve typed into an AST. But occasionally you have code stored in a string, and you want to parse it yourself. You can do so using `rlang::parse_expr()`:
+
+```{r}
+x1 <- "y <- x + 10"
+lobstr::ast(!!x1)
+
+x2 <- rlang::parse_expr(x1)
+x2
+typeof(x2)
+lobstr::ast(!!x2)
+```
+
+If you have multiple expressions in a string, you’ll need to use `rlang::parse_exprs()`. It returns a list of expressions:
+
+```{r}
+x3 <- "a <- 1; a + 1"
+rlang::parse_exprs(x3)
+```
+
+The base equivalent to `parse_exprs()` is `parse()`. It is a little harder to use because it’s specialised for parsing R code stored in files. That means you need supply your string to the text argument, and you get back an expression object:
+
+```{r}
+parse(text = x1)[[1]]
+typeof(parse(text = x1))
+```
+
+The opposite of parsing is **deparsing**: you have an AST and you want a string that would generate it when parsed:
+
+```{r}
+z <- expr(y <- x + 10)
+expr_text(z)
+```
+
+Parsing and deparsing are not perfectly symmetric because parsing throws away all information not directly related to the AST. This includes backticks around ordinary names, comments, and whitespace. The base R equivalent is `deparase()`.
+
+### Exercises
+1. What happens if you attempt to parse an invalid expression? e.g. `"a +"` or `"f())"`.  
+**A**: an error occurs
+    ```{r, error=TRUE}
+    parse_expr("a +")
+    parse(text = "a +")[[1]]
+    ```
+
+2. `deparse()` produces vectors when the input is long. For example, the following call produces a vector of length two:
+    ```{r}  
+    expr <- expr(g(a + b + c + d + e + f + g + h + i + j + k + l + m +
+                   n + o + p + q + r + s + t + u + v + w + x + y + z))
+
+    deparse(expr)
+    ```
+What do `expr_text()`, `expr_name()`, and `expr_label()` do with this input?  
+**A**: `expr_text()` pastes the output string into one and inserts `\n` (new line identifiers) as separators. `expr_name()` recreates the call into the form `f(…)` and deparses this expression into a string. `expr_label()` does the same as `expr_name()`, but surrounds the output also with backticks. 
+    ```{r}  
+    expr_text(expr)
+    cat(expr_text(expr))
+    expr_name(expr)
+    expr_label(expr)
+    ```
+
+3. Why does `as.Date.default()` use `substitute()` and `deparse()`? Why does `pairwise.t.test()` use them? Read the source code.  
+**A**: In order to get the name of the object assigned to the argument `x`. `pairwise.t.test()` combines `x` "and" `g` using names passed to arguments.
+
+4. `pairwise.t.test()` assumes that `deparse()` always returns a length one character vector. Can you construct an input that violates this expectation? What happens?
 
 
 

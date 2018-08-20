@@ -555,7 +555,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000000c75c370&gt;
+## &lt;bytecode: 0x000000000c7e4748&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -732,7 +732,7 @@ q2[[1]]</code></pre>
 <pre><code>## [1] &quot;srcref&quot;</code></pre>
 <pre class="r"><code>str(q2[[4]])</code></pre>
 <pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
-##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000000c5ebe18&gt;</code></pre>
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000000c634c00&gt;</code></pre>
 <pre class="r"><code>identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
@@ -801,7 +801,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000000c75c370&gt;
+## &lt;bytecode: 0x000000000c7e4748&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -846,6 +846,75 @@ eval(y)</code></pre>
 <pre class="r"><code>x &lt;- 0
 eval(y)</code></pre>
 <pre><code>## [1] &quot;b&quot;</code></pre></li>
+</ol>
+</div>
+<div id="parsing-and-deparsing" class="section level3">
+<h3><span class="header-section-number">1.3.9</span> Parsing and deparsing</h3>
+<p>Most of the time you type code into the console, and R takes care of turning the characters you’ve typed into an AST. But occasionally you have code stored in a string, and you want to parse it yourself. You can do so using <code>rlang::parse_expr()</code>:</p>
+<pre class="r"><code>x1 &lt;- &quot;y &lt;- x + 10&quot;
+lobstr::ast(!!x1)</code></pre>
+<pre><code>## &quot;y &lt;- x + 10&quot;</code></pre>
+<pre class="r"><code>x2 &lt;- rlang::parse_expr(x1)
+x2</code></pre>
+<pre><code>## y &lt;- x + 10</code></pre>
+<pre class="r"><code>typeof(x2)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>lobstr::ast(!!x2)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-y 
+## \-o-`+` 
+##   +-x 
+##   \-10</code></pre>
+<p>If you have multiple expressions in a string, you’ll need to use <code>rlang::parse_exprs()</code>. It returns a list of expressions:</p>
+<pre class="r"><code>x3 &lt;- &quot;a &lt;- 1; a + 1&quot;
+rlang::parse_exprs(x3)</code></pre>
+<pre><code>## [[1]]
+## a &lt;- 1
+## 
+## [[2]]
+## a + 1</code></pre>
+<p>The base equivalent to <code>parse_exprs()</code> is <code>parse()</code>. It is a little harder to use because it’s specialised for parsing R code stored in files. That means you need supply your string to the text argument, and you get back an expression object:</p>
+<pre class="r"><code>parse(text = x1)[[1]]</code></pre>
+<pre><code>## y &lt;- x + 10</code></pre>
+<pre class="r"><code>typeof(parse(text = x1))</code></pre>
+<pre><code>## [1] &quot;expression&quot;</code></pre>
+<p>The opposite of parsing is <strong>deparsing</strong>: you have an AST and you want a string that would generate it when parsed:</p>
+<pre class="r"><code>z &lt;- expr(y &lt;- x + 10)
+expr_text(z)</code></pre>
+<pre><code>## [1] &quot;y &lt;- x + 10&quot;</code></pre>
+<p>Parsing and deparsing are not perfectly symmetric because parsing throws away all information not directly related to the AST. This includes backticks around ordinary names, comments, and whitespace. The base R equivalent is <code>deparase()</code>.</p>
+</div>
+<div id="exercises-2" class="section level3">
+<h3><span class="header-section-number">1.3.10</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>What happens if you attempt to parse an invalid expression? e.g. <code>&quot;a +&quot;</code> or <code>&quot;f())&quot;</code>.<br />
+<strong>A</strong>: an error occurs</p>
+<pre class="r"><code>parse_expr(&quot;a +&quot;)</code></pre>
+<pre><code>## Error in parse(text = x): &lt;text&gt;:2:0: unexpected end of input
+## 1: a +
+##    ^</code></pre>
+<pre class="r"><code>parse(text = &quot;a +&quot;)[[1]]</code></pre>
+<pre><code>## Error in parse(text = &quot;a +&quot;): &lt;text&gt;:2:0: unexpected end of input
+## 1: a +
+##    ^</code></pre></li>
+<li><p><code>deparse()</code> produces vectors when the input is long. For example, the following call produces a vector of length two:</p>
+<pre class="r"><code>expr &lt;- expr(g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + 
+    q + r + s + t + u + v + w + x + y + z))
+
+deparse(expr)</code></pre>
+<pre><code>## [1] &quot;g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + &quot;
+## [2] &quot;    p + q + r + s + t + u + v + w + x + y + z)&quot;</code></pre>
+<p>What do <code>expr_text()</code>, <code>expr_name()</code>, and <code>expr_label()</code> do with this input?<br />
+<strong>A</strong>: <code>expr_text()</code> pastes the output string into one and inserts <code>\n</code> (new line identifiers) as separators. <code>expr_name()</code> recreates the call into the form <code>f(…)</code> and deparses this expression into a string. <code>expr_label()</code> does the same as <code>expr_name()</code>, but surrounds the output also with backticks.</p>
+<pre class="r"><code>expr_text(expr)</code></pre>
+<pre><code>## [1] &quot;g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + \n    p + q + r + s + t + u + v + w + x + y + z)&quot;</code></pre>
+<pre class="r"><code>cat(expr_text(expr))</code></pre>
+<pre><code>## g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + 
+##     p + q + r + s + t + u + v + w + x + y + z)</code></pre>
+<pre class="r"><code>expr_name(expr)</code></pre>
+<pre><code>## [1] &quot;g(...)&quot;</code></pre>
+<pre class="r"><code>expr_label(expr)</code></pre>
+<pre><code>## [1] &quot;`g(...)`&quot;</code></pre></li>
 </ol>
 <p>substitute substitute_q SubstututeDirect</p>
 <p>enquote deparse delayedAssign call recall all.names do.call function is.language etc bquote sQuote, dQuote, Quotes, shQuote missing eval getParseData srcfile</p>
