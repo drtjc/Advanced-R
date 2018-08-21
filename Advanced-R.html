@@ -7382,9 +7382,710 @@ sapply(mtcars, length %o% unique)</code></pre>
 </div>
 <div id="expressions" class="section level1">
 <h1><span class="header-section-number">10</span> Expressions</h1>
+<p>It would be nice if we could capture the intent of the code, without executing the code. In other words, how can we separate our description of the action from performing it? One way is to use <code>rlang::expr()</code>:</p>
+<pre class="r"><code>z &lt;- expr(y &lt;- x * 10)
+z</code></pre>
+<pre><code>## y &lt;- x * 10</code></pre>
+<pre class="r"><code>typeof(z)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>class(z)</code></pre>
+<pre><code>## [1] &quot;&lt;-&quot;</code></pre>
+<pre class="r"><code>str(z)</code></pre>
+<pre><code>##  language y &lt;- x * 10</code></pre>
+<pre class="r"><code>u &lt;- quote(y &lt;- x * 10)
+u</code></pre>
+<pre><code>## y &lt;- x * 10</code></pre>
+<pre class="r"><code>typeof(u)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>class(u)</code></pre>
+<pre><code>## [1] &quot;&lt;-&quot;</code></pre>
+<pre class="r"><code>str(u)</code></pre>
+<pre><code>##  language y &lt;- x * 10</code></pre>
+<p><code>expr()</code> returns a quoted expression: the R code that captures our intent.</p>
+<div id="abstract-syntax-trees" class="section level2">
+<h2><span class="header-section-number">10.1</span> Abstract syntax trees</h2>
+<p>Quoted expressions are also called abstract syntax trees (AST). To make that more obvious we’re going to introduce some graphical conventions, illustrated with the very simple call <code>f(x, &quot;y&quot;, 1)</code>.</p>
+<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAsQAAAFiCAIAAAB+mlm6AAAAAXNSR0IArs4c6QAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAgtpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IlhNUCBDb3JlIDUuNC4wIj4KICAgPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICAgICAgPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIKICAgICAgICAgICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpDb21wcmVzc2lvbj41PC90aWZmOkNvbXByZXNzaW9uPgogICAgICAgICA8dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPgogICAgICAgICA8dGlmZjpQaG90b21ldHJpY0ludGVycHJldGF0aW9uPjI8L3RpZmY6UGhvdG9tZXRyaWNJbnRlcnByZXRhdGlvbj4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CobSriQAAEAASURBVHgB7Z0JmBXVmfe7G2hAQHZFugXZCahBQVlUXBAEIi4oKtFEo0bjmCcZY758MZlMzJM8MfkyOpPMOHGymJhFxQ3jDogLjgIqGhd2RURaUGQTEGiE/n5a5vThVt17695bt24tf5485tSpU2f5vadvvfWe97ynuqmpqUr/REAEREAEREAERKBYAjXFPqjnREAEREAEREAEROATAlImNA9EQAREQAREQARKIiBloiR8elgEREAEREAEREDKhOaACIiACIiACIhASQSkTJSETw+LgAiIgAiIgAhImdAcEAEREAEREAERKImAlImS8OlhERABERABERABKROaAyIgAiIgAiIgAiURkDJREj49LAIiIAIiIAIiIGVCc0AEREAEREAERKAkAlImSsKnh0VABERABERABKRMaA6IgAiIgAiIgAiUREDKREn49LAIiIAIiIAIiICUCc0BERABERABERCBkghImSgJnx4WAREQAREQARGQMqE5IAIiIAIiIAIiUBIBKRMl4dPDIiACIiACIiACUiY0B0RABERABERABEoiIGWiJHx6WAREQAREQAREQMqE5oAIiIAIiIAIiEBJBKRMlIRPD4uACIiACIiACEiZ0BwQAREQAREQAREoiUDLkp7WwyIgAqER+HB11Rt3VX3watW+xtDaDKChmtqqbkdW9T+v6sDDAqhNVYiACESSQHVTU1MkO6ZOiYAIWATeuLtq7qVVe7ZbWbFKtmpfNe7Wqv7TYtVpdVYERMAvASkTfkmpnAhUjAA2iTuOiLEm4YBDn5j+muwTFZtFalgEyklAPhPlpKu6RSAQAitnxF6TgANmFZZp9E8ERCCJBKRMJFGqGlPCCGx8LSEDwuFD/0RABJJIQMpEEqWqMSWMQLw8LnPAT8xAcoxRt0QglQSkTKRS7Bq0CIiACIiACARHQMpEcCxVkwiIgAiIgAikkoCUiVSKXYMWAREQAREQgeAISJkIjqVqEgEREAEREIFUEpAykUqxa9AiIAIiIAIiEBwBKRPBsVRNIiACIiACIpBKAlImUil2DVoEREAEREAEgiMgZSI4lqpJBERABERABFJJQMpEKsWuQYuACIiACIhAcASkTATHUjWJgAiIgAiIQCoJSJlIpdg1aBEQAREQAREIjoCUieBYqiYREAEREAERSCUBKROpFLsGLQIiIAIiIALBEZAyERxL1SQCIiACIiACqSQgZSKVYtegRUAEREAERCA4AlImgmOpmkRABERABEQglQSkTKRS7Bq0CIiACIiACARHQMpEcCxVkwiIgAiIgAikkoCUiVSKXYMWAREQAREQgeAISJkIjqVqEgEREAEREIFUEpAykUqxa9AiIAIiIAIiEBwBKRPBsVRNIiACIiACIpBKAlImUil2DVoEREAEREAEgiMgZSI4lqpJBERABERABFJJQMpEKsWuQYuACIiACIhAcASkTATHUjWJgAiIgAiIQCoJSJlIpdg1aBEQAREQAREIjoCUieBYqiYREAEREAERSCUBKROpFLsGLQIiIAIiIALBEZAyERxL1SQCIiACIiACqSQgZSKVYtegRUAEREAERCA4AlImgmOpmkRABERABEQglQSkTKRS7Bq0CIiACIiACARHQMpEcCxVkwiIgAiIgAikkoCUiVSKXYMWAREQAREQgeAISJkIjqVqEgEREAEREIFUEpAykUqxa9AiIAIiIAIiEBwBKRPBsVRNIiACIiACIpBKAlImUil2DVoEREAEREAEgiMgZSI4lqpJBERABERABFJJQMpEKsWuQceEwPr16x9//PF33303Jv3N080PPvhg5cqV+/bty1NOt0VABOJGoGXcOqz+ikDyCfC6ffPNN//+97+jTDDa3lU7qqqTMOrNmzc/9thj7du3HzZs2NChQ2tra5MwKo1BBESgqkrKhGaBCESIQGNj45IlS15++eXt27dHqFuBdoWh/e///u/ChQsPP/zwz3/+8x06dAi0elUmAiJQAQJSJioAXU2KgJvA1q1bX3vttddff33Pnj3uu8nLYZjoTFhfBgwYgKHi4IMPTt4YNSIRSA8BKRPpkbVGGlECrGW89NJLq1atampqcneRRYFubbpVbXTfiV9O69atq3bv122GvOLTf3V1dcOHD+/Vq1d1dSJWdPYbpS5EIPkEqj1/v5I/bo1QBCpNAMcIFAjUiPfee8+zLwcddBCf7Hy418y+oOqNuz3LxCyz/7T1w371wgsvrF692rPnnTp1QqUYOHBgy5b6zvEkpEwRiCgBKRMRFYy6lWACu3fvxjECC7+nYwSf5n369Dn66KMPOeSQzyA8dl5ilImqiXcxKNZ00KKWLVv28ccfuwXdpk0btCg8Ktq2beu+qxwREIEIEpAyEUGhqEuJJcBL9NVXX128eLGnY0SrVq2GDBnCe/TAAw/cD0HilAlndChVr7zyCm4iO3bs2G+8n160aNECGkceeWSXLl3cd5UjAiIQKQJSJiIlDnUmsQTWrVuHvyEbPj1HyI4G3pp8i3vvlkyoMuGg2Lt3LyYKdCyiUHjC6du371FHHdWzZ0/Pu8oUARGIAgEtTEZBCupDYgngGPHGG2+gRrz//vueg2QXA6aI/v3719SkNIIcFghiTvAPRwpArV27NgMUniX869at24gRI/r165daUBlYdCkCkSIgZSJS4lBnkkMAGz7LGThGeNrwcYzggxvHiB49eiRnzKWN5LBP/23cuHHRokXuQJnYLQh41a5dO6B97nOf+2RjiP6JgAhEhoCWOSIjCnUkKQS2bNniOEZ4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GSol8RztVmoy5OiSbomACKSWQFZlYtvabfv2NJ9R2WVgl9Qyis7AbSkgHWQUTt80GcLhXFArlZoMBXVShUVABFJCIKsysXnVZoOgTec2bTq1MZdKVIoAUkAWpnVbRiazHAm7IU2GchAuos5KTYYiuqpHREAEEk8gqzKxraH5q7dTn06JBxGXAdqysGVU1v7bDdkdKGujqjwvAVsWtozyPqgCIiACIhAsgazKxJ7tjaal1jJLGBaVTtiysGVU1n7ZDdkdKGujqjwvAVsWtozyPqgCIiACIhAsgazKROOOPaal2natTFqJyhKwZWHLqKy9shuyO1DWRlV5XgK2LGwZ5X1QBURABEQgWAJZlYk9ljLRShEmgqVeQm22LGwZlVBl/kfthuwO5H9SJcpJwJaFLaNytqm6RUAERMCDQFZlYt/He03xmpb/OGPKZClRIQK2LGwZlbU7dkN2B8raqCrPS8CWhS2jvA+qgAiIgAgESyCrMhFsM6pNBERABERABEQgqQSkTCRVshqXCIiACIiACIREQMpESKDVjAiIgAiIgAgklYCUiaRKVuMSAREQAREQgZAISJkICbSaEQEREAEREIGkEpAykVTJalwiIAIiIAIiEBIBKRMhgVYzIiACIiACIpBUAlImkipZjUsEREAEREAEQiIgZSIk0GpGBERABERABJJKQMpEUiWrcYmACIiACIhASASkTIQEWs2IgAiIgAiIQFIJSJlIqmQ1LhEQAREQAREIiYCUiZBAqxkREAEREAERSCoBKRNJlazGJQIiIAIiIAIhEZAyERJoNSMCIiACIiACSSUgZSKpktW4REAEREAERCAkAlImQgKtZkRABERABEQgqQSkTCRVshqXCIiACIiACIREQMpESKDVjAiIgAiIgAgklUDLpA6soHE1NTVt2LChoaHhgAMOGDRoUEHPqrAIiIAIiIAIpJxASi0Te/bsWbhw4Y033jh16tTevXu3bt364IMPPvroo8lJ+YTQ8EUgOgQ2btz40Ucf5e7PO++8s2/fvtxldFcERKDcBFKnTLz99tvf+9736uvrR40a9e1vf3vmzJlr1qxBt3BAb9q0qdzEVb8IiIAfAqgR48aN6969+5VXXpmt/Kuvvjp48OBDDjnkD3/4Q7Yylcrftm0bik7u1rdv3563TO4adFcEIkIgRcsc/DZ95zvf+fWvf53j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ISBlIi6SUj9FQAREQAREIKIEpExEVDDqlgiIgAiIgAjEhYCUibhISv0UAREQAREQgYgSkDIRUcGoWyIgAiIgAiIQFwJSJuIiKfVTBERABERABCJKQMpERAWjbomACIiACIhAXAhImYiLpNRPERABERABEYgoASkTERWMuiUCIiACIiACcSEgZSIuklI/RUAEREAERCCiBKRMRFQw6pYIiIAIiIAIxIWAlIm4SEr9FAEREAEREIGIEpAyEVHBqFsiIAIiIAIiEBcCUibiIin1UwREQAREQAQiSkDKREQFo26JgAiIgAiIQFwISJmIi6TUTxEQAREQARGIKAEpExEVjLolAiIgAiIgAnEhIGUiLpJSP0VABERABEQgogSkTERUMOqWCIiACIiACMSFgJSJuEhK/RQBERABERCBiBKQMhFRwahbIiACIiACIhAXAlIm4iIp9VMEREAEREAEIkpAykREBaNuiYAIiIAIiEBcCEiZiIuk1E8REAEREAERiCgBKRMRFYy6JQIiIAIiIAJxISBlIi6SUj9FQAREQAREIKIEpExEVDDqlgiIgAiIgAjEhYCUibhISv0UAREQAREQgYgSkDIRUcGoWyIgAiIgAiIQFwJSJuIiKfVTBERABERABCJKQMpERAWjbomACIiACIhAXAhImYiLpNRPERABERABEYgoASkTERWMuiUCIiACIiACcSEgZSIuklI/RUAEREAERCCiBP4/iUfdcbaD6HIAAAAASUVORK5CYII=" width="200px" style="display: block; margin: auto;" /></p>
+<ul>
+<li><p>Function <strong>calls</strong> define the hierarchy of the tree. Calls are shown with an orange square. The first child (<code>f</code>) is the function that gets called; the second and subsequent children (<code>x</code>, <code>&quot;y&quot;</code>, and <code>1</code>) are the arguments.</p></li>
+<li><p>The leaves of the tree are either <strong>symbols</strong>, like <code>f</code> and <code>x</code>, or <strong>constants</strong> like <code>1</code> or <code>&quot;y&quot;</code>. Symbols have a purple border and rounded corners. Constants, which are atomic vectors of length one, have black borders and square corners. Strings are always surrounded in quotes to emphasise their difference from symbols.</p></li>
+</ul>
+<pre class="r"><code>lobstr::ast(f(x, &quot;y&quot;, 1))</code></pre>
+<pre><code>## o-f 
+## +-x 
+## +-&quot;y&quot; 
+## \-1</code></pre>
+<p><code>ast()</code> supports “unquoting” with <code>!!</code> (pronounced bang-bang). We’ll talk about unquoting in detail in the next chapter; for now note that it’s useful if you’ve already used <code>expr()</code> to capture the expression.</p>
+<pre class="r"><code>x &lt;- expr(f(x, &quot;y&quot;, 1))
+
+# not useful!
+lobstr::ast(x)</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code># &gt; x
+
+# what we want
+lobstr::ast(!!x)</code></pre>
+<pre><code>## o-f 
+## +-x 
+## +-&quot;y&quot; 
+## \-1</code></pre>
+<div id="infix-vs.prefix-calls" class="section level3">
+<h3><span class="header-section-number">10.1.1</span> Infix vs. prefix calls</h3>
+<p>In R, any infix call can be converted to a prefix call if you escape the function name with backticks. That means that these two lines of code are equivalent:</p>
+<pre class="r"><code>y &lt;- x * 10
+`&lt;-`(y, `*`(x, 10))</code></pre>
+<pre class="r"><code>lobstr::ast(y &lt;- x * 10)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-y 
+## \-o-`*` 
+##   +-x 
+##   \-10</code></pre>
+<pre class="r"><code>lobstr::ast(y &lt;- x * 10)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-y 
+## \-o-`*` 
+##   +-x 
+##   \-10</code></pre>
+</div>
+<div id="special-forms-1" class="section level3">
+<h3><span class="header-section-number">10.1.2</span> Special forms</h3>
+<p>R has a small number of other syntactical constructs that don’t look like either prefix or infix function calls. These are called special forms and include <code>function</code>, the control flow operators (<code>if</code>, <code>for</code>, <code>while</code>, <code>repeat</code>), and parentheses (<code>{</code>, <code>(</code>, <code>[[</code>, and <code>[</code>). These can also be written in prefix form, and hence appear in the same way in the AST:</p>
+<pre class="r"><code>lobstr::ast(function(x, y) {
+    if (x &gt; y) {
+        x
+    } else {
+        y
+    }
+})</code></pre>
+<pre><code>## o-`function` 
+## +-o-x = `` 
+## | \-y = `` 
+## +-o-`{` 
+## | \-o-`if` 
+## |   +-o-`&gt;` 
+## |   | +-x 
+## |   | \-y 
+## |   +-o-`{` 
+## |   | \-x 
+## |   \-o-`{` 
+## |     \-y 
+## \-&lt;inline srcref&gt;</code></pre>
+</div>
+<div id="function-factories-1" class="section level3">
+<h3><span class="header-section-number">10.1.3</span> Function factories</h3>
+<p>Another small detail we need to consider are calls like <code>f()()</code>. The first component of the call is usually a symbol:</p>
+<pre class="r"><code>lobstr::ast(f(a, 1))</code></pre>
+<pre><code>## o-f 
+## +-a 
+## \-1</code></pre>
+<pre class="r"><code>lobstr::ast(f()(a, 1))</code></pre>
+<pre><code>## o-o-f 
+## +-a 
+## \-1</code></pre>
+<pre class="r"><code>lobstr::ast(f(b, 2)(a, 1))</code></pre>
+<pre><code>## o-o-f 
+## | +-b 
+## | \-2 
+## +-a 
+## \-1</code></pre>
+</div>
+<div id="argument-names" class="section level3">
+<h3><span class="header-section-number">10.1.4</span> Argument names</h3>
+<p>So far the examples have only used unnamed arguments. Named arguments don’t change the parsing rules, but just add some additional metadata:</p>
+<pre class="r"><code>lobstr::ast(mean(x = mtcars$cyl, na.rm = TRUE))</code></pre>
+<pre><code>## o-mean 
+## +-x = o-`$` 
+## |     +-mtcars 
+## |     \-cyl 
+## \-na.rm = TRUE</code></pre>
+</div>
+</div>
+<div id="rs-grammar" class="section level2">
+<h2><span class="header-section-number">10.2</span> R’s grammar</h2>
+<p>The process by which a computer language takes a sequence of tokens (like <code>x</code>, +, <code>y</code>) and constructs a tree is called <strong>parsing</strong>, and it is governed by a set of rules known as a <strong>grammar</strong>.</p>
+<div id="operator-precedence" class="section level3">
+<h3><span class="header-section-number">10.2.1</span> Operator precedence</h3>
+<p>Infix functions introduce ambiguity in a way that prefix functions do not. The parser has to resolve two sources of ambiguity when parsing infix operators. First, what does <code>1 + 2 * 3</code> yield? Programming langauges use conventions called <strong>operator precedence</strong> to resolve this ambiguity.</p>
+<pre class="r"><code>lobstr::ast(1 + 2 * 3)</code></pre>
+<pre><code>## o-`+` 
+## +-1 
+## \-o-`*` 
+##   +-2 
+##   \-3</code></pre>
+<p>Predicting the precedence of arithmetic operations is usually easy because it’s drilled into you in school and is consistent across the vast majority of programming languages. Predicting the precedence of other operators is harder. There’s one particularly surprising case in R: <code>!</code> has a much lower precedence (i.e. it binds less tightly) than you might expect. This allows you to write useful operations like:</p>
+<pre class="r"><code>lobstr::ast(!x %in% y)</code></pre>
+<pre><code>## o-`!` 
+## \-o-`%in%` 
+##   +-x 
+##   \-y</code></pre>
+</div>
+<div id="associativity" class="section level3">
+<h3><span class="header-section-number">10.2.2</span> Associativity</h3>
+<p>Another source of ambiguity is introduced by repeated usage of the same infix function. For example, is <code>1 + 2 + 3</code> equivalent to <code>(1 + 2) + 3</code> or to <code>1 + (2 + 3)</code>? This normally doesn’t matter because <code>x + (y + z) == (x + y) + z</code>, i.e. addition is associative, but is needed because some S3 classes define <code>+</code> in a non-associative way.</p>
+<p>In R, most operators are left-associative, i.e. the operations on the left are evaluated first:</p>
+<pre class="r"><code>lobstr::ast(1 + 2 + 3)</code></pre>
+<pre><code>## o-`+` 
+## +-o-`+` 
+## | +-1 
+## | \-2 
+## \-3</code></pre>
+<p>There are two exceptions: exponentiation and assignment.</p>
+<pre class="r"><code>lobstr::ast(2^3^4)</code></pre>
+<pre><code>## o-`^` 
+## +-2 
+## \-o-`^` 
+##   +-3 
+##   \-4</code></pre>
+<pre class="r"><code>lobstr::ast(x &lt;- y &lt;- z)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-x 
+## \-o-`&lt;-` 
+##   +-y 
+##   \-z</code></pre>
+</div>
+<div id="exercises-28" class="section level3">
+<h3><span class="header-section-number">10.2.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>R uses parentheses in two slightly different ways as illustrated by these two calls:</p>
+<pre class="r"><code>f((1))
+(1 + 1)</code></pre>
+<p>Compare and contrast the two uses by referencing the AST. <strong>A</strong>: <code>(</code> can represent a primitive function but also be a part of R’s general prefix function syntax.</p>
+<pre class="r"><code>lobstr::ast(f((1)))</code></pre>
+<pre><code>## o-f 
+## \-o-`(` 
+##   \-1</code></pre>
+<pre class="r"><code>lobstr::ast((1 + 1))</code></pre>
+<pre><code>## o-`(` 
+## \-o-`+` 
+##   +-1 
+##   \-1</code></pre>
+<pre class="r"><code>lobstr::ast(f(1))  # same as lobstr::ast(f((1)))</code></pre>
+<pre><code>## o-f 
+## \-1</code></pre>
+<pre class="r"><code>lobstr::ast(1 + 1)</code></pre>
+<pre><code>## o-`+` 
+## +-1 
+## \-1</code></pre>
+<pre class="r"><code>lobstr::ast((1 + 1))  # bracket appears as not part of function syntax</code></pre>
+<pre><code>## o-`(` 
+## \-o-`+` 
+##   +-1 
+##   \-1</code></pre></li>
+<li><p><code>=</code> can also be used in two ways. Construct a simple example that shows both uses.<br />
+<strong>a</strong>: <code>=</code> can be used for assignment or two match to named arguments.</p>
+<pre class="r"><code>lobstr::ast(x = 1)  # just the leaf 1</code></pre>
+<pre><code>## 1</code></pre>
+<pre class="r"><code>lobstr::ast(x = (a = 1))</code></pre>
+<pre><code>## o-`(` 
+## \-o-`=` 
+##   +-a 
+##   \-1</code></pre>
+<pre class="r"><code>lobstr::ast((a = 1))  # same as one above</code></pre>
+<pre><code>## o-`(` 
+## \-o-`=` 
+##   +-a 
+##   \-1</code></pre></li>
+<li><p>What does <code>!1 + !1</code> return? Why?</p>
+<pre class="r"><code>!1 + !1</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>!(1 + (!1))  # same as above</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>lobstr::ast(!1 + !1)</code></pre>
+<pre><code>## o-`!` 
+## \-o-`+` 
+##   +-1 
+##   \-o-`!` 
+##     \-1</code></pre>
+<pre class="r"><code>(!1) + (!1)  # = 0 as is FALSE + FALSE</code></pre>
+<pre><code>## [1] 0</code></pre></li>
+<li><p>Why does <code>x1 &lt;- x2 &lt;- x3 &lt;- 0</code> work? There are two reasons.<br />
+<strong>A</strong>: <code>&lt;-</code> is right associative. Assignment returns the value being assigned.</p>
+<pre class="r"><code>lobstr::ast(x1 &lt;- x2 &lt;- x3 &lt;- 0)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-x1 
+## \-o-`&lt;-` 
+##   +-x2 
+##   \-o-`&lt;-` 
+##     +-x3 
+##     \-0</code></pre>
+<pre class="r"><code>lobstr::ast(x3 &lt;- x2 &lt;- x3 &lt;- 0)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-x3 
+## \-o-`&lt;-` 
+##   +-x2 
+##   \-o-`&lt;-` 
+##     +-x3 
+##     \-0</code></pre></li>
+<li><p>Compare the ASTs <code>x + y %+% z</code> and <code>x ^ y %+% z</code>. What does that tell you about the precedence of custom infix functions?<br />
+<strong>A</strong>: Custom infix functions have a precedence between addition and exponentiation</p>
+<pre class="r"><code>lobstr::ast(x + y %+% z)</code></pre>
+<pre><code>## o-`+` 
+## +-x 
+## \-o-`%+%` 
+##   +-y 
+##   \-z</code></pre>
+<pre class="r"><code>lobstr::ast(x^y %+% z)</code></pre>
+<pre><code>## o-`%+%` 
+## +-o-`^` 
+## | +-x 
+## | \-y 
+## \-z</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="data-structures" class="section level2">
+<h2><span class="header-section-number">10.3</span> Data structures</h2>
+<p>In this section you’ll learn about the data structures that appear in the AST:</p>
+<ul>
+<li>Constants and symbols form the leaves of the tree.</li>
+<li>Calls form the branches of the tree.</li>
+<li>Pairlists are a largely historical data structure that are now only used for function arguments.</li>
+</ul>
+<div id="naming-conventions" class="section level3">
+<h3><span class="header-section-number">10.3.1</span> Naming conventions</h3>
+<p>Before we continue, a word of caution about the naming conventions used in this book. Because base R evolved organically, it does not have a set of names that are used consistently throughout all functions. Instead, we’ve adopted our own set of conventions, and used them consistently throughout the book and in rlang. You will need to remember some translations when reading base R documentation.</p>
+<p>The biggest difference is the use of the term “expression”. We use expression to refer to the set containing <strong>constants</strong>, <strong>symbols</strong>, <strong>calls</strong>, and <strong>pairlists</strong>. In base R, “expression” is a special type that is basically equivalent to a list of what we call expressions. To avoid confusion we’ll call these expression objects, and we’ll discuss them in expression objects. Base R does not have an equivalent term for our “expression”. The closest is “language object”, which includes symbols and calls, but not constants or pairlists.</p>
+<p>But note that <code>typeof()</code> and <code>str()</code> use “language” not for language objects, but instead to mean calls. Base R uses symbol and name interchangeably; we prefer symbol because “name” has other common meanings (e.g. the name of a variable).</p>
+</div>
+<div id="constants" class="section level3">
+<h3><span class="header-section-number">10.3.2</span> Constants</h3>
+<p>Constants occurred in the leaves of the AST. They are the simplest data structure found in the AST because they are atomic vectors of length 1. Constants are “self-quoting” in the sense that the expression used to represent a constant is the constant itself:</p>
+<pre class="r"><code>identical(expr(&quot;x&quot;), &quot;x&quot;)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>identical(expr(TRUE), TRUE)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>identical(expr(1), 1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>identical(expr(2), 2)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
+<div id="symbols" class="section level3">
+<h3><span class="header-section-number">10.3.3</span> Symbols</h3>
+<p>Symbols represent variable names. They are basically a single string stored in a special way. You can convert back and forth between symbols and the strings that represent them with <code>sym()</code> and <code>as_string()</code>:</p>
+<pre class="r"><code>&quot;x&quot;</code></pre>
+<pre><code>## [1] &quot;x&quot;</code></pre>
+<pre class="r"><code>sym(&quot;x&quot;)</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>class(sym(&quot;x&quot;))</code></pre>
+<pre><code>## [1] &quot;name&quot;</code></pre>
+<pre class="r"><code>typeof(sym(&quot;x&quot;))</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>as_string(sym(&quot;x&quot;))</code></pre>
+<pre><code>## [1] &quot;x&quot;</code></pre>
+<pre class="r"><code>class(quote(x))</code></pre>
+<pre><code>## [1] &quot;name&quot;</code></pre>
+<pre class="r"><code>typeof(quote(x))</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>identical(sym(&quot;x&quot;), quote(x))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>There’s one special symbol that needs a little extra discussion: the empty symbol which is used to represent missing arguments (not missing values!). You can make it with <code>missing_arg()</code> (or <code>expr()</code>):</p>
+<pre class="r"><code>missing_arg()</code></pre>
+<pre class="r"><code>typeof(missing_arg())</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>as_string(missing_arg())</code></pre>
+<pre><code>## [1] &quot;&quot;</code></pre>
+<pre class="r"><code># how to get missing arg in base R
+quote(f(, ))[[2]]</code></pre>
+<pre class="r"><code>identical(missing_arg(), quote(f(, ))[[2]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is_missing(missing_arg())</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>This symbol has a peculiar property: if you bind it to a variable, then access that variable, you will get an error:</p>
+<pre class="r"><code>m1 &lt;- missing_arg()
+m1  # error</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): argument &quot;m1&quot; is missing, with no default</code></pre>
+<p>But you won’t get an error if it’s stored inside another data structure!</p>
+<pre class="r"><code>m2 &lt;- list(missing_arg())
+m2[[1]]  # no error - empty argument</code></pre>
+<pre class="r"><code>m3 &lt;- m2[[1]]
+m3  # error</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): argument &quot;m3&quot; is missing, with no default</code></pre>
+<p>This is the magic that makes missing arguments work in functions. If you do need to work with a missing argument stored in a variable, you can use <code>rlang::maybe_missing()</code>:</p>
+<pre class="r"><code>maybe_missing(m1)</code></pre>
+<pre class="r"><code>maybe_missing</code></pre>
+<pre><code>## function (x) 
+## {
+##     if (is_missing(x)) {
+##         missing_arg()
+##     }
+##     else {
+##         x
+##     }
+## }
+## &lt;bytecode: 0x000000001a27a7d8&gt;
+## &lt;environment: namespace:rlang&gt;</code></pre>
+<pre class="r"><code>m1 &lt;- missing_arg()
+m1</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): argument &quot;m1&quot; is missing, with no default</code></pre>
+<pre class="r"><code>m2 &lt;- m1  # error</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): argument &quot;m1&quot; is missing, with no default</code></pre>
+<pre class="r"><code>m2 &lt;- maybe_missing(m1)  # empty argument</code></pre>
+<p>You only need to care about the missing symbol if you’re programmatically creating functions with missing arguments.</p>
+</div>
+<div id="calls" class="section level3">
+<h3><span class="header-section-number">10.3.4</span> Calls</h3>
+<p>Calls define the tree in AST. A call behaves similarly to a list:</p>
+<ul>
+<li>It has a <code>length()</code>.</li>
+<li>You can extract elements with <code>[[</code>, <code>[</code>, and <code>$</code>.</li>
+<li>Calls can contain other calls.</li>
+</ul>
+<p>The main difference is that the first element of a call is special: it’s the function that will get called. Let’s explore these ideas with a simple example:</p>
+<pre class="r"><code>x &lt;- expr(read.table(&quot;important.csv&quot;, row = FALSE))
+lobstr::ast(!!x)</code></pre>
+<pre><code>## o-read.table 
+## +-&quot;important.csv&quot; 
+## \-row = FALSE</code></pre>
+<pre class="r"><code>typeof(x)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>class(x)</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<p>The length of a call minus one gives the number of arguments:</p>
+<pre class="r"><code>length(x) - 1</code></pre>
+<pre><code>## [1] 2</code></pre>
+<p>The names of a call are empty, except for named arguments:</p>
+<pre class="r"><code>names(x)</code></pre>
+<pre><code>## [1] &quot;&quot;    &quot;&quot;    &quot;row&quot;</code></pre>
+<p>You can extract the leaves of the call by position and by name using <code>[[</code> and <code>$</code> in the usual way:</p>
+<pre class="r"><code>x[[1]]</code></pre>
+<pre><code>## read.table</code></pre>
+<pre class="r"><code>x[[2]]</code></pre>
+<pre><code>## [1] &quot;important.csv&quot;</code></pre>
+<pre class="r"><code>x$row</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>Extracting specific arguments from calls is challenging because of R’s flexible rules for argument matching: it could potentially be in any location, with the full name, with an abbreviated name, or with no name. To work around this problem, you can use <code>rlang::call_standardise()</code> which standardises all arguments to use the full name:</p>
+<pre class="r"><code>rlang::call_standardise(x)</code></pre>
+<pre><code>## read.table(file = &quot;important.csv&quot;, row.names = FALSE)</code></pre>
+<p>(Note that if the function uses <code>...</code> it’s not possible to standardise all arguments.)</p>
+<p>You can use <code>[</code> to extract multiple components, but if you drop the the first element, you’re going to end up with a weird call:</p>
+<pre class="r"><code>x[2:3]</code></pre>
+<pre><code>## &quot;important.csv&quot;(row = FALSE)</code></pre>
+<p>If you do want to extract multiple elements in this way, it’s good practice to coerce the results to a list:</p>
+<pre class="r"><code>as.list(x[2:3])</code></pre>
+<pre><code>## [[1]]
+## [1] &quot;important.csv&quot;
+## 
+## $row
+## [1] FALSE</code></pre>
+<p>Calls can be modified in the same way as lists:</p>
+<pre class="r"><code>x$header &lt;- TRUE
+x</code></pre>
+<pre><code>## read.table(&quot;important.csv&quot;, row = FALSE, header = TRUE)</code></pre>
+<p>You can construct a call from its children by using <code>rlang::lang()</code>. The first argument should be the function to be called (supplied either as a string or a symbol), and the subsequent arguments are the call to that function:</p>
+<pre class="r"><code>lang(&quot;mean&quot;, x = expr(x), na.rm = TRUE)</code></pre>
+<pre><code>## mean(x = x, na.rm = TRUE)</code></pre>
+<pre class="r"><code>lang(expr(mean), x = expr(x), na.rm = TRUE)</code></pre>
+<pre><code>## mean(x = x, na.rm = TRUE)</code></pre>
+</div>
+<div id="pairlists" class="section level3">
+<h3><span class="header-section-number">10.3.5</span> Pairlists</h3>
+<p>There is one data structure we need to discuss for completeness: the pairlist. Pairlists are a remnant of R’s past and have been replaced by lists almost everywhere. The only place you are likely to see pairlists in R is when working with function arguments:</p>
+<pre class="r"><code>f &lt;- function(x = 10) x + 1
+formals(f)</code></pre>
+<pre><code>## $x
+## [1] 10</code></pre>
+<pre class="r"><code>typeof(formals(f))</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code>class(formals(f))</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<p>(If you’re working in C, you’ll encounter pairlists more often. For example, calls are also implemented using pairlists.)</p>
+<p>Fortunately, whenever you encounter a pairlist, you can treat it just like a regular list:</p>
+<pre class="r"><code>pl &lt;- pairlist(x = 1, y = 2)
+length(pl)</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>pl$x</code></pre>
+<pre><code>## [1] 1</code></pre>
+</div>
+<div id="expression-objects" class="section level3">
+<h3><span class="header-section-number">10.3.6</span> Expression objects</h3>
+<p>Finally, we need to briefly discuss the expression object. Expression objects are produced by only two base functions: <code>expression()</code> and <code>parse()</code>:</p>
+<pre class="r"><code>exp1 &lt;- parse(text = &quot;x &lt;- 4 \n x&quot;)
+exp1</code></pre>
+<pre><code>## expression(x &lt;- 4, x)</code></pre>
+<pre class="r"><code>typeof(exp1)</code></pre>
+<pre><code>## [1] &quot;expression&quot;</code></pre>
+<pre class="r"><code>length(exp1)</code></pre>
+<pre><code>## [1] 2</code></pre>
+<pre class="r"><code>exp1[[1]]</code></pre>
+<pre><code>## x &lt;- 4</code></pre>
+<pre class="r"><code>exp1[[2]]</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>typeof(exp1[[1]])</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>x1 &lt;- expr(x &lt;- 4)
+typeof(x1)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>identical(exp1[[1]], x1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>exp2 &lt;- expression(x &lt;- 4, x)
+exp2</code></pre>
+<pre><code>## expression(x &lt;- 4, x)</code></pre>
+<p>Conceptually, an expression object is just a list of expressions. The only difference is that calling <code>eval()</code> on an expression evaluates each individual expression. We don’t believe this advantage merits introducing a new data structure, so instead of expression objects we always use regular lists of expressions.</p>
+<pre class="r"><code>eval(exp1)</code></pre>
+<pre><code>## [1] 4</code></pre>
+</div>
+<div id="examples" class="section level3">
+<h3><span class="header-section-number">10.3.7</span> Examples</h3>
+<pre class="r"><code>e1 &lt;- expression(a + 1)
+e1[[1]]</code></pre>
+<pre><code>## a + 1</code></pre>
+<pre class="r"><code>e1[[1]][[1]]</code></pre>
+<pre><code>## `+`</code></pre>
+<pre class="r"><code>e1[[1]][[2]]</code></pre>
+<pre><code>## a</code></pre>
+<pre class="r"><code>e1[[1]][[3]]</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>is.expression(e1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.call(e1[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.expression(e1[[1]])</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>is.symbol(e1[[1]][[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.symbol(e1[[1]][[2]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.numeric(e1[[1]][[3]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>q1 &lt;- quote(a + 1)
+typeof(q1)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>mode(q1)</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>class(q1)</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>identical(q1, e1[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code># is.language(x) returns TRUE if x is a name (symbol), call or an expression
+is.language(e1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]][[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]][[2]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.language(e1[[1]][[3]])  # FALSE, 1 is a constant</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>and this:</p>
+<pre class="r"><code>e2 &lt;- expression(function(x) x)
+q2 &lt;- quote(function(x) x)
+
+q2[[1]]</code></pre>
+<pre><code>## `function`</code></pre>
+<pre class="r"><code>typeof(q2[[1]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>q2[[2]]</code></pre>
+<pre><code>## $x</code></pre>
+<pre class="r"><code>typeof(q2[[2]])</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code>q2[[3]]</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>typeof(q2[[3]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>q2[[4]]</code></pre>
+<pre><code>## function(x) x</code></pre>
+<pre class="r"><code>class(q2[[4]])</code></pre>
+<pre><code>## [1] &quot;srcref&quot;</code></pre>
+<pre class="r"><code>str(q2[[4]])</code></pre>
+<pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000019574078&gt;</code></pre>
+<pre class="r"><code>identical(q2, e2[[1]])</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
+e2[[1]][[4]] &lt;- NULL  # srcref for function
+identical(q2, e2[[1]])</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
+<div id="exercises-29" class="section level3">
+<h3><span class="header-section-number">10.3.8</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Which two of the six types of atomic vector can’t appear in an expression? Why? Why can’t you create an expression that contains an atomic vector of length greater than one?<br />
+<strong>A</strong>: Raw and Complex are not self quoting. A call to a function is needed to construct a vector longer than length 1.</p>
+<pre class="r"><code>is.atomic(1 + (0+2i))  # true</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.atomic(expr(1 + (0+2i)))  # false</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>identical(1 + (0+2i), expr(1 + (0+2i)))  # false</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>identical(1, expr(1))  # true</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.call(1 + (0+2i))  # false</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>lobstr::ast(1 + (0+2i))</code></pre>
+<pre><code>## o-`+` 
+## +-1 
+## \-o-`(` 
+##   \-o-`+` 
+##     +-0 
+##     \-0+2i</code></pre>
+<pre class="r"><code>is.atomic(as.raw(2))  # true</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.atomic(expr(as.raw(2)))  # false</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>lobstr::ast(raw(2))</code></pre>
+<pre><code>## o-raw 
+## \-2</code></pre>
+<pre class="r"><code>identical(1, expr(1))  # true</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>###################################### 
+
+lobstr::ast(1L)</code></pre>
+<pre><code>## 1</code></pre>
+<pre class="r"><code>lobstr::ast(1:1)</code></pre>
+<pre><code>## o-`:` 
+## +-1 
+## \-1</code></pre>
+<pre class="r"><code>identical(1L, 1:1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.atomic(expr(1L))  # true</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.atomic(expr(1:1))  # false</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>is.call(expr(1L))  # false</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>is.call(expr(1:1))  # true</code></pre>
+<pre><code>## [1] TRUE</code></pre></li>
+<li><p>How is <code>rlang::maybe_missing()</code> implemented? Why does it work?<br />
+<strong>A</strong>: obvious from code:</p>
+<pre class="r"><code>maybe_missing</code></pre>
+<pre><code>## function (x) 
+## {
+##     if (is_missing(x)) {
+##         missing_arg()
+##     }
+##     else {
+##         x
+##     }
+## }
+## &lt;bytecode: 0x000000001a27a7d8&gt;
+## &lt;environment: namespace:rlang&gt;</code></pre></li>
+<li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
+<pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
+# &gt; mean(x = 1:10, na.rm = TRUE)
+call_standardise(quote(mean(n = T, 1:10)))
+# &gt; mean(x = 1:10, n = T)
+call_standardise(quote(mean(x = 1:10, , TRUE)))
+# &gt; mean(x = 1:10, , TRUE)</code></pre>
+<p><strong>A</strong>: <code>mean()</code> uses <code>...</code> after only one named argument - <code>mean(x, ...)</code>. It works better on <code>mean.default()</code> - <code>mean(x, trim = 0, na.rm = FALSE, ...)</code>.</p>
+<pre class="r"><code>call_standardise(quote(mean.default(1:10, na.rm = TRUE)))</code></pre>
+<pre><code>## mean.default(x = 1:10, na.rm = TRUE)</code></pre>
+<pre class="r"><code>call_standardise(quote(mean.default(n = T, 1:10)))</code></pre>
+<pre><code>## mean.default(x = 1:10, na.rm = T)</code></pre>
+<pre class="r"><code>call_standardise(quote(mean.default(x = 1:10, , TRUE)))</code></pre>
+<pre><code>## mean.default(x = 1:10, na.rm = TRUE)</code></pre></li>
+<li><p>Why does this code not make sense?</p>
+<pre class="r"><code>x &lt;- expr(foo(x = 1))
+names(x) &lt;- c(&quot;x&quot;, &quot;&quot;)</code></pre>
+<p><strong>A</strong>: The first element of a call is always the function that gets called.</p>
+<pre class="r"><code>x &lt;- expr(foo(x = 1))
+names(x) &lt;- c(&quot;x&quot;, &quot;&quot;)</code></pre>
+<pre><code>## Error in c(&quot;x&quot;, &quot;&quot;): unused argument (&quot;&quot;)</code></pre>
+<pre class="r"><code>x</code></pre>
+<pre><code>## foo(x = 1)</code></pre>
+<pre class="r"><code>names(x) &lt;- c(&quot;&quot;, &quot;x&quot;)</code></pre>
+<pre><code>## Error in c(&quot;&quot;, &quot;x&quot;): unused argument (&quot;x&quot;)</code></pre>
+<pre class="r"><code>x</code></pre>
+<pre><code>## foo(x = 1)</code></pre></li>
+<li><p>Construct the expression <code>if(x &gt; 1) &quot;a&quot; else &quot;b&quot;</code> using multiple calls to <code>lang()</code>. How does the structure code reflect the structure of the AST?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>y &lt;- call2(&quot;if&quot;, expr(x &gt; 1), &quot;a&quot;, &quot;b&quot;)
+y</code></pre>
+<pre><code>## if (x &gt; 1) &quot;a&quot; else &quot;b&quot;</code></pre>
+<pre class="r"><code>lobstr::ast(!!y)</code></pre>
+<pre><code>## o-`if` 
+## +-o-`&gt;` 
+## | +-x 
+## | \-1 
+## +-&quot;a&quot; 
+## \-&quot;b&quot;</code></pre>
+<pre class="r"><code>x &lt;- 2
+eval(y)</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>x &lt;- 0
+eval(y)</code></pre>
+<pre><code>## [1] &quot;b&quot;</code></pre></li>
+</ol>
+</div>
+<div id="parsing-and-deparsing" class="section level3">
+<h3><span class="header-section-number">10.3.9</span> Parsing and deparsing</h3>
+<p>Most of the time you type code into the console, and R takes care of turning the characters you’ve typed into an AST. But occasionally you have code stored in a string, and you want to parse it yourself. You can do so using <code>rlang::parse_expr()</code>:</p>
+<pre class="r"><code>x1 &lt;- &quot;y &lt;- x + 10&quot;
+lobstr::ast(!!x1)</code></pre>
+<pre><code>## &quot;y &lt;- x + 10&quot;</code></pre>
+<pre class="r"><code>x2 &lt;- rlang::parse_expr(x1)
+x2</code></pre>
+<pre><code>## y &lt;- x + 10</code></pre>
+<pre class="r"><code>typeof(x2)</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>lobstr::ast(!!x2)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-y 
+## \-o-`+` 
+##   +-x 
+##   \-10</code></pre>
+<p>If you have multiple expressions in a string, you’ll need to use <code>rlang::parse_exprs()</code>. It returns a list of expressions:</p>
+<pre class="r"><code>x3 &lt;- &quot;a &lt;- 1; a + 1&quot;
+rlang::parse_exprs(x3)</code></pre>
+<pre><code>## [[1]]
+## a &lt;- 1
+## 
+## [[2]]
+## a + 1</code></pre>
+<p>The base equivalent to <code>parse_exprs()</code> is <code>parse()</code>. It is a little harder to use because it’s specialised for parsing R code stored in files. That means you need supply your string to the text argument, and you get back an expression object:</p>
+<pre class="r"><code>parse(text = x1)[[1]]</code></pre>
+<pre><code>## y &lt;- x + 10</code></pre>
+<pre class="r"><code>typeof(parse(text = x1))</code></pre>
+<pre><code>## [1] &quot;expression&quot;</code></pre>
+<p>The opposite of parsing is <strong>deparsing</strong>: you have an AST and you want a string that would generate it when parsed:</p>
+<pre class="r"><code>z &lt;- expr(y &lt;- x + 10)
+expr_text(z)</code></pre>
+<pre><code>## [1] &quot;y &lt;- x + 10&quot;</code></pre>
+<p>Parsing and deparsing are not perfectly symmetric because parsing throws away all information not directly related to the AST. This includes backticks around ordinary names, comments, and whitespace. The base R equivalent is <code>deparase()</code>.</p>
+</div>
+<div id="exercises-30" class="section level3">
+<h3><span class="header-section-number">10.3.10</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>What happens if you attempt to parse an invalid expression? e.g. <code>&quot;a +&quot;</code> or <code>&quot;f())&quot;</code>.<br />
+<strong>A</strong>: an error occurs</p>
+<pre class="r"><code>parse_expr(&quot;a +&quot;)</code></pre>
+<pre><code>## Error in parse(text = x): &lt;text&gt;:2:0: unexpected end of input
+## 1: a +
+##    ^</code></pre>
+<pre class="r"><code>parse(text = &quot;a +&quot;)[[1]]</code></pre>
+<pre><code>## Error in parse(text = &quot;a +&quot;): &lt;text&gt;:2:0: unexpected end of input
+## 1: a +
+##    ^</code></pre></li>
+<li><p><code>deparse()</code> produces vectors when the input is long. For example, the following call produces a vector of length two:</p>
+<pre class="r"><code>expr &lt;- expr(g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + 
+    q + r + s + t + u + v + w + x + y + z))
+
+deparse(expr)</code></pre>
+<pre><code>## [1] &quot;g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + &quot;
+## [2] &quot;    p + q + r + s + t + u + v + w + x + y + z)&quot;</code></pre>
+<p>What do <code>expr_text()</code>, <code>expr_name()</code>, and <code>expr_label()</code> do with this input?<br />
+<strong>A</strong>: <code>expr_text()</code> pastes the output string into one and inserts <code>\n</code> (new line identifiers) as separators. <code>expr_name()</code> recreates the call into the form <code>f(…)</code> and deparses this expression into a string. <code>expr_label()</code> does the same as <code>expr_name()</code>, but surrounds the output also with backticks.</p>
+<pre class="r"><code>expr_text(expr)</code></pre>
+<pre><code>## [1] &quot;g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + \n    p + q + r + s + t + u + v + w + x + y + z)&quot;</code></pre>
+<pre class="r"><code>cat(expr_text(expr))</code></pre>
+<pre><code>## g(a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + 
+##     p + q + r + s + t + u + v + w + x + y + z)</code></pre>
+<pre class="r"><code>expr_name(expr)</code></pre>
+<pre><code>## [1] &quot;g(...)&quot;</code></pre>
+<pre class="r"><code>expr_label(expr)</code></pre>
+<pre><code>## [1] &quot;`g(...)`&quot;</code></pre></li>
+<li><p>Why does <code>as.Date.default()</code> use <code>substitute()</code> and <code>deparse()</code>? Why does <code>pairwise.t.test()</code> use them? Read the source code.<br />
+<strong>A</strong>: In order to get the name of the object assigned to the argument <code>x</code>. <code>pairwise.t.test()</code> combines <code>x</code> “and” <code>g</code> using names passed to arguments.</p></li>
+<li><p><code>pairwise.t.test()</code> assumes that <code>deparse()</code> always returns a length one character vector. Can you construct an input that violates this expectation? What happens?</p></li>
+</ol>
+</div>
+</div>
+</div>
+<div id="quasiquotation" class="section level1">
+<h1><span class="header-section-number">11</span> Quasiquotation</h1>
 </div>
 <div id="debugging" class="section level1">
-<h1><span class="header-section-number">11</span> Debugging</h1>
+<h1><span class="header-section-number">12</span> Debugging</h1>
 <p>debugger dump.frames</p>
 <p>browser traceback recover</p>
 <p>browserText(n = 1) browserCondition(n = 1) browserSetDebug(n = 1</p>

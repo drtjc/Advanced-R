@@ -101,7 +101,25 @@ View(ex3)
 rm(ex3)
 
 
-
+# substitute
+# substitute_q
+# SubstututeDirect
+# 
+# enquote
+# deparse
+# delayedAssign
+# call
+# recall
+# all.names
+# do.call
+# function
+# is.language etc
+# bquote
+# sQuote, dQuote, Quotes, shQuote
+# missing
+# eval
+# getParseData
+# srcfile
 
 
 

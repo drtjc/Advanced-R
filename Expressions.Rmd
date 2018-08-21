@@ -506,7 +506,7 @@ identical(q2, e2[[1]])
     names(x) <- c("x", "")
     ```
 **A**: The first element of a call is always the function that gets called.
-    ```{r}
+    ```{r, error=TRUE}
     x <- expr(foo(x = 1))
     names(x) <- c("x", "")
     x
@@ -596,24 +596,6 @@ What do `expr_text()`, `expr_name()`, and `expr_label()` do with this input?
 
 
 
-substitute
-substitute_q
-SubstututeDirect
 
-enquote
-deparse
-delayedAssign
-call
-recall
-all.names
-do.call
-function
-is.language etc
-bquote
-sQuote, dQuote, Quotes, shQuote
-missing
-eval
-getParseData
-srcfile
 
 
