@@ -14,16 +14,271 @@ knitr::opts_chunk$set(tidy=TRUE, fig.align='center')
 ```
 
 ```{r, echo=FALSE, include=FALSE}
-library(lobstr)
+library(rlang)
 library(pryr)
 library(knitr)
 library(kableExtra)
 library(magrittr)
 library(dplyr)
 library(tidyverse)
-library(rlang)
+library(lobstr)
 library(memoise)
 library(purrr)
 ```
 
 # Quasiquotation
+There are two sides to quasiquotation:
+
+* Quotation allows you to capture the AST associated with an argument. As a function author, this gives you a lot of power to influence how expressions are evaluated.
+
+* Unquotation allows you to selectively evaluate parts of a quoted expression. This is a powerful tool that makes it easy to build up a complex AST from simpler fragments.
+
+## Example
+Imagine you’re creating a lot of strings by joining together words:
+
+```{r}
+paste("Good", "morning", "Hadley")
+paste("Good", "afternoon", "Alice")
+```
+
+You are sick and tired of writing all those quotes, and instead you just want to use bare words. To that end, you’ve managed to write the following function:
+
+```{r}
+cement <- function(...) {
+  dots <- exprs(...)
+  paste(purrr::map(dots, expr_name), collapse = " ")
+}
+
+cement(Good, morning, Hadley)
+cement(Good, afternoon, Alice)
+```
+
+Formally, this function quotes the arguments in `...`. You can think of it as automatically putting quotation marks around each argument. That’s not precisely true as the intermediate objects it generates are expressions, not strings, but it’s a useful approximation for now.
+
+This function is nice because we no longer need to type quotes. The problem, however, comes when we want to use variables. It’s easy to use variables with `paste()` as we just don’t surround them with quotes:
+
+```{r}
+name <- "Hadley"
+time <- "morning"
+
+paste("Good", time, name)
+```
+
+Obviously this doesn’t work with `cement()` because every input is automatically quoted:
+
+```{r}
+cement(Good, time, name)
+```
+
+We need some way to explicitly unquote the input, to tell `cement()` to remove the automatic quote marks. Here we need time and name to be treated differently to Good. Quasiquotation give us a standard tool to do so: `!!`, called “unquote”, and pronounced bang-bang. `!!` tells a quoting function to drop the implicit quotes:
+
+```{r}
+cement(Good, !!time, !!name)
+```
+
+It’s useful to compare `cement()` and `paste()` directly. `paste()` evaluates its arguments, so we need to quote where needed; `cement()` quotes its arguments, so we need to unquote where needed.
+
+```{r}
+paste("Good", time, name)
+cement(Good, !!time, !!name)
+```
+
+### Other
+```{r}
+name <- "tom"
+time <- "morning"
+
+dots <- exprs(Good, morning, tom)
+typeof(dots[[2]])
+paste(purrr::map(dots, expr_name), collapse = " ")
+
+dots <- exprs(Good, time, name)
+typeof(dots[[2]])
+paste(purrr::map(dots, expr_name), collapse = " ")
+
+dots <- exprs(Good, !!time, !!name)
+typeof(dots[[2]])
+paste(purrr::map(dots, expr_name), collapse = " ")
+
+time <- 33
+dots <- exprs(Good, !!time, !!name)
+typeof(dots[[2]])
+paste(purrr::map(dots, expr_name), collapse = " ")
+```
+
+## Vocabulary
+The distinction between quoted and evaluated arguments is important:
+
+* An evaluated argument obeys R’s usual evaluation rules.
+* A quoted argument is captured by the function and something unusual will happen.
+
+If you’re even unsure about whether an argument is quoted or evaluated, try executing the code outside of the function. If it doesn’t work, then that argument is quoted. For example, you can use this technique to determine that the first argument to `library()` is quoted:
+
+```{r, eval=FALSE}
+# works
+library(MASS)
+
+# fails
+MASS
+```
+
+Talking about whether an argument is quoted or evaluated is a more precise way of stating whether or not a function uses NSE. 
+
+### Exercises
+1. For each function in the following base R code, identify which arguments are quoted and which are evaluated.  
+    ```{r, eval=FALSE}
+    library(MASS)
+
+    mtcars2 <- subset(mtcars, cyl == 4)
+    
+    with(mtcars2, sum(vs))
+    sum(mtcars2$am)
+    
+    rm(mtcars2)
+    ```
+**A**:
+    ```{r, error=TRUE}
+    library(MASS)
+    MASS # error - quoted
+    
+    mtcars2 <- subset(mtcars, cyl == 4)
+    mtcars
+    cyl # error - quoted
+    
+    with(mtcars2, sum(vs))
+    vs # error - quoted
+    
+    sum(mtcars2$am)
+    mtcars2$am
+    ```
+
+2. For each function in the following tidyverse code, identify which arguments are quoted and which are evaluated.
+    ```{r, eval = FALSE}
+    library(dplyr)
+    library(ggplot2)
+    
+    by_cyl <- mtcars %>%
+      group_by(cyl) %>%
+      summarise(mean = mean(mpg))
+    
+    ggplot(by_cyl, aes(cyl, mean)) + geom_point()
+    ```
+**A**:
+    ```{r, eval=FALSE}
+    by_cyl <- mtcars %>%
+      group_by(cyl) %>%  # cyl - quoted
+      summarise(mean = mean(mpg)) # mean = mean(mpg) - quoted
+    
+    ggplot(by_cyl, aes(cyl, mean)) + geom_point() # cyl, mean - quoted
+    ```
+
+## Quotation
+The first part of quasiquotation is quotation: capturing an AST without evaluating it. There are two components to this: capturing an expression directly, and capturing an expression from a lazily-evaluated function argument.
+
+### With rlang
+For interactive exploration, the most important quoting function is `expr()`. It captures its argument exactly as provided:
+
+```{r}
+expr(x + y)
+expr(1 / 2 / 3)
+
+expr(x+y)[[1]]
+expr(x+y)[[2]]
+expr(x+y)[[3]]
+```
+
+`exprs()` is useful interactively to make a list of expressions:
+
+```{r}
+exprs(x = x ^ 2, y = y ^ 3, z = z ^ 4)
+```
+
+`expr()` is great for interactive exploration, because it captures what you, the developer, typed. It’s not useful inside a function:
+
+```{r}
+f1 <- function(x) expr(x)
+f1(a + b + c)
+```
+
+Instead, we need another function: `enexpr()`. This captures what the user supplies to the function by looking at the internal promise object that powers lazy evaluation.
+
+```{r}
+f2 <- function(x) enexpr(x)
+f2(a + b + c)
+```
+
+To capture multiple arguments, use `enexprs()`:
+
+```{r}
+f <- function(...) enexprs(...)
+f(x = 1, y = 10 * z)
+```
+
+Note: `exprs()` can return missing arguments, but no`expr()`
+```{r, error=TRUE}
+val <- exprs(x = )
+is_missing(val$x)
+
+val <- expr(x = )
+```
+
+### With Base R
+The base equivalent of `expr()` is `quote()`:
+
+```{r}
+quote(x + y)
+quote(1 / 2 / 3)
+
+quote(x + y)[[1]]
+```
+
+It is identical to `expr()` except that does not support unquoting, so it is a quoting function, not a quasiquoting function.
+
+The base function closest to `enexpr()` is `substitute()`:
+
+```{r}
+f <- function(x) substitute(x)
+f(x + y + z)
+```
+
+You’ll most often see it used to capture unevaluated arguments; often in concert with `deparse()` to create labels for output. However, `substitute()` also does “substitution”: if you give it an expression, rather than a symbol, it will substitute in values of symbols defined in the current environment.
+
+```{r}
+f <- function(x) substitute(x * 2)
+f(a + b + c)
+```
+
+But:
+
+```{r, error=TRUE}
+f <- function(x) enexpr(x * 2)
+f(a + b + c)
+```
+
+`substitute()` provides a sort of automatic unquoting for any symbol that is bound to a value. However, making use of this behaviour can make for hard to read code, because for example, taken out of context, you can’t tell if the goal of `substitute(x + y)` is to replace `x`, or, `y`, or both. If you do want to use `substitute()` in this way, I recommend that you use the 2nd argument to make it clear that is your goal:
+
+```{r}
+substitute(x * y * z, list(x = 10, y = quote(a + b)))
+```
+
+The base equivalent to `exprs()` is `alist()`:
+
+```{r}
+alist(x = 1, y = x + 2)
+exprs(x = 1, y = x + 2)
+```
+
+Finally, there is no function in base R that is equivalent to `enexprs()` but you can reproduce its behaviour with `eval(substitute(alist(...)))`. 
+
+```{r}
+f <- function(...) enexprs(...)
+f(x = 1, y = 10 * z)
+
+f1 <- function(...) eval(substitute(alist(...)))
+f1(x = 1, y = 10 * z)
+```
+
+There are two other important base quoting functions that we’ll cover elsewhere:
+
+* `bquote()` provides a limited form of quasiquotation, and is discussed in unquoting with base R.
+* `~`, the formula, is a quoting function that also captures the environment. It’s the inspiration for quosures, the topic of the next chapter.

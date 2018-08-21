@@ -8,35 +8,27 @@ library(rlist)
 library(pryr)
 
 
-f4 <- function(x) substitute(x * 2)
-f4(a + b + c)
-f4(a)
-
-f5 <- function(x) enexpr(x * 2)
-f5(a + b + c)
-f5(a)
 
 
 
-name <- "tom"
-time <- "morning"
 
-dots <- exprs(Good, morning, tom)
-typeof(dots[[2]])
-paste(purrr::map(dots, expr_name), collapse = " ")
 
-dots <- exprs(Good, time, name)
-typeof(dots[[2]])
-paste(purrr::map(dots, expr_name), collapse = " ")
 
-dots <- exprs(Good, !!time, !!name)
-typeof(dots[[2]])
-paste(purrr::map(dots, expr_name), collapse = " ")
+ft <- function(...) substitute(alist(...))
+ft(x = 1, y = 10 * z)
 
-time <- 33
-dots <- exprs(Good, !!time, !!name)
-typeof(dots[[2]])
-paste(purrr::map(dots, expr_name), collapse = " ")
+
+eval(alist(x = 1, y = 10 * z))
+
+alist(x = 1, y = 10 * z)
+
+e <- expression(x = 1, y = 10 * z)
+
+
+
+expression(x = 1, y = 10 * z)[[1]]
+expression(x = 1, y = 10 * z)[[2]]
+
 
 
 

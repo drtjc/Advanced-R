@@ -93,6 +93,9 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -222,6 +225,274 @@ div.tocify {
 
 <div id="quasiquotation" class="section level1">
 <h1><span class="header-section-number">1</span> Quasiquotation</h1>
+<p>There are two sides to quasiquotation:</p>
+<ul>
+<li><p>Quotation allows you to capture the AST associated with an argument. As a function author, this gives you a lot of power to influence how expressions are evaluated.</p></li>
+<li><p>Unquotation allows you to selectively evaluate parts of a quoted expression. This is a powerful tool that makes it easy to build up a complex AST from simpler fragments.</p></li>
+</ul>
+<div id="example" class="section level2">
+<h2><span class="header-section-number">1.1</span> Example</h2>
+<p>Imagine you’re creating a lot of strings by joining together words:</p>
+<pre class="r"><code>paste(&quot;Good&quot;, &quot;morning&quot;, &quot;Hadley&quot;)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<pre class="r"><code>paste(&quot;Good&quot;, &quot;afternoon&quot;, &quot;Alice&quot;)</code></pre>
+<pre><code>## [1] &quot;Good afternoon Alice&quot;</code></pre>
+<p>You are sick and tired of writing all those quotes, and instead you just want to use bare words. To that end, you’ve managed to write the following function:</p>
+<pre class="r"><code>cement &lt;- function(...) {
+    dots &lt;- exprs(...)
+    paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)
+}
+
+cement(Good, morning, Hadley)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<pre class="r"><code>cement(Good, afternoon, Alice)</code></pre>
+<pre><code>## [1] &quot;Good afternoon Alice&quot;</code></pre>
+<p>Formally, this function quotes the arguments in <code>...</code>. You can think of it as automatically putting quotation marks around each argument. That’s not precisely true as the intermediate objects it generates are expressions, not strings, but it’s a useful approximation for now.</p>
+<p>This function is nice because we no longer need to type quotes. The problem, however, comes when we want to use variables. It’s easy to use variables with <code>paste()</code> as we just don’t surround them with quotes:</p>
+<pre class="r"><code>name &lt;- &quot;Hadley&quot;
+time &lt;- &quot;morning&quot;
+
+paste(&quot;Good&quot;, time, name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<p>Obviously this doesn’t work with <code>cement()</code> because every input is automatically quoted:</p>
+<pre class="r"><code>cement(Good, time, name)</code></pre>
+<pre><code>## [1] &quot;Good time name&quot;</code></pre>
+<p>We need some way to explicitly unquote the input, to tell <code>cement()</code> to remove the automatic quote marks. Here we need time and name to be treated differently to Good. Quasiquotation give us a standard tool to do so: <code>!!</code>, called “unquote”, and pronounced bang-bang. <code>!!</code> tells a quoting function to drop the implicit quotes:</p>
+<pre class="r"><code>cement(Good, !!time, !!name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<p>It’s useful to compare <code>cement()</code> and <code>paste()</code> directly. <code>paste()</code> evaluates its arguments, so we need to quote where needed; <code>cement()</code> quotes its arguments, so we need to unquote where needed.</p>
+<pre class="r"><code>paste(&quot;Good&quot;, time, name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<pre class="r"><code>cement(Good, !!time, !!name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<div id="other" class="section level3">
+<h3><span class="header-section-number">1.1.1</span> Other</h3>
+<pre class="r"><code>name &lt;- &quot;tom&quot;
+time &lt;- &quot;morning&quot;
+
+dots &lt;- exprs(Good, morning, tom)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good morning tom&quot;</code></pre>
+<pre class="r"><code>dots &lt;- exprs(Good, time, name)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good time name&quot;</code></pre>
+<pre class="r"><code>dots &lt;- exprs(Good, !!time, !!name)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;character&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good morning tom&quot;</code></pre>
+<pre class="r"><code>time &lt;- 33
+dots &lt;- exprs(Good, !!time, !!name)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;double&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good 33 tom&quot;</code></pre>
+</div>
+</div>
+<div id="vocabulary" class="section level2">
+<h2><span class="header-section-number">1.2</span> Vocabulary</h2>
+<p>The distinction between quoted and evaluated arguments is important:</p>
+<ul>
+<li>An evaluated argument obeys R’s usual evaluation rules.</li>
+<li>A quoted argument is captured by the function and something unusual will happen.</li>
+</ul>
+<p>If you’re even unsure about whether an argument is quoted or evaluated, try executing the code outside of the function. If it doesn’t work, then that argument is quoted. For example, you can use this technique to determine that the first argument to <code>library()</code> is quoted:</p>
+<pre class="r"><code># works
+library(MASS)
+
+# fails
+MASS</code></pre>
+<p>Talking about whether an argument is quoted or evaluated is a more precise way of stating whether or not a function uses NSE.</p>
+<div id="exercises" class="section level3">
+<h3><span class="header-section-number">1.2.1</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>For each function in the following base R code, identify which arguments are quoted and which are evaluated.</p>
+<pre class="r"><code>library(MASS)
+
+mtcars2 &lt;- subset(mtcars, cyl == 4)
+
+with(mtcars2, sum(vs))
+sum(mtcars2$am)
+
+rm(mtcars2)</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>library(MASS)</code></pre>
+<pre><code>## 
+## Attaching package: 'MASS'</code></pre>
+<pre><code>## The following object is masked from 'package:dplyr':
+## 
+##     select</code></pre>
+<pre class="r"><code>MASS  # error - quoted</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'MASS' not found</code></pre>
+<pre class="r"><code>mtcars2 &lt;- subset(mtcars, cyl == 4)
+mtcars</code></pre>
+<pre><code>##                      mpg cyl  disp  hp drat    wt  qsec vs am gear carb
+## Mazda RX4           21.0   6 160.0 110 3.90 2.620 16.46  0  1    4    4
+## Mazda RX4 Wag       21.0   6 160.0 110 3.90 2.875 17.02  0  1    4    4
+## Datsun 710          22.8   4 108.0  93 3.85 2.320 18.61  1  1    4    1
+## Hornet 4 Drive      21.4   6 258.0 110 3.08 3.215 19.44  1  0    3    1
+## Hornet Sportabout   18.7   8 360.0 175 3.15 3.440 17.02  0  0    3    2
+## Valiant             18.1   6 225.0 105 2.76 3.460 20.22  1  0    3    1
+## Duster 360          14.3   8 360.0 245 3.21 3.570 15.84  0  0    3    4
+## Merc 240D           24.4   4 146.7  62 3.69 3.190 20.00  1  0    4    2
+## Merc 230            22.8   4 140.8  95 3.92 3.150 22.90  1  0    4    2
+## Merc 280            19.2   6 167.6 123 3.92 3.440 18.30  1  0    4    4
+## Merc 280C           17.8   6 167.6 123 3.92 3.440 18.90  1  0    4    4
+## Merc 450SE          16.4   8 275.8 180 3.07 4.070 17.40  0  0    3    3
+## Merc 450SL          17.3   8 275.8 180 3.07 3.730 17.60  0  0    3    3
+## Merc 450SLC         15.2   8 275.8 180 3.07 3.780 18.00  0  0    3    3
+## Cadillac Fleetwood  10.4   8 472.0 205 2.93 5.250 17.98  0  0    3    4
+## Lincoln Continental 10.4   8 460.0 215 3.00 5.424 17.82  0  0    3    4
+## Chrysler Imperial   14.7   8 440.0 230 3.23 5.345 17.42  0  0    3    4
+## Fiat 128            32.4   4  78.7  66 4.08 2.200 19.47  1  1    4    1
+## Honda Civic         30.4   4  75.7  52 4.93 1.615 18.52  1  1    4    2
+## Toyota Corolla      33.9   4  71.1  65 4.22 1.835 19.90  1  1    4    1
+## Toyota Corona       21.5   4 120.1  97 3.70 2.465 20.01  1  0    3    1
+## Dodge Challenger    15.5   8 318.0 150 2.76 3.520 16.87  0  0    3    2
+## AMC Javelin         15.2   8 304.0 150 3.15 3.435 17.30  0  0    3    2
+## Camaro Z28          13.3   8 350.0 245 3.73 3.840 15.41  0  0    3    4
+## Pontiac Firebird    19.2   8 400.0 175 3.08 3.845 17.05  0  0    3    2
+## Fiat X1-9           27.3   4  79.0  66 4.08 1.935 18.90  1  1    4    1
+## Porsche 914-2       26.0   4 120.3  91 4.43 2.140 16.70  0  1    5    2
+## Lotus Europa        30.4   4  95.1 113 3.77 1.513 16.90  1  1    5    2
+## Ford Pantera L      15.8   8 351.0 264 4.22 3.170 14.50  0  1    5    4
+## Ferrari Dino        19.7   6 145.0 175 3.62 2.770 15.50  0  1    5    6
+## Maserati Bora       15.0   8 301.0 335 3.54 3.570 14.60  0  1    5    8
+## Volvo 142E          21.4   4 121.0 109 4.11 2.780 18.60  1  1    4    2</code></pre>
+<pre class="r"><code>cyl  # error - quoted</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'cyl' not found</code></pre>
+<pre class="r"><code>with(mtcars2, sum(vs))</code></pre>
+<pre><code>## [1] 10</code></pre>
+<pre class="r"><code>vs  # error - quoted</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'vs' not found</code></pre>
+<pre class="r"><code>sum(mtcars2$am)</code></pre>
+<pre><code>## [1] 8</code></pre>
+<pre class="r"><code>mtcars2$am</code></pre>
+<pre><code>##  [1] 1 0 0 1 1 1 0 1 1 1 1</code></pre></li>
+<li><p>For each function in the following tidyverse code, identify which arguments are quoted and which are evaluated.</p>
+<pre class="r"><code>library(dplyr)
+library(ggplot2)
+
+by_cyl &lt;- mtcars %&gt;% group_by(cyl) %&gt;% summarise(mean = mean(mpg))
+
+ggplot(by_cyl, aes(cyl, mean)) + geom_point()</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>by_cyl &lt;- mtcars %&gt;%
+  group_by(cyl) %&gt;%  # cyl - quoted
+  summarise(mean = mean(mpg)) # mean = mean(mpg) - quoted
+
+ggplot(by_cyl, aes(cyl, mean)) + geom_point() # cyl, mean - quoted</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="quotation" class="section level2">
+<h2><span class="header-section-number">1.3</span> Quotation</h2>
+<p>The first part of quasiquotation is quotation: capturing an AST without evaluating it. There are two components to this: capturing an expression directly, and capturing an expression from a lazily-evaluated function argument.</p>
+<div id="with-rlang" class="section level3">
+<h3><span class="header-section-number">1.3.1</span> With rlang</h3>
+<p>For interactive exploration, the most important quoting function is <code>expr()</code>. It captures its argument exactly as provided:</p>
+<pre class="r"><code>expr(x + y)</code></pre>
+<pre><code>## x + y</code></pre>
+<pre class="r"><code>expr(1/2/3)</code></pre>
+<pre><code>## 1/2/3</code></pre>
+<pre class="r"><code>expr(x + y)[[1]]</code></pre>
+<pre><code>## `+`</code></pre>
+<pre class="r"><code>expr(x + y)[[2]]</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>expr(x + y)[[3]]</code></pre>
+<pre><code>## y</code></pre>
+<p><code>exprs()</code> is useful interactively to make a list of expressions:</p>
+<pre class="r"><code>exprs(x = x^2, y = y^3, z = z^4)</code></pre>
+<pre><code>## $x
+## x^2
+## 
+## $y
+## y^3
+## 
+## $z
+## z^4</code></pre>
+<p><code>expr()</code> is great for interactive exploration, because it captures what you, the developer, typed. It’s not useful inside a function:</p>
+<pre class="r"><code>f1 &lt;- function(x) expr(x)
+f1(a + b + c)</code></pre>
+<pre><code>## x</code></pre>
+<p>Instead, we need another function: <code>enexpr()</code>. This captures what the user supplies to the function by looking at the internal promise object that powers lazy evaluation.</p>
+<pre class="r"><code>f2 &lt;- function(x) enexpr(x)
+f2(a + b + c)</code></pre>
+<pre><code>## a + b + c</code></pre>
+<p>To capture multiple arguments, use <code>enexprs()</code>:</p>
+<pre class="r"><code>f &lt;- function(...) enexprs(...)
+f(x = 1, y = 10 * z)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+<p>Note: <code>exprs()</code> can return missing arguments, but no<code>expr()</code></p>
+<pre class="r"><code>val &lt;- exprs(x = )
+is_missing(val$x)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>val &lt;- expr(x = )</code></pre>
+<pre><code>## Error in expr(x = ): unused argument (alist(x = ))</code></pre>
+</div>
+<div id="with-base-r" class="section level3">
+<h3><span class="header-section-number">1.3.2</span> With Base R</h3>
+<p>The base equivalent of <code>expr()</code> is <code>quote()</code>:</p>
+<pre class="r"><code>quote(x + y)</code></pre>
+<pre><code>## x + y</code></pre>
+<pre class="r"><code>quote(1/2/3)</code></pre>
+<pre><code>## 1/2/3</code></pre>
+<pre class="r"><code>quote(x + y)[[1]]</code></pre>
+<pre><code>## `+`</code></pre>
+<p>It is identical to <code>expr()</code> except that does not support unquoting, so it is a quoting function, not a quasiquoting function.</p>
+<p>The base function closest to <code>enexpr()</code> is <code>substitute()</code>:</p>
+<pre class="r"><code>f &lt;- function(x) substitute(x)
+f(x + y + z)</code></pre>
+<pre><code>## x + y + z</code></pre>
+<p>You’ll most often see it used to capture unevaluated arguments; often in concert with <code>deparse()</code> to create labels for output. However, <code>substitute()</code> also does “substitution”: if you give it an expression, rather than a symbol, it will substitute in values of symbols defined in the current environment.</p>
+<pre class="r"><code>f &lt;- function(x) substitute(x * 2)
+f(a + b + c)</code></pre>
+<pre><code>## (a + b + c) * 2</code></pre>
+<p>But:</p>
+<pre class="r"><code>f &lt;- function(x) enexpr(x * 2)
+f(a + b + c)</code></pre>
+<pre><code>## Error: `arg` must be a symbol</code></pre>
+<p><code>substitute()</code> provides a sort of automatic unquoting for any symbol that is bound to a value. However, making use of this behaviour can make for hard to read code, because for example, taken out of context, you can’t tell if the goal of <code>substitute(x + y)</code> is to replace <code>x</code>, or, <code>y</code>, or both. If you do want to use <code>substitute()</code> in this way, I recommend that you use the 2nd argument to make it clear that is your goal:</p>
+<pre class="r"><code>substitute(x * y * z, list(x = 10, y = quote(a + b)))</code></pre>
+<pre><code>## 10 * (a + b) * z</code></pre>
+<p>The base equivalent to <code>exprs()</code> is <code>alist()</code>:</p>
+<pre class="r"><code>alist(x = 1, y = x + 2)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## x + 2</code></pre>
+<pre class="r"><code>exprs(x = 1, y = x + 2)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## x + 2</code></pre>
+<p>Finally, there is no function in base R that is equivalent to <code>enexprs()</code> but you can reproduce its behaviour with <code>eval(substitute(alist(...)))</code>.</p>
+<pre class="r"><code>f &lt;- function(...) enexprs(...)
+f(x = 1, y = 10 * z)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+<pre class="r"><code>f1 &lt;- function(...) eval(substitute(alist(...)))
+f1(x = 1, y = 10 * z)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+</div>
+</div>
 </div>
 
 
