@@ -491,7 +491,162 @@ f1(x = 1, y = 10 * z)</code></pre>
 ## 
 ## $y
 ## 10 * z</code></pre>
+<p>There are two other important base quoting functions that we’ll cover elsewhere:</p>
+<ul>
+<li><code>bquote()</code> provides a limited form of quasiquotation, and is discussed in unquoting with base R.</li>
+<li><code>~</code>, the formula, is a quoting function that also captures the environment. It’s the inspiration for quosures, the topic of the next chapter.</li>
+</ul>
 </div>
+<div id="exercises-1" class="section level3">
+<h3><span class="header-section-number">1.3.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>What happens if you try to use <code>enexpr()</code> with an expression? What happens if you try to use <code>enexpr()</code> with a missing argument?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>f &lt;- function(x) enexpr(x)
+
+f(expr(x))  # return expr(x), a call</code></pre>
+<pre><code>## expr(x)</code></pre>
+<pre class="r"><code>class(f(expr(x)))</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>f()  # returns the missing arg</code></pre>
+<pre class="r"><code>is_missing(f())</code></pre>
+<pre><code>## [1] TRUE</code></pre></li>
+<li><p>Compare and contrast the following two functions. Can you predict the output before running them?</p>
+<pre class="r"><code>f1 &lt;- function(x, y) {
+    exprs(x = x, y = y)
+}
+f2 &lt;- function(x, y) {
+    enexprs(x = x, y = y)
+}
+f1(a + b, c + d)</code></pre>
+<pre><code>## $x
+## x
+## 
+## $y
+## y</code></pre>
+<pre class="r"><code>f2(a + b, c + d)</code></pre>
+<pre><code>## $x
+## a + b
+## 
+## $y
+## c + d</code></pre>
+<p><strong>A</strong>: Both return a named list of expressions. <code>f1()</code> will return the arguments supplied to <code>exprs()</code> within the body of <code>f1()</code>. <code>f2()</code> will return the arguments supplied to <code>f2()</code>.</p></li>
+<li><p>How are <code>exprs(a)</code> and <code>exprs(a = )</code> different? Think about both the input and the output.<br />
+<strong>A</strong>: <code>exprs(a)</code> returns an unamed list of one element, the symbol <code>a</code>. <code>exprs(a = )</code> return a list of one element, the missing argument, named <code>a</code>.</p>
+<pre class="r"><code>exprs(a)</code></pre>
+<pre><code>## [[1]]
+## a</code></pre>
+<pre class="r"><code>exprs(a = )</code></pre>
+<pre><code>## $a</code></pre></li>
+<li><p>What does the following command return? What information is lost? Why?</p>
+<pre class="r"><code>expr({
+    x + y  # comment  
+})</code></pre>
+<pre><code>## {
+##     x + y
+## }</code></pre>
+<p><strong>A</strong>: Whitespace and comments are not retained. However, you can get the source information from the attributes of the expresssion.</p>
+<pre class="r"><code>attributes(expr({
+    x + y  # comment
+}))</code></pre>
+<pre><code>## $srcref
+## $srcref[[1]]
+## {
+## 
+## $srcref[[2]]
+## x + y
+## 
+## 
+## $srcfile
+## &lt;text&gt; 
+## 
+## $wholeSrcref
+## attributes(expr({
+##     x + y  # comment
+## }</code></pre></li>
+<li><p>The documentation for <code>substitute()</code> says:</p>
+<p><em>Substitution takes place by examining each component of the parse tree as follows: If it is not a bound symbol in env, it is unchanged. If it is a promise object, i.e., a formal argument to a function or explicitly created using</em> <code>delayedAssign()</code><em>, the expression slot of the promise replaces the symbol. If it is an ordinary variable, its value is substituted, unless env is</em> <code>.GlobalEnv</code> <em>in which case the symbol is left unchanged.</em></p>
+<p>Create four examples that illustrate each of the different cases. <strong>A</strong>: If it is not a bound symbol in env, it is unchanged</p>
+<pre class="r"><code>substitute(x, list(y = 1))</code></pre>
+<pre><code>## x</code></pre>
+<p>If it is a promise object as a formal argument to a function, the expression slot of the promise replaces the symbol.</p>
+<pre class="r"><code>f &lt;- function(x) substitute(x)
+f(y)  # y </code></pre>
+<pre><code>## y</code></pre>
+<pre class="r"><code># BUT NOTE:
+f &lt;- function(x) {
+    x &lt;- 1
+    substitute(x)
+}
+f(y)  # 1 - env defaults to current evaluation environment</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>f &lt;- function(x) {
+    substitute(x, list(NULL))
+}
+f(y)  # x - env defaults evaluation environment with no bound symbols</code></pre>
+<pre><code>## x</code></pre>
+<p>If it is a promise object explicitly created using <code>delayedAssign()</code>, the expression slot of the promise replaces the symbol.</p>
+<pre class="r"><code>y &lt;- 1
+delayedAssign(&quot;x&quot;, y)
+substitute(x)  # shows only 'x', as it is in the global env.</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>x  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>rm(x)
+
+e &lt;- new.env()
+e$z &lt;- 1
+delayedAssign(&quot;x&quot;, z, eval.env = e, assign.env = e)
+e$x  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>substitute(x, e)  # shows z</code></pre>
+<pre><code>## z</code></pre>
+<pre class="r"><code>eval(substitute(x, e), e)  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<p>If it is an ordinary variable, its value is substituted, unless env is <code>.GlobalEnv</code> in which case the symbol is left unchanged.</p>
+<pre class="r"><code>substitute(x, list(x = 1))  # x is substituted</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>e &lt;- new.env()
+e$x &lt;- 1
+substitute(x, e)  # x is substituted</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>x &lt;- 1
+substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
+<pre><code>## x</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="evaluation" class="section level2">
+<h2><span class="header-section-number">1.4</span> Evaluation</h2>
+<p>Typically you have quoted a function argument for one of two reasons:</p>
+<ul>
+<li>You want to operate on the AST using the techniques described in the previous chapter.</li>
+<li>You want to run, or evaluate the code in a special context, as described in depth next chapter.</li>
+</ul>
+<p>Evaluation is a rich topic, so we’ll cover it in depth in the next chapter. Here I’ll just illustrate the most important ideas. The most important base R function is <code>base::eval()</code>. Its first argument is the expression to evalute:</p>
+<pre class="r"><code>ru5 &lt;- expr(runif(5))
+ru5</code></pre>
+<pre><code>## runif(5)</code></pre>
+<pre class="r"><code>eval(ru5)</code></pre>
+<pre><code>## [1] 0.4303435 0.3172736 0.2145190 0.7444809 0.9036744</code></pre>
+<pre class="r"><code>eval(ru5)</code></pre>
+<pre><code>## [1] 0.9943697 0.6904738 0.9348898 0.6526119 0.5985699</code></pre>
+<p>Note that every time we evaluate this expression we get a different result.</p>
+<p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
+<pre class="r"><code>x &lt;- 9
+fx &lt;- expr(f(x))
+
+eval(fx, env(f = function(x) x * 10))</code></pre>
+<pre><code>## [1] 90</code></pre>
+<pre class="r"><code>eval(fx, env(f = function(x) x^2))</code></pre>
+<pre><code>## [1] 81</code></pre>
+<pre class="r"><code>eval(fx, env(f = function(x) {
+    print(env_parent())
+    x * 10
+}))</code></pre>
+<pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre>
+<pre><code>## [1] 90</code></pre>
+<pre class="r"><code># parent of function evaluation is Global Env, hence can find x</code></pre>
 </div>
 </div>
 

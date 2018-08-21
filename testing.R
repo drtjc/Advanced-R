@@ -12,22 +12,42 @@ library(pryr)
 
 
 
+e <- (function(x, y = 1, z) environment())(cos, "y", {cat(" HO!\n"); pi+2})
 
 
-ft <- function(...) substitute(alist(...))
-ft(x = 1, y = 10 * z)
+gete <- function(e_)
+  lapply(lapply(ls(e_), as.name),
+         function(n) eval(substitute(substitute(X, e_), list(X=n))))
+
+ls(e)[[1]]
+ls(e)[[2]]
+ls(e)[[3]]
+
+# get function arguments as symbols (names)
+as.name(ls(e)[[1]]) 
+as.name(ls(e)[[2]])
+as.name(ls(e)[[3]])
+
+substitute(x, e)
+substitute(y, e)
+substitute(z, e)
 
 
-eval(alist(x = 1, y = 10 * z))
-
-alist(x = 1, y = 10 * z)
-
-e <- expression(x = 1, y = 10 * z)
 
 
+(exps <- gete(e))
+sapply(exps, typeof)
 
-expression(x = 1, y = 10 * z)[[1]]
-expression(x = 1, y = 10 * z)[[2]]
+(le <- as.list(e)) # evaluates ("force"s) the promises
+stopifnot(identical(unname(le), lapply(exps, eval))) # and another "Ho!"
+
+
+
+
+
+
+
+
 
 
 

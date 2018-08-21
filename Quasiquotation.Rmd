@@ -282,3 +282,143 @@ There are two other important base quoting functions that we’ll cover elsewher
 
 * `bquote()` provides a limited form of quasiquotation, and is discussed in unquoting with base R.
 * `~`, the formula, is a quoting function that also captures the environment. It’s the inspiration for quosures, the topic of the next chapter.
+
+### Exercises
+1. What happens if you try to use `enexpr()` with an expression? What happens if you try to use `enexpr()` with a missing argument?  
+**A**:
+    ```{r}
+    f <- function(x) enexpr(x)
+    
+    f(expr(x)) # return expr(x), a call
+    class(f(expr(x)))
+    
+    f() # returns the missing arg
+    is_missing(f())
+    ```
+
+2. Compare and contrast the following two functions. Can you predict the output before running them?  
+    ```{r}
+    f1 <- function(x, y) {
+      exprs(x = x, y = y)
+    }
+    f2 <- function(x, y) {
+      enexprs(x = x, y = y)
+    }
+    f1(a + b, c + d)
+    f2(a + b, c + d)
+    ```
+**A**: Both return a named list of expressions. `f1()` will return the arguments supplied to `exprs()` within the body of `f1()`. `f2()` will return the arguments supplied to `f2()`.
+
+3. How are `exprs(a)` and `exprs(a = )` different? Think about both the input and the output.  
+**A**: `exprs(a)` returns an unamed list of one element, the symbol `a`. `exprs(a = )` return a list of one element, the missing argument, named `a`.
+    ```{r}
+    exprs(a)
+    exprs(a = )
+    ```
+
+4. What does the following command return? What information is lost? Why?
+    ```{r}
+    expr({
+      x +              y # comment  
+    })
+    ```
+**A**: Whitespace and comments are not retained. However, you can get the source information from the attributes of the expresssion.  
+    ```{r}
+    attributes(expr({
+      x +              y # comment
+    }))
+    ```
+
+5. The documentation for `substitute()` says:
+
+    *Substitution takes place by examining each component of the parse tree as follows: If it is not a bound symbol in env, it is unchanged. If     it   is a promise object, i.e., a formal argument to a function or explicitly created using* `delayedAssign()`*, the expression slot of the     promise replaces the symbol. If it is an ordinary variable, its value is substituted, unless env is* `.GlobalEnv` *in which case the            symbol is left unchanged.*
+
+    Create four examples that illustrate each of the different cases.
+**A**:
+    If it is not a bound symbol in env, it is unchanged
+    ```{r}
+    substitute(x, list(y = 1))
+    ```
+    
+    If it is a promise object as a formal argument to a function, the expression slot of the promise replaces the symbol.
+    ```{r}
+    f <- function(x) substitute(x)
+    f(y) # y 
+    
+    # BUT NOTE:
+    f <- function(x) {x <- 1; substitute(x)}
+    f(y) # 1 - env defaults to current evaluation environment
+    
+    f <- function(x) {substitute(x, list(NULL))}
+    f(y) # x - env defaults evaluation environment with no bound symbols
+    ```
+    
+    If it is a promise object explicitly created using `delayedAssign()`, the expression slot of the promise replaces the symbol.
+    ```{r}
+    y <- 1
+    delayedAssign("x", y)
+    substitute(x) # shows only 'x', as it is in the global env.
+    x # 1
+    rm(x)
+    
+    e <- new.env()
+    e$z <- 1
+    delayedAssign("x", z, eval.env = e, assign.env = e)
+    e$x # 1
+    substitute(x, e) # shows z
+    eval(substitute(x, e), e) # 1
+    ```
+    
+    If it is an ordinary variable, its value is substituted, unless env is `.GlobalEnv` in which case the symbol is left unchanged.
+    ```{r}
+    substitute(x, list(x = 1)) # x is substituted
+    
+    e <- new.env()
+    e$x <- 1
+    substitute(x, e) # x is substituted
+    
+    x <- 1
+    substitute(x, .GlobalEnv) # x is not substituted
+    ```
+
+## Evaluation
+Typically you have quoted a function argument for one of two reasons:
+
+* You want to operate on the AST using the techniques described in the previous chapter.
+* You want to run, or evaluate the code in a special context, as described in depth next chapter.
+
+Evaluation is a rich topic, so we’ll cover it in depth in the next chapter. Here I’ll just illustrate the most important ideas. The most important base R function is `base::eval()`. Its first argument is the expression to evalute:
+
+```{r}
+ru5 <- expr(runif(5))
+ru5
+
+eval(ru5)
+eval(ru5)
+```
+
+Note that every time we evaluate this expression we get a different result.
+
+The second argument to `eval()` is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code. 
+
+```{r}
+x <- 9
+fx <- expr(f(x))
+
+eval(fx, env(f = function(x) x * 10))
+eval(fx, env(f = function(x) x ^ 2))
+
+eval(fx, env(f = function(x) {print(env_parent()); x * 10})) 
+# parent of function evaluation is Global Env, hence can find x
+# env() creates a child of the current environment by default and takes a variable number of named objects to populate it.
+```
+
+## Unquotation
+Evaluation is a developer tool: in combination with quoting, it allows the author of a function to capture an argument and evaluate it in a special way. Unquoting is related to evaluation, but it’s a user tool: it allows the person calling the function to selectively evaluate parts of the expression that would otherwise be quoted.
+
+
+
+
+
+
+
