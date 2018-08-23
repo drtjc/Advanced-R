@@ -628,9 +628,9 @@ substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
 ru5</code></pre>
 <pre><code>## runif(5)</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.4303435 0.3172736 0.2145190 0.7444809 0.9036744</code></pre>
+<pre><code>## [1] 0.5574422 0.7962974 0.8807551 0.1718135 0.3518811</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.9943697 0.6904738 0.9348898 0.6526119 0.5985699</code></pre>
+<pre><code>## [1] 0.3258965 0.4835559 0.2977913 0.3734334 0.1535241</code></pre>
 <p>Note that every time we evaluate this expression we get a different result.</p>
 <p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
 <pre class="r"><code>x &lt;- 9
@@ -646,7 +646,146 @@ eval(fx, env(f = function(x) x * 10))</code></pre>
 }))</code></pre>
 <pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre>
 <pre><code>## [1] 90</code></pre>
-<pre class="r"><code># parent of function evaluation is Global Env, hence can find x</code></pre>
+<pre class="r"><code># parent of function evaluation is Global Env, hence can find x env()
+# creates a child of the current environment by default and takes a variable
+# number of named objects to populate it.</code></pre>
+</div>
+<div id="unquotation" class="section level2">
+<h2><span class="header-section-number">1.5</span> Unquotation</h2>
+<p>Evaluation is a developer tool: in combination with quoting, it allows the author of a function to capture an argument and evaluate it in a special way. Unquoting is related to evaluation, but it’s a user tool: it allows the person calling the function to selectively evaluate parts of the expression that would otherwise be quoted.</p>
+<div id="with-rlang-1" class="section level3">
+<h3><span class="header-section-number">1.5.1</span> With rlang</h3>
+<p>All quoting functions in rlang (<code>expr()</code>, <code>enexpr()</code>, and friends) support unquoting with <code>!!</code> (called “unquote”, and pronounced bang-bang) and <code>!!!</code> (called “unquote-splice”, and pronounced bang-bang-bang). They both replace nodes in the AST. <code>!!</code> is a one-to-one replacement. It takes a single expression and inlines the AST at the location of the <code>!!</code>.</p>
+<pre class="r"><code>x &lt;- expr(a + b + c)
+expr(f(!!x, y))</code></pre>
+<pre><code>## f(a + b + c, y)</code></pre>
+<pre class="r"><code>expr(f(x, y))</code></pre>
+<pre><code>## f(x, y)</code></pre>
+<pre class="r"><code>lobstr::ast(f(!!x, y))</code></pre>
+<pre><code>## o-f 
+## +-o-`+` 
+## | +-o-`+` 
+## | | +-a 
+## | | \-b 
+## | \-c 
+## \-y</code></pre>
+<pre class="r"><code>lobstr::ast(f(x, y))</code></pre>
+<pre><code>## o-f 
+## +-x 
+## \-y</code></pre>
+<p><code>!!!</code> is a one-to-many replacement. It takes a list of expressions and inserts them at the location of the <code>!!!</code>:</p>
+<pre class="r"><code>x &lt;- exprs(1, 2, 3, y = 10)
+expr(f(!!!x, z = z))</code></pre>
+<pre><code>## f(1, 2, 3, y = 10, z = z)</code></pre>
+<pre class="r"><code>lobstr::ast(f(!!!x, z = z))</code></pre>
+<pre><code>## o-f 
+## +-1 
+## +-2 
+## +-3 
+## +-y = 10 
+## \-z = z</code></pre>
+</div>
+<div id="the-polite-fiction-of" class="section level3">
+<h3><span class="header-section-number">1.5.2</span> The polite fiction of <code>!!</code></h3>
+<p>So far we have acted as if <code>!!</code> and <code>!!!</code> are regular prefix operators like <code>+</code> , <code>-</code>, and <code>!</code>. They’re not. Instead, from R’s perspective, <code>!!</code> and <code>!!!</code> are simply the repeated application of <code>!</code>:</p>
+<pre class="r"><code>!!TRUE  # TRUE</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>!!!TRUE  # FALSE</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p><code>!!</code> and <code>!!!</code> have special behaviour inside all quoting functions powered by rlang, and the unquoting operators are given precedence similar to <code>+</code> and <code>-</code>, not <code>!</code>. We do this because the operator precedence for <code>!</code> is surprisingly low: it has lower precedence than that of the binary algebraic and logical operators. Most of the time this doesn’t matter as it is unusual to mix <code>!</code> and binary operators (e.g. you typically would not write <code>!x + y</code> or <code>!x &gt; y</code>). However, expressions like <code>!!x + !!y</code> are not uncommon when unquoting, and requiring explicit parentheses, <code>(!!x) + (!!y)</code>, feels onerous. For this reason, rlang manipulates the AST to give the unquoting operators a higher, more natural, precedence. (And if for some reason you do need to doubly negate a value in a quasiquoting function, you can just add parentheses <code>!(!x)</code>.)</p>
+<p>The biggest downside to using a fake operator is that you might get silent errors when misusing <code>!!</code> outside of quasiquoting functions. Most of the time this is not an issue because <code>!!</code> is typically used to unquote expressions or quosures. Since expressions are not supported by the negation operator, you will get an argument type error in this case:</p>
+<pre class="r"><code>x &lt;- quote(variable)
+!!x</code></pre>
+<pre><code>## Error in !x: invalid argument type</code></pre>
+<pre class="r"><code>y &lt;- expr(variable)
+!!y</code></pre>
+<pre><code>## Error in !y: invalid argument type</code></pre>
+<p>However be extra careful when unquoting numeric values that can be negated silently:</p>
+<pre class="r"><code>x &lt;- 100
+with(mtcars, cyl + !!x)</code></pre>
+<pre><code>##  [1] 7 7 5 7 9 7 9 5 5 7 7 9 9 9 9 9 9 5 5 5 5 9 9 9 9 5 5 5 9 7 9 5</code></pre>
+<pre class="r"><code>with(mtcars, cyl)</code></pre>
+<pre><code>##  [1] 6 6 4 6 8 6 8 4 4 6 6 8 8 8 8 8 8 4 4 4 4 8 8 8 8 4 4 4 8 6 8 4</code></pre>
+<p>Instead of adding the value of <code>x</code> to <code>cyl</code> as intended, we have in fact added the double negation of <code>x</code>:</p>
+<pre class="r"><code>!x</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>!!x</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
+<div id="with-base-r-1" class="section level3">
+<h3><span class="header-section-number">1.5.3</span> With Base R</h3>
+<p>Base R has one function that implements quasiquotation: <code>bquote()</code>. It uses <code>.()</code> for unquoting:</p>
+<pre class="r"><code>xyz &lt;- bquote((x + y + z))
+bquote(-.(xyz)/2)</code></pre>
+<pre><code>## -(x + y + z)/2</code></pre>
+<pre class="r"><code># Also
+substitute(-XYZ/2, list(XYZ = xyz))</code></pre>
+<pre><code>## -(x + y + z)/2</code></pre>
+<p><code>bquote()</code> is a neat function, but is not used by any other function in base R. Instead functions that quote an argument use some other technique to allow indirect specification. There are four basic forms seen in base R:</p>
+<ol style="list-style-type: decimal">
+<li><p>A pair of quoting and non-quoting functions. For example, <code>$</code> has two arguments, and the second argument is quoted. This is easier to see if you write in prefix form: <code>mtcars$cyl</code> is equivalent to <code>$(mtcars, cyl)</code>. If you want to refer to a variable indirectly, you use <code>[[</code>, as it takes the name of a variable as a string.</p>
+<pre class="r"><code>x &lt;- list(var = 1, y = 2)
+var &lt;- &quot;y&quot;
+
+x$var  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>x[[var]]  # 2</code></pre>
+<pre><code>## [1] 2</code></pre>
+<p><code>&lt;-/assign()</code> work similarly:</p>
+<pre class="r"><code>y &lt;- 1
+x &lt;- y
+x</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>var &lt;- &quot;x&quot;
+assign(var, 3)
+x</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code># note
+z &lt;- 3
+&quot;x&quot; &lt;- z
+x</code></pre>
+<pre><code>## [1] 3</code></pre></li>
+<li><p>A pair of quoting and non-quoting arguments. For example, <code>data()</code>, <code>rm()</code>, and <code>save()</code> allow you to provide bare variable names in <code>...</code>, or a character vector of variable names in <code>list</code>:</p>
+<pre class="r"><code>x &lt;- 1
+rm(x)
+
+y &lt;- 2
+vars &lt;- c(&quot;y&quot;, &quot;vars&quot;)
+rm(list = vars)</code></pre></li>
+<li><p>An argument that controls whether a different argument is quoting or non-quoting. For example, in <code>library()</code>, the character.only argument controls the quoting behaviour of of the first argument, package:</p>
+<pre class="r"><code>library(MASS)
+
+pkg &lt;- &quot;MASS&quot;
+library(pkg, character.only = TRUE)</code></pre>
+<p><code>demo()</code>, <code>detach()</code>, <code>example()</code>, and <code>require()</code> work similarly.</p></li>
+<li><p>Quoting if evaluation fails. For example, the first argument to <code>help()</code> is non-quoting if it evaluates to a string; if evaluation fails, the first argument is quoted.</p>
+<pre class="r"><code># Shows help for var
+help(var)
+
+var &lt;- &quot;mean&quot;
+# Shows help for mean
+help(var)
+
+var &lt;- 10
+# Shows help for var
+help(var)</code></pre>
+<p><code>ls()</code>, <code>page()</code>, and <code>match.fun()</code> work similarly.</p></li>
+</ol>
+<p>Some quoting functions, like <code>subset()</code>, <code>transform()</code>, and <code>with()</code>, don’t have a non-quoting form. This is because they are seen as wrappers around <code>[</code> and <code>[&lt;-</code> that are only suitable for interactive use.</p>
+</div>
+<div id="missing-arguments" class="section level3">
+<h3><span class="header-section-number">1.5.4</span> Missing arguments</h3>
+<p>Occasionally it is useful to unquote a missing argument, but the naive approach doesn’t work:</p>
+<pre class="r"><code>arg &lt;- missing_arg()
+expr(foo(!!arg, !!arg))</code></pre>
+<pre><code>## Error in enexpr(expr): argument &quot;arg&quot; is missing, with no default</code></pre>
+<p>You can either wrap in a list and use unquote-splice, or use the <code>maybe_missing()</code> helper:</p>
+<pre class="r"><code>args &lt;- list(missing_arg(), missing_arg())
+expr(foo(!!!args))</code></pre>
+<pre><code>## foo(, )</code></pre>
+<pre class="r"><code>expr(foo(!!maybe_missing(arg), !!maybe_missing(arg)))</code></pre>
+<pre><code>## foo(, )</code></pre>
+</div>
 </div>
 </div>
 

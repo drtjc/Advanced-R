@@ -11,45 +11,79 @@ library(pryr)
 
 
 
+!!(1:10)
 
-e <- (function(x, y = 1, z) environment())(cos, "y", {cat(" HO!\n"); pi+2})
+(a <- expr(mean(1:10)))
+(b <- expr(mean(!!(1:10))))
+eval(a)
+eval(b)
 
+as.list(a)
+as.list(b)
 
-gete <- function(e_)
-  lapply(lapply(ls(e_), as.name),
-         function(n) eval(substitute(substitute(X, e_), list(X=n))))
+a[[1]]
+b[[1]]
 
-ls(e)[[1]]
-ls(e)[[2]]
-ls(e)[[3]]
-
-# get function arguments as symbols (names)
-as.name(ls(e)[[1]]) 
-as.name(ls(e)[[2]])
-as.name(ls(e)[[3]])
-
-substitute(x, e)
-substitute(y, e)
-substitute(z, e)
+typeof(a[[1]]) # symbol
+typeof(b[[1]]) # symbol
 
 
 
+a[[2]]
+b[[2]]
 
-(exps <- gete(e))
-sapply(exps, typeof)
+typeof(a[[2]]) # language
+typeof(b[[2]]) # integer
 
-(le <- as.list(e)) # evaluates ("force"s) the promises
-stopifnot(identical(unname(le), lapply(exps, eval))) # and another "Ho!"
-
-
-
-
+class(a[[2]]) # call
+class(b[[2]]) # integer
 
 
+lobstr::ast(!!a)
+lobstr::ast(!!b)
+
+lobstr::ast(1:1)
+lobstr::ast(!!(1:1))
+lobstr::ast(!!seq(1, 10))
+
+lobstr::ast(!!mean(1:10))
+
+
+lobstr::ast(`!!`(mean(1:10)))
+lobstr::ast(mean(`!!`(1:10)))
+
+
+lobstr::ast(!!mean(`!!`((1:10)))) # error
+lobstr::ast(`!!`(mean(`!!`((1:10))))) # error
+# first !! has lead to evaluation in context of mean, which is not a quasiquoted function
+
+
+lobstr::ast(`!!`(mean(!!(1:10)))) # 1 !!(1:10) = T, T, T, ...
+
+
+
+mean(`!!`(100))
+mean(!!100)
+
+`!!`(100)
+expr(`!!`(100))
+
+
+expr(!!100)
 
 
 
 
+lobstr::ast(mean(!!c(T, T)))
+
+lobstr::ast(!!mean(!!seq(1, 10)))
+
+!!(1:10)
+I(1:10)
+
+
+lobstr::ast(1:10)
+lobstr::ast(!!(1:10))
 
 
 

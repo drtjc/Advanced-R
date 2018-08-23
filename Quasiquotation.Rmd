@@ -416,9 +416,187 @@ eval(fx, env(f = function(x) {print(env_parent()); x * 10}))
 ## Unquotation
 Evaluation is a developer tool: in combination with quoting, it allows the author of a function to capture an argument and evaluate it in a special way. Unquoting is related to evaluation, but it’s a user tool: it allows the person calling the function to selectively evaluate parts of the expression that would otherwise be quoted.
 
+### With rlang
+All quoting functions in rlang (`expr()`, `enexpr()`, and friends) support unquoting with `!!` (called “unquote”, and pronounced bang-bang) and `!!!` (called “unquote-splice”, and pronounced bang-bang-bang). They both replace nodes in the AST. `!!` is a one-to-one replacement. It takes a single expression and inlines the AST at the location of the `!!`.
 
+```{r}
+x <- expr(a + b + c)
+expr(f(!!x, y))
+expr(f(x, y))
 
+lobstr::ast(f(!!x, y))
+lobstr::ast(f(x, y))
+```
 
+`!!!` is a one-to-many replacement. It takes a list of expressions and inserts them at the location of the `!!!`:
+
+```{r}
+x <- exprs(1, 2, 3, y = 10)
+expr(f(!!!x, z = z))
+lobstr::ast(f(!!!x, z = z))
+```
+
+### The polite fiction of `!!`
+So far we have acted as if `!!` and `!!!` are regular prefix operators like `+` , `-`, and `!`. They’re not. Instead, from R’s perspective, `!!` and `!!!` are simply the repeated application of `!`:
+
+```{r}
+!!TRUE # TRUE
+!!!TRUE # FALSE
+```
+
+`!!` and `!!!` have special behaviour inside all quoting functions powered by rlang, and the unquoting operators are given precedence similar to `+` and `-`, not `!`. We do this because the operator precedence for `!` is surprisingly low: it has lower precedence than that of the binary algebraic and logical operators. Most of the time this doesn’t matter as it is unusual to mix `!` and binary operators (e.g. you typically would not write `!x + y` or `!x > y`). However, expressions like `!!x + !!y` are not uncommon when unquoting, and requiring explicit parentheses, `(!!x) + (!!y)`, feels onerous. For this reason, rlang manipulates the AST to give the unquoting operators a higher, more natural, precedence. (And if for some reason you do need to doubly negate a value in a quasiquoting function, you can just add parentheses `!(!x)`.)
+
+The biggest downside to using a fake operator is that you might get silent errors when misusing `!!` outside of quasiquoting functions. Most of the time this is not an issue because `!!` is typically used to unquote expressions or quosures. Since expressions are not supported by the negation operator, you will get an argument type error in this case:
+
+```{r, error=TRUE}
+x <- quote(variable)
+!!x
+
+y <- expr(variable)
+!!y
+```
+
+However be extra careful when unquoting numeric values that can be negated silently:
+
+```{r}
+x <- 100
+with(mtcars, cyl + !!x)
+with(mtcars, cyl)
+```
+
+Instead of adding the value of `x` to `cyl` as intended, we have in fact added the double negation of `x`:
+
+```{r}
+!x
+!!x
+```
+
+### With Base R
+Base R has one function that implements quasiquotation: `bquote()`. It uses `.()` for unquoting:
+
+```{r}
+xyz <- bquote((x + y + z))
+bquote(-.(xyz) / 2)
+
+# Also
+substitute(-XYZ / 2, list(XYZ = xyz))
+```
+
+`bquote()` is a neat function, but is not used by any other function in base R. Instead functions that quote an argument use some other technique to allow indirect specification. There are four basic forms seen in base R:
+
+1. A pair of quoting and non-quoting functions. For example, `$` has two arguments, and the second argument is quoted. This is easier to see if you write in prefix form: `mtcars$cyl` is equivalent to `$(mtcars, cyl)`. If you want to refer to a variable indirectly, you use `[[`, as it takes the name of a variable as a string.
+    ```{r}
+    x <- list(var = 1, y = 2)
+    var <- "y"
+    
+    x$var # 1
+    x[[var]] # 2
+    ```
+`<-/assign()` work similarly:
+    ```{r}
+    y <- 1
+    x <- y
+    x
+
+    var <- "x"
+    assign(var, 3)
+    x
+
+    # note
+    z <- 3
+    "x" <- z
+    x
+    ```
+
+2. A pair of quoting and non-quoting arguments. For example, `data()`, `rm()`, and `save()` allow you to provide bare variable names in `...`, or a character vector of variable names in `list`:
+    ```{r}
+    x <- 1
+    rm(x)
+    
+    y <- 2
+    vars <- c("y", "vars")
+    rm(list = vars)
+    ```
+
+3. An argument that controls whether a different argument is quoting or non-quoting. For example, in `library()`, the character.only argument controls the quoting behaviour of of the first argument, package:
+    ```{r, eval=FALSE}
+    library(MASS)
+    
+    pkg <- "MASS"
+    library(pkg, character.only = TRUE)
+    ```
+`demo()`, `detach()`, `example()`, and `require()` work similarly.
+
+4. Quoting if evaluation fails. For example, the first argument to `help()` is non-quoting if it evaluates to a string; if evaluation fails, the first argument is quoted.
+    ```{r, eval=FALSE}
+    # Shows help for var
+    help(var)
+    
+    var <- "mean"
+    # Shows help for mean
+    help(var)
+    
+    var <- 10
+    # Shows help for var
+    help(var)
+    ```
+`ls()`, `page()`, and `match.fun()` work similarly.
+
+Some quoting functions, like `subset()`, `transform()`, and `with()`, don’t have a non-quoting form. This is because they are seen as wrappers around `[` and `[<-` that are only suitable for interactive use.
+
+### Missing arguments
+Occasionally it is useful to unquote a missing argument, but the naive approach doesn’t work:
+
+```{r, error=TRUE}
+arg <- missing_arg()
+expr(foo(!!arg, !!arg))
+```
+
+You can either wrap in a list and use unquote-splice, or use the `maybe_missing()` helper:
+
+```{r}
+args <- list(missing_arg(), missing_arg())
+expr(foo(!!!args))
+expr(foo(!!maybe_missing(arg), !!maybe_missing(arg)))
+```
+
+### Exercises
+1. Given the following components:
+    ```{r}
+    xy <- expr(x + y)
+    xz <- expr(x + z)
+    yz <- expr(y + z)
+    abc <- exprs(a, b, c)
+    ```
+Use quasiquotation to construct the following calls:
+    ```{r, eval=FALSE}
+    (x + y) / (y + z)
+    -(x + z) ^ (y + z)
+    (x + y) + (y + z) - (x + y)
+    atan2(x + y, y + z)
+    sum(x + y, x + y, y + z)
+    sum(a, b, c)
+    mean(c(a, b, c), na.rm = TRUE)
+    foo(a = x + y, b = y + z)
+    ```
+**A**: 
+    ```{r}
+    expr(!!xy / !!yz)
+    expr(-(!!xz) ^ !!yz)
+    expr(!!xy + !!yz - !!xy)
+    expr(atan2(!!xy, !!yz))
+    expr(sum(!!xy, !!xy, !!yz))
+    expr(sum(!!!abc))
+    expr(sum(!!!abc, na.rm = TRUE))
+    expr(foo(a = !!xy, b = !!yz))
+    ```
+
+2. Explain why both `!0 + !0` and `!1 + !1` return `FALSE` while `!0 + !1` returns TRUE.  
+**A**: `!0 + !0 = !(0 + !0) = 0`. `!1 + !1 = !(1 + !1) = 0`. `!0 + !1 = !(0 + !1) = 1`
+
+3.
+
+4. 
 
 
 
