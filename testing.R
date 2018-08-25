@@ -7,7 +7,8 @@ library(rlang)
 library(rlist)
 library(pryr)
 
-
+#test me atom
+x <- 999
 
 f <- function(...) {
   x <- 1
@@ -70,7 +71,7 @@ eval_bare(ret, env())
 
 (parse_exprs("NULL; list()\n foo(bar)"))
 
-function (expr, envir = new.env()) 
+function (expr, envir = new.env())
   eval.parent(substitute(eval(quote(expr), envir)))
 
 
@@ -122,7 +123,7 @@ substituteDirect
 
 
 
-#function (x, env) 
+#function (x, env)
 #{
 #  stopifnot(is.language(x))
 #  env <- to_env(env)
@@ -143,7 +144,7 @@ substitute(x, list(a = 1, b = 2))
 
 eval(substitute(substitute(x), list(x = x))) # a +  b
 
-substitute(x, list(a = 1, b = 2)) #x 
+substitute(x, list(a = 1, b = 2)) #x
 
 t <- substitute(x, list(a = 1, b = 2))
 View(t)
@@ -165,7 +166,7 @@ rm(ex3)
 # substitute
 # substitute_q
 # SubstututeDirect
-# 
+#
 # enquote
 # deparse
 # delayedAssign
@@ -219,7 +220,7 @@ eval(call("f", quote(A)), envir = env)  # 100
 
 enq <-function(cl) as.call(list(as.name("quote"), cl))
 
-enq2 <- function(cl) call("quote", cl) 
+enq2 <- function(cl) call("quote", cl)
 
 q <- as.name("quote")
 typeof(q)
@@ -274,7 +275,7 @@ w <- lapply(1:100, e)
 
 
 g <- runif %>% delay_by(.1) %>% dot_every(10) # 2 x 10 dots!
-h <- runif %>% dot_every(10) %>% delay_by(.1) 
+h <- runif %>% dot_every(10) %>% delay_by(.1)
 
 
 y <- lapply(1:100, g)
@@ -308,55 +309,55 @@ f()
 
 
 # df <- data.frame(x = c(1:5), y = 6:11)
-# 
+#
 # aggregate(state.x77, list(Region = state.region), mean)
 # str(state.region)
 # state.x77
-# 
+#
 # df <- data.frame(x = c(1:5, NA), y = 6:11)
 # df
-# 
+#
 # by <- as.factor(c("a", "b", "a", "a", "b", "b"))
-# 
+#
 # str(by)
 # res <- aggregate(df, list(by), sum, na.rm = TRUE)
 # res
 # str(res)
-# 
+#
 # res <- aggregate(df, list(by), sum, na.rm = TRUE, simplify = FALSE)
 # res
 # str(res)
-# 
-# 
-# 
+#
+#
+#
 # df <- data.frame(x = 1:5, y = 6:10)
 # by <- as.factor(c("a", "b", "a", "a", "b"))
-# 
+#
 # res <- aggregate(df, list(by), function(x) c(sum(x), mean(x)))
 # res
 # str(res)
 # res
-# 
-# 
+#
+#
 # res <- aggregate(df, list(by), function(x) c(sum(x), mean(x)), simplify = FALSE)
 # res
 # str(res)
-# 
-# 
-# 
+#
+#
+#
 # res <- aggregate(df, list(by), function(x) {y <- c(sum(x), mean(x), sd(x), median(x)); y})
 # res
 # str(res)
 # res$x[1, ]
-# 
-# 
-# 
+#
+#
+#
 # res <- aggregate(df, list(by), function(x) {y <- c(sum(x), mean(x), sd(x), median(x)); dim(y) <- c(2,2); y}, simplify = FALSE)
 # res
 # str(res)
-# 
-# 
-# 
+#
+#
+#
 
 # TO DO - put in mapping between typeof and mode and storage.mode
 # hierarachy: NULL < raw < logical < integer < double < complex < character < list < expression
