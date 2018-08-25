@@ -596,7 +596,41 @@ Use quasiquotation to construct the following calls:
 
 3.
 
-4. 
+4. The following two calls print the same, but are actually different:
+    ```{r}
+    (a <- expr(mean(1:10)))
+    (b <- expr(mean(!!(1:10))))
+    
+    identical(a, b)
+    ```
+What’s the difference? Which one is more natural?  
+**A**: in the 2nd expression `!!(1:10)` evaluates to a sequence of integers, but this prints as 1:10. In the first expression, `1:10` is a call, `:`(1, 10)`.
+    ```{r}
+    (a <- expr(mean(1:10)))
+    (b <- expr(mean(!!(1:10))))
+    eval(a)
+    eval(b)
+    
+    a[[1]]
+    b[[1]]
+    
+    typeof(a[[1]]) # symbol
+    typeof(b[[1]]) # symbol
+    
+    a[[2]]
+    b[[2]]
+    
+    typeof(a[[2]]) # language
+    typeof(b[[2]]) # integer
+    
+    class(a[[2]]) # call
+    class(b[[2]]) # integer
+    
+    
+    lobstr::ast(!!a)
+    lobstr::ast(!!b)  
+    ```
+
 
 
 

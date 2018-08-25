@@ -9,81 +9,96 @@ library(pryr)
 
 
 
+f <- function(...) {
+  x <- 1
+  g(..., x = x)
+}
+
+g <- function(...) {
+  x <- 2
+  h(..., x = x)
+}
+
+h <- function(...) {
+  exprs <- enexprs(...)
+  print(exprs)
+  purrr::map_dbl(exprs, eval_bare, env = caller_env())
+}
 
 
-!!(1:10)
+h <- function(...) {
+  exprs <- enquos(...)
+  print(exprs)
+  purrr::map_dbl(exprs, eval_tidy)
+}
 
-(a <- expr(mean(1:10)))
-(b <- expr(mean(!!(1:10))))
-eval(a)
-eval(b)
-
-as.list(a)
-as.list(b)
-
-a[[1]]
-b[[1]]
-
-typeof(a[[1]]) # symbol
-typeof(b[[1]]) # symbol
-
-
-
-a[[2]]
-b[[2]]
-
-typeof(a[[2]]) # language
-typeof(b[[2]]) # integer
-
-class(a[[2]]) # call
-class(b[[2]]) # integer
-
-
-lobstr::ast(!!a)
-lobstr::ast(!!b)
-
-lobstr::ast(1:1)
-lobstr::ast(!!(1:1))
-lobstr::ast(!!seq(1, 10))
-
-lobstr::ast(!!mean(1:10))
-
-
-lobstr::ast(`!!`(mean(1:10)))
-lobstr::ast(mean(`!!`(1:10)))
-
-
-lobstr::ast(!!mean(`!!`((1:10)))) # error
-lobstr::ast(`!!`(mean(`!!`((1:10))))) # error
-# first !! has lead to evaluation in context of mean, which is not a quasiquoted function
-
-
-lobstr::ast(`!!`(mean(!!(1:10)))) # 1 !!(1:10) = T, T, T, ...
-
-
-
-mean(`!!`(100))
-mean(!!100)
-
-`!!`(100)
-expr(`!!`(100))
-
-
-expr(!!100)
+x <- 0
+f(x = x)
 
 
 
 
-lobstr::ast(mean(!!c(T, T)))
-
-lobstr::ast(!!mean(!!seq(1, 10)))
-
-!!(1:10)
-I(1:10)
 
 
-lobstr::ast(1:10)
-lobstr::ast(!!(1:10))
+
+
+
+
+
+
+get_stack <- quote(ctxt_stack())
+eval_bare(get_stack)
+eval(get_stack)
+
+e <- new.env()
+eval(get_stack, sys.frame(0))
+e
+
+eval_bare(get_stack, e)
+
+
+
+eval_bare(quote(foo), env(foo = "bar"))
+
+
+ret <- quote(return("foo"))
+eval(ret, env())
+eval_bare(ret, env())
+
+
+
+
+(parse_exprs("NULL; list()\n foo(bar)"))
+
+function (expr, envir = new.env()) 
+  eval.parent(substitute(eval(quote(expr), envir)))
+
+
+local3 <- function(expr, envir = new.env()) {
+  call <- substitute(eval(quote(expr), envir))
+  print(call)
+  eval(call, envir = parent.frame())
+}
+
+x <- 10
+y <- 200
+local3({
+  x + y
+})
+
+parent.env(new.env())
+
+
+
+
+x <- 10
+eval_bare(expr(x))
+expr(!!x)
+identical(eval_bare(expr(x)), expr(!!x))
+
+y <- 2
+eval_bare(expr(x + y))
+expr(!!(x + y))
 
 
 
