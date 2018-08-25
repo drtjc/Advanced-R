@@ -7,6 +7,63 @@ library(rlang)
 library(rlist)
 library(pryr)
 
+
+
+
+f_match <- function(FUN) {
+  print(is.function(FUN))
+  print(is.character(FUN) && length(FUN) == 1L)
+  print(is.symbol(FUN))
+  
+  if (is.function(FUN)) return(FUN)
+
+  if (!(is.character(FUN) && length(FUN) == 1L || is.symbol(FUN))) {
+    print("here")
+    FUN <- eval.parent(substitute(substitute(FUN)))
+    
+    print(eval.parent(substitute("x" * y)))
+    
+    print(substitute(substitute(FUN)))
+    print(FUN)
+    if (!is.symbol(FUN)) stop(gettextf("'%s' is not a function, character or symbol", deparse(FUN)), domain = NA)
+  }
+
+  print(FUN)
+  envir <- parent.frame(2)
+  print(envir)
+  print(as.character(FUN))
+  FUN <- get(as.character(FUN), mode = "any", envir = envir) #as.character converts symbol to character
+  
+  return(FUN)
+  
+  
+}
+
+f_match(mean)(1:10)
+f_match("mean")(1:10)
+
+typeof(f_match(mean))
+typeof(f_match("mean"))
+
+x <- expr(mean)
+as.character(x)
+
+f_match(x)
+
+f_match((c("mean", "sum")))
+
+y <- 2
+
+fs <- c("mean", "sum")
+
+
+f_match(expr(x * y))
+
+
+get(as.character(x))
+as.character(x)
+get("mean")
+
 #test me atom
 x <- 999
 

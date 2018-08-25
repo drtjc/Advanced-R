@@ -594,7 +594,10 @@ Use quasiquotation to construct the following calls:
 2. Explain why both `!0 + !0` and `!1 + !1` return `FALSE` while `!0 + !1` returns TRUE.  
 **A**: `!0 + !0 = !(0 + !0) = 0`. `!1 + !1 = !(1 + !1) = 0`. `!0 + !1 = !(0 + !1) = 1`
 
-3.
+3. Base functions `match.fun()`, `page()`, and `ls()` all try to automatically determine whether you want standard or non-standard evaluation. Each uses a different approach. Figure out the essence of each approach by reading the source code, then compare and contrast the techniques.  
+**A**: 
+* `match.fun()` - 
+
 
 4. The following two calls print the same, but are actually different:
     ```{r}
