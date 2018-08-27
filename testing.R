@@ -11,46 +11,79 @@ library(pryr)
 
 
 f_match <- function(FUN) {
-  print(is.function(FUN))
-  print(is.character(FUN) && length(FUN) == 1L)
-  print(is.symbol(FUN))
+  print(paste("is function = ", is.function(FUN)))
+  print(paste("is character of length 1 = ", is.character(FUN) && length(FUN) == 1L))
+  print(paste("is symbol = ", is.symbol(FUN)))
   
   if (is.function(FUN)) return(FUN)
 
   if (!(is.character(FUN) && length(FUN) == 1L || is.symbol(FUN))) {
-    print("here")
-    FUN <- eval.parent(substitute(substitute(FUN)))
+    print("not a character of length 1, or a symbol")
     
-    print(eval.parent(substitute("x" * y)))
+    print(typeof(FUN))
+    
+    FUN <- eval.parent(substitute(substitute(FUN)))
+
+    print(FUN)
+    print(typeof(FUN))
     
     print(substitute(substitute(FUN)))
-    print(FUN)
+    
+    
     if (!is.symbol(FUN)) stop(gettextf("'%s' is not a function, character or symbol", deparse(FUN)), domain = NA)
   }
 
+  
+  
   print(FUN)
   envir <- parent.frame(2)
   print(envir)
   print(as.character(FUN))
-  FUN <- get(as.character(FUN), mode = "any", envir = envir) #as.character converts symbol to character
+  
+  FUN <- get(as.character(FUN), mode = "function", envir = envir) # NOTE: as.character converts symbol to character
+  
   
   return(FUN)
   
   
 }
 
-f_match(mean)(1:10)
-f_match("mean")(1:10)
+f_match(mean)(1:10) # is function = TRUE
+f_match("mean")(1:10) # is character of length 1 = TRUE
+f_match(expr(mean))(1:10) # is symbol = TRUE
 
-typeof(f_match(mean))
-typeof(f_match("mean"))
+x <- 2
+
+is.symbol(x)
+
+y <- mean
+is.function(y)
+is.call(y)
+
+f_match(x)(1:10) # is function = TRUE
+
+
+
+
+f_match(pairlist(x = mean))(1:10)
+
+typeof(as.name(expr(x)))
+typeof(expr(x))
+typeof(as.name(x))
+
 
 x <- expr(mean)
-as.character(x)
-
 f_match(x)
 
-f_match((c("mean", "sum")))
+eval(expr(2))
+y <- 2
+eval(substitute(c(y, expr(3 * y))))
+
+substitute(expr(y))
+
+f_match(z)
+
+f_match(c("mean", "sum"))
 
 y <- 2
 
@@ -59,13 +92,14 @@ fs <- c("mean", "sum")
 
 f_match(expr(x * y))
 
-
+x <- expr(mean)
 get(as.character(x))
-as.character(x)
-get("mean")
 
-#test me atom
-x <- 999
+
+
+
+
+
 
 f <- function(...) {
   x <- 1
