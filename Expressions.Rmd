@@ -594,7 +594,149 @@ What do `expr_text()`, `expr_name()`, and `expr_label()` do with this input?
 4. `pairwise.t.test()` assumes that `deparse()` always returns a length one character vector. Can you construct an input that violates this expectation? What happens?
 
 
+## Case Studies
+To conclude the chapter I’m going to pull together everything that you’ve learned about ASTs and use that knowledge to solve more complicated problems. The inspiration comes from the base codetools package, which provides two interesting functions:
 
+* `findGlobals()` locates all global variables used by a function. This can be useful if you want to check that your function doesn’t inadvertently rely on variables defined in their parent environment.
+
+* `checkUsage()` checks for a range of common problems including unused local variables, unused parameters, and the use of partial argument matching.
+
+Getting all of the details of these functions correct is fiddly, so we won’t explore their full expression. Instead we’ll focus on the big underlying idea: recursion on the AST. Recursive functions are a natural fit to tree-like data structures because a recursive function is made up of two parts that correspond to the two parts of the tree:
+
+The recursive case handles the nodes in the tree. Typically, you’ll do something to each child of node, usually calling the recursive function again, and then combine the results back together again. For expressions, you’ll need to handle calls and pairlists (function arguments).
+
+The base case handles the leaves of the tree. The base cases ensure that the function eventually terminates, by solving the simplest cases directly. For expressions, you need to handle symbols and constants in the base case.
+
+To make this pattern easier to see, we’ll need two helper functions. First we define `expr_type()` which will return “constant” for constant, “symbol” for symbols, “call”, for calls, “pairlist” for pairlists, and the “type” of anything else:
+
+```{r}
+expr_type <- function(x) {
+  if (rlang::is_syntactic_literal(x)) {
+    "constant"
+  } else if (is.symbol(x)) {
+    "symbol"
+  } else if (is.call(x)) {
+    "call"
+  } else if (is.pairlist(x)) {
+    "pairlist"
+  } else {
+    typeof(x)
+  }
+}
+
+expr_type(expr("a"))
+expr_type(expr(f(1, 2)))
+```
+
+We’ll couple this with a wrapper around the switch function:
+
+```{r}
+switch_expr <- function(x, ...) {
+  switch(expr_type(x), 
+    ..., 
+    stop("Don't know how to handle type ", typeof(x), call. = FALSE)  
+  )
+}
+```
+
+With these two functions in hand, the basic template for any function that walks the AST is as follows:
+
+```{r}
+recurse_call <- function(x) {
+  switch_expr(x, 
+    
+    # Base cases
+    symbol = ,
+    constant = ,
+    
+    # Recursive cases
+    call = ,
+    pairlist = 
+  )
+}
+```
+
+### Finding F and T
+We’ll start simple with a function that determines whether a function uses the logical abbreviations `T` and `F`: it will return `TRUE` if it finds a logical abbreviation, and `FALSE` otherwise. Using `T` and `F` is generally considered to be poor coding practice, and is something that `R CMD check` will warn about.
+
+Let’s first compare the AST for `T` vs. `TRUE`:
+
+```{r}
+ast(TRUE)
+ast(T)
+
+expr_type(expr(TRUE))
+expr_type(expr(T))
+```
+
+`TRUE` is parsed as a logical vector of length one, while `T` is parsed as a name. This tells us how to write our base cases for the recursive function: a constant is never a logical abbreviation, and a symbol is an abbreviation if it’s “F” or “T”:
+
+```{r}
+logical_abbr_rec <- function(x) {
+  switch_expr(x, 
+    constant = FALSE,
+    symbol = as_string(x) %in% c("F", "T")
+  )
+}
+
+logical_abbr_rec(expr(TRUE))
+logical_abbr_rec(expr(T))
+logical_abbr_rec(expr(F))
+logical_abbr_rec(expr(W))
+```
+
+I’ve written `logical_abbr_rec()` function assuming that the input will be an expression as this will make the recursive operation simpler. However, when writing a recursive function it’s common to write a wrapper that provides defaults or makes the function a little easier to use. Here we’ll typically make a wrapper that quotes its input (we’ll learn more about that in the next chapter), so we don’t need to use `expr()` every time.
+
+```{r}
+logical_abbr <- function(x) {
+  logical_abbr_rec(enexpr(x))
+}
+
+logical_abbr(T)
+logical_abbr(FALSE)
+```
+
+Next we need to implement the recursive cases. Here it’s simple because we want to do the same thing for calls and for pairlists: recursively apply the function to each subcomponent, and return `TRUE` if any subcomponent contains a logical abbreviation. This is made easy by `purrr::some()`, which iterates over a list and returns TRUE if the predicate function is true for any element.
+
+```{r}
+logical_abbr_rec <- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = FALSE,
+    symbol = as_string(x) %in% c("F", "T"),
+    
+    # Recursive cases
+    call = , #If there is a match then that element is evaluated unless it is missing, in which case the next non-missing element is evaluated
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+logical_abbr(mean(x, na.rm = T)) # matches as call, but then 'pairlist' line is excuted. Remember, a call is a list
+logical_abbr(function(x, na.rm = T) FALSE)
+```
+
+
+
+
+### Exercises
+1. `logical_abbr()` returns `TRUE` for `T(1, 2, 3)`. How could you modify `logical_abbr_rec()` so that it ignores function calls that use `T` or `F`?  
+**A**: 
+```{r}
+logical_abbr_rec <- function(x) {
+  switch_expr(x,
+    # Base cases
+    
+    constant = FALSE,
+    symbol = as_string(x) %in% c("F", "T"),
+    
+    # Recursive cases
+    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+logical_abbr(T(1, 2, 3))
+```
 
 
 

@@ -93,6 +93,9 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -552,7 +555,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x0000000018f80b40&gt;
+## &lt;bytecode: 0x0000000019528ed8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -729,7 +732,7 @@ q2[[1]]</code></pre>
 <pre><code>## [1] &quot;srcref&quot;</code></pre>
 <pre class="r"><code>str(q2[[4]])</code></pre>
 <pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
-##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000018e37698&gt;</code></pre>
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000001929ebb8&gt;</code></pre>
 <pre class="r"><code>identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
@@ -798,7 +801,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x0000000018f80b40&gt;
+## &lt;bytecode: 0x0000000019528ed8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -916,6 +919,63 @@ deparse(expr)</code></pre>
 <strong>A</strong>: In order to get the name of the object assigned to the argument <code>x</code>. <code>pairwise.t.test()</code> combines <code>x</code> “and” <code>g</code> using names passed to arguments.</p></li>
 <li><p><code>pairwise.t.test()</code> assumes that <code>deparse()</code> always returns a length one character vector. Can you construct an input that violates this expectation? What happens?</p></li>
 </ol>
+</div>
+</div>
+<div id="case-studies" class="section level2">
+<h2><span class="header-section-number">1.4</span> Case Studies</h2>
+<p>To conclude the chapter I’m going to pull together everything that you’ve learned about ASTs and use that knowledge to solve more complicated problems. The inspiration comes from the base codetools package, which provides two interesting functions:</p>
+<ul>
+<li><p><code>findGlobals()</code> locates all global variables used by a function. This can be useful if you want to check that your function doesn’t inadvertently rely on variables defined in their parent environment.</p></li>
+<li><p><code>checkUsage()</code> checks for a range of common problems including unused local variables, unused parameters, and the use of partial argument matching.</p></li>
+</ul>
+<p>Getting all of the details of these functions correct is fiddly, so we won’t explore their full expression. Instead we’ll focus on the big underlying idea: recursion on the AST. Recursive functions are a natural fit to tree-like data structures because a recursive function is made up of two parts that correspond to the two parts of the tree:</p>
+<p>The recursive case handles the nodes in the tree. Typically, you’ll do something to each child of node, usually calling the recursive function again, and then combine the results back together again. For expressions, you’ll need to handle calls and pairlists (function arguments).</p>
+<p>The base case handles the leaves of the tree. The base cases ensure that the function eventually terminates, by solving the simplest cases directly. For expressions, you need to handle symbols and constants in the base case.</p>
+<p>To make this pattern easier to see, we’ll need two helper functions. First we define <code>expr_type()</code> which will return “constant” for constant, “symbol” for symbols, “call”, for calls, “pairlist” for pairlists, and the “type” of anything else:</p>
+<pre class="r"><code>expr_type &lt;- function(x) {
+    if (rlang::is_syntactic_literal(x)) {
+        &quot;constant&quot;
+    } else if (is.symbol(x)) {
+        &quot;symbol&quot;
+    } else if (is.call(x)) {
+        &quot;call&quot;
+    } else if (is.pairlist(x)) {
+        &quot;pairlist&quot;
+    } else {
+        typeof(x)
+    }
+}
+
+expr_type(expr(&quot;a&quot;))</code></pre>
+<pre><code>## [1] &quot;constant&quot;</code></pre>
+<pre class="r"><code>expr_type(expr(f(1, 2)))</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<p>We’ll couple this with a wrapper around the switch function:</p>
+<pre class="r"><code>switch_expr &lt;- function(x, ...) {
+    switch(expr_type(x), ..., stop(&quot;Don't know how to handle type &quot;, typeof(x), 
+        call. = FALSE))
+}</code></pre>
+<p>With these two functions in hand, the basic template for any function that walks the AST is as follows:</p>
+<pre class="r"><code>recurse_call &lt;- function(x) {
+  switch_expr(x, 
+    
+    # Base cases
+    symbol = ,
+    constant = ,
+    
+    # Recursive cases
+    call = ,
+    pairlist = 
+  )
+}</code></pre>
+<div id="finding-f-and-t" class="section level3">
+<h3><span class="header-section-number">1.4.1</span> Finding F and T</h3>
+<p>We’ll start simple with a function that determines whether a function uses the logical abbreviations <code>T</code> and <code>F</code>: it will return <code>TRUE</code> if it finds a logical abbreviation, and <code>FALSE</code> otherwise. Using <code>T</code> and <code>F</code> is generally considered to be poor coding practice, and is something that <code>R CMD check</code> will warn about.</p>
+<p>Let’s first compare the AST for <code>T</code> vs. <code>TRUE</code>:</p>
+<pre class="r"><code>ast(TRUE)</code></pre>
+<pre><code>## \-  TRUE</code></pre>
+<pre class="r"><code>ast(T)</code></pre>
+<pre><code>## \- `T</code></pre>
 </div>
 </div>
 </div>

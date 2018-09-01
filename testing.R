@@ -10,6 +10,88 @@ library(pryr)
 
 
 
+expr_type <- function(x) {
+  if (rlang::is_syntactic_literal(x)) {
+    "constant"
+  } else if (is.symbol(x)) {
+    "symbol"
+  } else if (is.call(x)) {
+    "call"
+  } else if (is.pairlist(x)) {
+    "pairlist"
+  } else {
+    typeof(x)
+  }
+}
+
+expr_type(expr(TRUE))
+expr_type(expr(T))
+
+
+
+switch_expr <- function(x, ...) {
+  switch(expr_type(x), 
+         ..., 
+         stop("Don't know how to handle type ", typeof(x), call. = FALSE)  
+  )
+}
+
+
+logical_abbr_rec <- function(x) {
+  switch_expr(x,
+    # Base cases
+    
+    constant = FALSE,
+    symbol = as_string(x) %in% c("F", "T"),
+    
+    # Recursive cases
+    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+
+
+
+logical_abbr <- function(x) {
+  logical_abbr_rec(enexpr(x))
+}
+
+
+logical_abbr(T(1, 2, 3))
+
+
+logical_abbr(T)
+logical_abbr(mean(x, na.rm = T))
+logical_abbr(function(x, na.rm = T) FALSE)
+
+
+
+p <- alist(x, na.rm = T)
+p <- as_pairlist(p)
+mode(p)
+typeof(p)
+
+p
+p[[1]]
+p[[2]]
+names(p)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 f_match <- function(FUN) {
   print(paste("is function = ", is.function(FUN)))
   print(paste("is character of length 1 = ", is.character(FUN) && length(FUN) == 1L))
