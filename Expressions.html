@@ -555,7 +555,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x0000000019528ed8&gt;
+## &lt;bytecode: 0x00000000166b51f8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -732,7 +732,7 @@ q2[[1]]</code></pre>
 <pre><code>## [1] &quot;srcref&quot;</code></pre>
 <pre class="r"><code>str(q2[[4]])</code></pre>
 <pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
-##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000001929ebb8&gt;</code></pre>
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000013a62d58&gt;</code></pre>
 <pre class="r"><code>identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
@@ -801,7 +801,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x0000000019528ed8&gt;
+## &lt;bytecode: 0x00000000166b51f8&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -976,6 +976,263 @@ expr_type(expr(&quot;a&quot;))</code></pre>
 <pre><code>## \-  TRUE</code></pre>
 <pre class="r"><code>ast(T)</code></pre>
 <pre><code>## \- `T</code></pre>
+<pre class="r"><code>expr_type(expr(TRUE))</code></pre>
+<pre><code>## [1] &quot;constant&quot;</code></pre>
+<pre class="r"><code>expr_type(expr(T))</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<p><code>TRUE</code> is parsed as a logical vector of length one, while <code>T</code> is parsed as a name. This tells us how to write our base cases for the recursive function: a constant is never a logical abbreviation, and a symbol is an abbreviation if it’s “F” or “T”:</p>
+<pre class="r"><code>logical_abbr_rec &lt;- function(x) {
+    switch_expr(x, constant = FALSE, symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;))
+}
+
+logical_abbr_rec(expr(TRUE))</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>logical_abbr_rec(expr(T))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>logical_abbr_rec(expr(F))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>logical_abbr_rec(expr(W))</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>I’ve written <code>logical_abbr_rec()</code> function assuming that the input will be an expression as this will make the recursive operation simpler. However, when writing a recursive function it’s common to write a wrapper that provides defaults or makes the function a little easier to use. Here we’ll typically make a wrapper that quotes its input (we’ll learn more about that in the next chapter), so we don’t need to use <code>expr()</code> every time.</p>
+<pre class="r"><code>logical_abbr &lt;- function(x) {
+    logical_abbr_rec(enexpr(x))
+}
+
+logical_abbr(T)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>logical_abbr(FALSE)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>Next we need to implement the recursive cases. Here it’s simple because we want to do the same thing for calls and for pairlists: recursively apply the function to each subcomponent, and return <code>TRUE</code> if any subcomponent contains a logical abbreviation. This is made easy by <code>purrr::some()</code>, which iterates over a list and returns TRUE if the predicate function is true for any element.</p>
+<pre class="r"><code>logical_abbr_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = FALSE,
+    symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;),
+    
+    # Recursive cases
+    call = , #If there is a match then that element is evaluated unless it is missing, in which case the next non-missing element is evaluated
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+logical_abbr(mean(x, na.rm = T)) # matches as call, but then 'pairlist' line is excuted. Remember, a call is a list</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>logical_abbr(function(x, na.rm = T) FALSE)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
+<div id="finding-all-variables-created-by-assignment" class="section level3">
+<h3><span class="header-section-number">1.4.2</span> Finding all variables created by assignment</h3>
+<p>The next task, listing all variables created by assignment, is a little more complicated. We’ll start simply, and then make the function progressively more rigorous. We start by looking at the AST for assignment:</p>
+<pre class="r"><code>ast(x &lt;- 10)</code></pre>
+<pre><code>## \- ()
+##   \- `&lt;-
+##   \- `x
+##   \-  10</code></pre>
+<p>Assignment is a call where the first element is the symbol <code>&lt;-</code>, the second is name of variable, and the third is the value to be assigned. Next, we need to decide what data structure we’re going to use for the results. Here I think it will be easiest it we return a character vector.</p>
+<p>With that in hand we can start by implementing the base cases and providing a helpful wrapper around the recursive function. The base cases here are really simple!</p>
+<pre class="r"><code>find_assign_rec &lt;- function(x) {
+    switch_expr(x, constant = , symbol = character())
+}
+find_assign &lt;- function(x) find_assign_rec(enexpr(x))
+
+find_assign(&quot;x&quot;)</code></pre>
+<pre><code>## character(0)</code></pre>
+<pre class="r"><code>find_assign(x)</code></pre>
+<pre><code>## character(0)</code></pre>
+<p>Next we implement the recursive cases. This is made easier by a function that should exist in purrr, but currently doesn’t. <code>flat_map_chr()</code> expects <code>.f</code> to return a character vector of arbitrary length, and flattens all results into a single character vector.</p>
+<pre class="r"><code>flat_map_chr &lt;- function(.x, .f, ...) {
+    purrr::flatten_chr(purrr::map(.x, .f, ...))
+}
+
+flat_map_chr(letters[1:3], ~rep(., sample(3, 1)))</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<p>The recursive case for pairlists is simple: we iterate over every element of the pairlist (i.e. each function argument) and combine the results. The case for calls is a little bit more complex - if this is a call to <code>&lt;-</code> then we should return the second element of the call:</p>
+<pre class="r"><code>find_assign_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = ,
+    symbol = character(),
+    
+    # Recursive cases
+    pairlist = flat_map_chr(as.list(x), find_assign_rec),
+    call = {
+      if (is_call(x, &quot;&lt;-&quot;)) {
+        as_string(x[[2]])
+      } else {
+        flat_map_chr(as.list(x), find_assign_rec)
+      }
+    }
+  )
+}
+
+find_assign(a &lt;- 1) # a is a symbol</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>find_assign(&quot;a&quot; &lt;- 1) # is a character. Note that &quot;a&quot; &lt;- 1 is valid syntax</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>find_assign({a &lt;- 1; b &lt;- 2})</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code># some ways of passing a pairlist directly
+pairlist(x = expr(a &lt;- 1))</code></pre>
+<pre><code>## $x
+## a &lt;- 1</code></pre>
+<pre class="r"><code>is.pairlist(pairlist(x = expr(a &lt;- 1)))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>find_assign(!!pairlist(x = expr(a &lt;- 1)))</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>f &lt;- function(x = a &lt;- 1) TRUE
+formals(f)</code></pre>
+<pre><code>## $x
+## a &lt;- 1</code></pre>
+<pre class="r"><code>is.pairlist(formals(f))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>find_assign(!!formals(f))</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<p>Now we need to make our function more robust by coming up with examples intended to break it. What happens when we assign to the same variable multiple times?</p>
+<pre class="r"><code>find_assign({
+    a &lt;- 1
+    a &lt;- 2
+})</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;a&quot;</code></pre>
+<p>It’s easiest to fix this at the level of the wrapper function:</p>
+<pre class="r"><code>find_assign &lt;- function(x) unique(find_assign_rec(enexpr(x)))
+
+find_assign({
+    a &lt;- 1
+    a &lt;- 2
+})</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<p>What happens if we have nested calls to <code>&lt;-</code>. Currently we only return the first. That’s because when <code>&lt;-</code> occurs we immediately terminate recursion.</p>
+<pre class="r"><code>find_assign({
+    a &lt;- b &lt;- c &lt;- 1
+})</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<p>Instead we need to take a more rigorous approach. I think it’s best to keep the recursive function focused on the tree structure, so I’m going to extract out <code>find_assign_call()</code> into a separate function.</p>
+<pre class="r"><code>find_assign_call &lt;- function(x) {
+    if (is_call(x, &quot;&lt;-&quot;) &amp;&amp; is_symbol(x[[2]])) {
+        lhs &lt;- as_string(x[[2]])
+        children &lt;- as.list(x)[-1]
+    } else {
+        lhs &lt;- character()
+        children &lt;- as.list(x)
+    }
+    
+    c(lhs, flat_map_chr(children, find_assign_rec))
+}</code></pre>
+<p>and we have</p>
+<pre class="r"><code>find_assign_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = ,
+    symbol = character(),
+    
+    # Recursive cases
+    pairlist = flat_map_chr(x, find_assign_rec),
+    call = find_assign_call(x)
+  )
+}
+
+find_assign(a &lt;- b &lt;- c &lt;- 1)</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre class="r"><code>find_assign(system.time(x &lt;- print(y &lt;- 5)))</code></pre>
+<pre><code>## [1] &quot;x&quot; &quot;y&quot;</code></pre>
+</div>
+<div id="exercises-3" class="section level3">
+<h3><span class="header-section-number">1.4.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p><code>logical_abbr()</code> returns <code>TRUE</code> for <code>T(1, 2, 3)</code>. How could you modify <code>logical_abbr_rec()</code> so that it ignores function calls that use <code>T</code> or <code>F</code>?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>logical_abbr_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+
+    constant = FALSE,
+    symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;),
+
+    # Recursive cases
+    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+logical_abbr(T(1, 2, 3))</code></pre>
+<pre><code>## [1] FALSE</code></pre></li>
+<li><p><code>logical_abbr()</code> works with expressions. It currently fails when you give it a function. Why not? How could you modify <code>logical_abbr()</code> to make it work? What components of a function will you need to recurse over?</p>
+<pre class="r"><code>f &lt;- function(x = TRUE) {
+    g(x + T)
+}
+
+logical_abbr(!!f)</code></pre>
+<p><strong>A</strong>: We need to modify <code>expr_type(x)</code> and <code>logical_abbr_rec()</code> to handle functions.</p>
+<pre class="r"><code>expr_type &lt;- function(x) {
+  if (rlang::is_syntactic_literal(x)) {
+    &quot;constant&quot;
+  } else if (is.symbol(x)) {
+    &quot;symbol&quot;
+  } else if (is.call(x)) {
+    &quot;call&quot;
+  } else if (is.pairlist(x)) {
+    &quot;pairlist&quot;
+  } else if (is_function(x)) {
+    &quot;fun&quot;
+  } else {
+    typeof(x)
+  }
+}
+
+logical_abbr_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = FALSE,
+    symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;),
+
+    # Recursive cases
+    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
+    pairlist = purrr::some(x, logical_abbr_rec),
+
+    # function
+    fun = if (logical_abbr_rec(formals(x))) TRUE else logical_abbr_rec(body(x))
+
+  )
+}
+
+f &lt;- function(x = TRUE) {
+  y &lt;- 1;
+  g(x + T)
+}
+expr(!!f)</code></pre>
+<pre><code>## function(x = TRUE) {
+##   y &lt;- 1;
+##   g(x + T)
+## }</code></pre>
+<pre class="r"><code>typeof(expr(!!f))</code></pre>
+<pre><code>## [1] &quot;closure&quot;</code></pre>
+<pre class="r"><code>formals(expr(!!f))</code></pre>
+<pre><code>## $x
+## [1] TRUE</code></pre>
+<pre class="r"><code>typeof(formals(expr(!!f)))</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code>body(expr(!!f))</code></pre>
+<pre><code>## {
+##     y &lt;- 1
+##     g(x + T)
+## }</code></pre>
+<pre class="r"><code>typeof(body(expr(!!f)))</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>logical_abbr(!!f)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>f &lt;- function(x = TRUE) {
+  y &lt;- 1;
+  g(x + TRUE)
+}
+logical_abbr(!!f)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>f &lt;- function(x = T) {
+  y &lt;- 1;
+  g(x + TRUE)
+}
+logical_abbr(!!f)</code></pre>
+<pre><code>## [1] TRUE</code></pre></li>
+</ol>
 </div>
 </div>
 </div>

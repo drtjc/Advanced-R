@@ -9,7 +9,6 @@ library(pryr)
 
 
 
-
 expr_type <- function(x) {
   if (rlang::is_syntactic_literal(x)) {
     "constant"
@@ -24,11 +23,6 @@ expr_type <- function(x) {
   }
 }
 
-expr_type(expr(TRUE))
-expr_type(expr(T))
-
-
-
 switch_expr <- function(x, ...) {
   switch(expr_type(x), 
          ..., 
@@ -36,46 +30,98 @@ switch_expr <- function(x, ...) {
   )
 }
 
+flat_map_chr <- function(.x, .f, ...) {
+  purrr::flatten_chr(purrr::map(.x, .f, ...))
+}
 
-logical_abbr_rec <- function(x) {
+find_assign_rec <- function(x) {
+  switch_expr(x, 
+              # base cases
+              constant = ,
+              symbol = character(),
+              
+              # recursive cases
+              pairlist = flat_map_chr(as.list(x), find_assign_rec),
+              call = {
+                if (is_call(x, "<-")) {
+                  as_string(x[[2]])
+                } else {
+                  flat_map_chr(as.list(x), find_assign_rec)
+                }
+              }
+  )  
+}
+
+find_assign <- function(x) find_assign_rec(enexpr(x))
+
+
+find_assign_call <- function(x) {
+  if (is_call(x, "<-") && is_symbol(x[[2]])) {
+    lhs <- as_string(x[[2]])
+    children <- as.list(x)[-1]
+  } else {
+    lhs <- character()
+    children <- as.list(x)
+  }
+  
+  c(lhs, flat_map_chr(children, find_assign_rec))
+}
+
+find_assign_rec <- function(x) {
   switch_expr(x,
-    # Base cases
-    
-    constant = FALSE,
-    symbol = as_string(x) %in% c("F", "T"),
-    
-    # Recursive cases
-    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
-    pairlist = purrr::some(x, logical_abbr_rec)
+              # Base cases
+              constant = ,
+              symbol = character(),
+              
+              # Recursive cases
+              pairlist = flat_map_chr(x, find_assign_rec),
+              call = find_assign_call(x)
   )
 }
 
 
+find_assign(x)
+find_assign("x")
+find_assign(a <- 1)
+find_assign("a" <- 1)
+find_assign({a <- 1; b <- 2})
+"a" <- 1
+
+View(expr(a <- 1))
+expr(a <- 1)[[2]]
 
 
-logical_abbr <- function(x) {
-  logical_abbr_rec(enexpr(x))
-}
+View(expr(a <- b <- 1))
+expr(a <- b <- 1)[[2]]
+
+find_assign(a <- b <- 1)
 
 
-logical_abbr(T(1, 2, 3))
+pairlist(x = expr(a<-1))
+is.pairlist(pairlist(x = expr(a<-1)))
+find_assign(!!pairlist(x = expr(a<-1)))
+
+f <- function(x = a <- 1) TRUE
+formals(f)
+is.pairlist(formals(f))
+find_assign(!!formals(f))
 
 
-logical_abbr(T)
-logical_abbr(mean(x, na.rm = T))
-logical_abbr(function(x, na.rm = T) FALSE)
+
+
+ast(x <- 10)
+ast(assign("x", 10))
+ast("x" <- 10)
+
+
+"X" <- "y" <- 3
 
 
 
-p <- alist(x, na.rm = T)
-p <- as_pairlist(p)
-mode(p)
-typeof(p)
 
-p
-p[[1]]
-p[[2]]
-names(p)
+
+
+
 
 
 
