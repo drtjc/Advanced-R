@@ -555,7 +555,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x00000000166b51f8&gt;
+## &lt;bytecode: 0x000000000cf6a5a0&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -732,7 +732,7 @@ q2[[1]]</code></pre>
 <pre><code>## [1] &quot;srcref&quot;</code></pre>
 <pre class="r"><code>str(q2[[4]])</code></pre>
 <pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
-##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000013a62d58&gt;</code></pre>
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x000000000d2b0938&gt;</code></pre>
 <pre class="r"><code>identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
@@ -801,7 +801,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x00000000166b51f8&gt;
+## &lt;bytecode: 0x000000000cf6a5a0&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -1045,7 +1045,7 @@ find_assign(&quot;x&quot;)</code></pre>
 }
 
 flat_map_chr(letters[1:3], ~rep(., sample(3, 1)))</code></pre>
-<pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;c&quot;</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot; &quot;b&quot; &quot;b&quot; &quot;c&quot; &quot;c&quot; &quot;c&quot;</code></pre>
 <p>The recursive case for pairlists is simple: we iterate over every element of the pairlist (i.e. each function argument) and combine the results. The case for calls is a little bit more complex - if this is a call to <code>&lt;-</code> then we should return the second element of the call:</p>
 <pre class="r"><code>find_assign_rec &lt;- function(x) {
   switch_expr(x,
@@ -1117,7 +1117,11 @@ find_assign({
     }
     
     c(lhs, flat_map_chr(children, find_assign_rec))
-}</code></pre>
+}
+
+# Note that is_symbol(x[[2]]) means that assigments of the form 'a' &lt;- 1 are
+# not captured Should also check for a character Why check at all? Because
+# of replacement functions (see exercises)</code></pre>
 <p>and we have</p>
 <pre class="r"><code>find_assign_rec &lt;- function(x) {
   switch_expr(x,
@@ -1232,6 +1236,49 @@ logical_abbr(!!f)</code></pre>
 }
 logical_abbr(!!f)</code></pre>
 <pre><code>## [1] TRUE</code></pre></li>
+<li><p>Modify find assignment to also detect assignment using replacement functions, i.e. <code>names(x) &lt;- y</code>.<br />
+<strong>A</strong>: First let’s look at the AST:</p>
+<pre class="r"><code>lobstr::ast(names(x) &lt;- y)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-o-names 
+## | \-x 
+## \-y</code></pre>
+<pre class="r"><code>expr(names(x) &lt;- y)[[2]]</code></pre>
+<pre><code>## names(x)</code></pre>
+<pre class="r"><code>typeof(expr(names(x) &lt;- y)[[2]])</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<p>Note that the second element is a call, namely <code>names</code>. Hence we need to update <code>find_assign_call</code> as follows:</p>
+<pre class="r"><code>find_assign_call &lt;- function(x) {
+
+    # added is_character to handle assigments of form 'a' &lt;- 1
+    if (is_call(x, &quot;&lt;-&quot;) &amp;&amp; (is_symbol(x[[2]]) || is_character(x[[2]]))) {
+        lhs &lt;- as_string(x[[2]])
+        children &lt;- as.list(x)[-1]
+
+        # updated to handle replacement functions
+    } else if (is_call(x, &quot;&lt;-&quot;) &amp;&amp; is_call(x[[2]])) {
+        lhs &lt;- expr_text(x[[2]])
+        children &lt;- as.list(x)[-1]
+
+    } else {
+        lhs &lt;- character()
+        children &lt;- as.list(x)
+    }
+
+    c(lhs, flat_map_chr(children, find_assign_rec))
+}
+
+find_assign(&quot;a&quot; &lt;- 1)</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>find_assign(names(x) &lt;- 1)</code></pre>
+<pre><code>## [1] &quot;names(x)&quot;</code></pre>
+<pre class="r"><code>find_assign(names({
+    z &lt;- 1
+    x
+}) &lt;- y)</code></pre>
+<pre><code>## [1] &quot;names({\n    z &lt;- 1\n    x\n})&quot; &quot;z&quot;</code></pre>
+<pre class="r"><code>find_assign(names(x) &lt;- y &lt;- 1)</code></pre>
+<pre><code>## [1] &quot;names(x)&quot; &quot;y&quot;</code></pre></li>
 </ol>
 </div>
 </div>

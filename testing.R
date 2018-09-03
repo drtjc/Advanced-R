@@ -9,6 +9,20 @@ library(pryr)
 
 
 
+x <- 1:10
+`modify<-` <- function(x, position, value) {
+  x[position] <- value
+  x
+}
+modify(x, 1) <- 10
+x
+
+
+lobstr::ast(names(x) <- 1)
+View(expr(names(x) <- 1))
+View(expr(x <- 1))
+
+
 expr_type <- function(x) {
   if (rlang::is_syntactic_literal(x)) {
     "constant"
@@ -34,38 +48,11 @@ flat_map_chr <- function(.x, .f, ...) {
   purrr::flatten_chr(purrr::map(.x, .f, ...))
 }
 
-find_assign_rec <- function(x) {
-  switch_expr(x, 
-              # base cases
-              constant = ,
-              symbol = character(),
-              
-              # recursive cases
-              pairlist = flat_map_chr(as.list(x), find_assign_rec),
-              call = {
-                if (is_call(x, "<-")) {
-                  as_string(x[[2]])
-                } else {
-                  flat_map_chr(as.list(x), find_assign_rec)
-                }
-              }
-  )  
-}
-
-find_assign <- function(x) find_assign_rec(enexpr(x))
 
 
-find_assign_call <- function(x) {
-  if (is_call(x, "<-") && is_symbol(x[[2]])) {
-    lhs <- as_string(x[[2]])
-    children <- as.list(x)[-1]
-  } else {
-    lhs <- character()
-    children <- as.list(x)
-  }
-  
-  c(lhs, flat_map_chr(children, find_assign_rec))
-}
+find_assign <- function(x) unique(find_assign_rec(enexpr(x)))
+
+
 
 find_assign_rec <- function(x) {
   switch_expr(x,
@@ -79,42 +66,35 @@ find_assign_rec <- function(x) {
   )
 }
 
+find_assign_call <- function(x) {
+  if (is_call(x, "<-") && (is_symbol(x[[2]]) || is_character(x[[2]]))) {
+    lhs <- as_string(x[[2]])
+    children <- as.list(x)[-1]
+  } else if (is_call(x, "<-") && is_call(x[[2]])) {
+    lhs <- expr_text(x[[2]])
+    children <- as.list(x)[-1]
+  } else {
+    lhs <- character()
+    children <- as.list(x)
+  }
+  
+  c(lhs, flat_map_chr(children, find_assign_rec))
+}
+
+
 
 find_assign(x)
 find_assign("x")
 find_assign(a <- 1)
 find_assign("a" <- 1)
 find_assign({a <- 1; b <- 2})
+find_assign({a <- 1; a <- 2})
+rm(a)
 "a" <- 1
 
-View(expr(a <- 1))
-expr(a <- 1)[[2]]
-
-
-View(expr(a <- b <- 1))
-expr(a <- b <- 1)[[2]]
-
-find_assign(a <- b <- 1)
-
-
-pairlist(x = expr(a<-1))
-is.pairlist(pairlist(x = expr(a<-1)))
-find_assign(!!pairlist(x = expr(a<-1)))
-
-f <- function(x = a <- 1) TRUE
-formals(f)
-is.pairlist(formals(f))
-find_assign(!!formals(f))
-
-
-
-
-ast(x <- 10)
-ast(assign("x", 10))
-ast("x" <- 10)
-
-
-"X" <- "y" <- 3
+find_assign(names(x) <- 1)
+find_assign(names({z <- 1; x}) <- y)
+find_assign(names(x) <- y <- 1)
 
 
 
@@ -123,6 +103,17 @@ ast("x" <- 10)
 
 
 
+e <- expr(names(x) <- 1)
+
+mode(e)
+mode(e[[2]])
+mode(as.list(e)[[2]])
+
+
+e1 <- expression(names(x) <- 1)
+is.expression(e1)
+is_expression(e1)
+View(e1)
 
 
 
