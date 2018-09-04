@@ -93,6 +93,9 @@ img {
 .tabbed-pane {
   padding-top: 12px;
 }
+.html-widget {
+  margin-bottom: 20px;
+}
 button.code-folding-btn:focus {
   outline: none;
 }
@@ -7889,7 +7892,7 @@ q2[[1]]</code></pre>
 <pre><code>## [1] &quot;srcref&quot;</code></pre>
 <pre class="r"><code>str(q2[[4]])</code></pre>
 <pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
-##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000019574078&gt;</code></pre>
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000017ae1868&gt;</code></pre>
 <pre class="r"><code>identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
@@ -7958,7 +7961,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x000000001a27a7d8&gt;
+## &lt;bytecode: 0x000000001931b080&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -8080,9 +8083,1087 @@ deparse(expr)</code></pre>
 </ol>
 </div>
 </div>
+<div id="case-studies" class="section level2">
+<h2><span class="header-section-number">10.4</span> Case Studies</h2>
+<p>To conclude the chapter I’m going to pull together everything that you’ve learned about ASTs and use that knowledge to solve more complicated problems. The inspiration comes from the base codetools package, which provides two interesting functions:</p>
+<ul>
+<li><p><code>findGlobals()</code> locates all global variables used by a function. This can be useful if you want to check that your function doesn’t inadvertently rely on variables defined in their parent environment.</p></li>
+<li><p><code>checkUsage()</code> checks for a range of common problems including unused local variables, unused parameters, and the use of partial argument matching.</p></li>
+</ul>
+<p>Getting all of the details of these functions correct is fiddly, so we won’t explore their full expression. Instead we’ll focus on the big underlying idea: recursion on the AST. Recursive functions are a natural fit to tree-like data structures because a recursive function is made up of two parts that correspond to the two parts of the tree:</p>
+<p>The recursive case handles the nodes in the tree. Typically, you’ll do something to each child of node, usually calling the recursive function again, and then combine the results back together again. For expressions, you’ll need to handle calls and pairlists (function arguments).</p>
+<p>The base case handles the leaves of the tree. The base cases ensure that the function eventually terminates, by solving the simplest cases directly. For expressions, you need to handle symbols and constants in the base case.</p>
+<p>To make this pattern easier to see, we’ll need two helper functions. First we define <code>expr_type()</code> which will return “constant” for constant, “symbol” for symbols, “call”, for calls, “pairlist” for pairlists, and the “type” of anything else:</p>
+<pre class="r"><code>expr_type &lt;- function(x) {
+    if (rlang::is_syntactic_literal(x)) {
+        &quot;constant&quot;
+    } else if (is.symbol(x)) {
+        &quot;symbol&quot;
+    } else if (is.call(x)) {
+        &quot;call&quot;
+    } else if (is.pairlist(x)) {
+        &quot;pairlist&quot;
+    } else {
+        typeof(x)
+    }
+}
+
+expr_type(expr(&quot;a&quot;))</code></pre>
+<pre><code>## [1] &quot;constant&quot;</code></pre>
+<pre class="r"><code>expr_type(expr(f(1, 2)))</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<p>We’ll couple this with a wrapper around the switch function:</p>
+<pre class="r"><code>switch_expr &lt;- function(x, ...) {
+    switch(expr_type(x), ..., stop(&quot;Don't know how to handle type &quot;, typeof(x), 
+        call. = FALSE))
+}</code></pre>
+<p>With these two functions in hand, the basic template for any function that walks the AST is as follows:</p>
+<pre class="r"><code>recurse_call &lt;- function(x) {
+  switch_expr(x, 
+    
+    # Base cases
+    symbol = ,
+    constant = ,
+    
+    # Recursive cases
+    call = ,
+    pairlist = 
+  )
+}</code></pre>
+<div id="finding-f-and-t" class="section level3">
+<h3><span class="header-section-number">10.4.1</span> Finding F and T</h3>
+<p>We’ll start simple with a function that determines whether a function uses the logical abbreviations <code>T</code> and <code>F</code>: it will return <code>TRUE</code> if it finds a logical abbreviation, and <code>FALSE</code> otherwise. Using <code>T</code> and <code>F</code> is generally considered to be poor coding practice, and is something that <code>R CMD check</code> will warn about.</p>
+<p>Let’s first compare the AST for <code>T</code> vs. <code>TRUE</code>:</p>
+<pre class="r"><code>ast(TRUE)</code></pre>
+<pre><code>## \-  TRUE</code></pre>
+<pre class="r"><code>ast(T)</code></pre>
+<pre><code>## \- `T</code></pre>
+<pre class="r"><code>expr_type(expr(TRUE))</code></pre>
+<pre><code>## [1] &quot;constant&quot;</code></pre>
+<pre class="r"><code>expr_type(expr(T))</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<p><code>TRUE</code> is parsed as a logical vector of length one, while <code>T</code> is parsed as a name. This tells us how to write our base cases for the recursive function: a constant is never a logical abbreviation, and a symbol is an abbreviation if it’s “F” or “T”:</p>
+<pre class="r"><code>logical_abbr_rec &lt;- function(x) {
+    switch_expr(x, constant = FALSE, symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;))
+}
+
+logical_abbr_rec(expr(TRUE))</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>logical_abbr_rec(expr(T))</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<pre class="r"><code>logical_abbr_rec(expr(F))</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<pre class="r"><code>logical_abbr_rec(expr(W))</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<p>I’ve written <code>logical_abbr_rec()</code> function assuming that the input will be an expression as this will make the recursive operation simpler. However, when writing a recursive function it’s common to write a wrapper that provides defaults or makes the function a little easier to use. Here we’ll typically make a wrapper that quotes its input (we’ll learn more about that in the next chapter), so we don’t need to use <code>expr()</code> every time.</p>
+<pre class="r"><code>logical_abbr &lt;- function(x) {
+    logical_abbr_rec(enexpr(x))
+}
+
+logical_abbr(T)</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<pre class="r"><code>logical_abbr(FALSE)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>Next we need to implement the recursive cases. Here it’s simple because we want to do the same thing for calls and for pairlists: recursively apply the function to each subcomponent, and return <code>TRUE</code> if any subcomponent contains a logical abbreviation. This is made easy by <code>purrr::some()</code>, which iterates over a list and returns TRUE if the predicate function is true for any element.</p>
+<pre class="r"><code>logical_abbr_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = FALSE,
+    symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;),
+    
+    # Recursive cases
+    call = , #If there is a match then that element is evaluated unless it is missing, in which case the next non-missing element is evaluated
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+logical_abbr(mean(x, na.rm = T)) # matches as call, but then 'pairlist' line is excuted. Remember, a call is a list</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<pre class="r"><code>logical_abbr(function(x, na.rm = T) FALSE)</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+</div>
+<div id="finding-all-variables-created-by-assignment" class="section level3">
+<h3><span class="header-section-number">10.4.2</span> Finding all variables created by assignment</h3>
+<p>The next task, listing all variables created by assignment, is a little more complicated. We’ll start simply, and then make the function progressively more rigorous. We start by looking at the AST for assignment:</p>
+<pre class="r"><code>ast(x &lt;- 10)</code></pre>
+<pre><code>## \- ()
+##   \- `&lt;-
+##   \- `x
+##   \-  10</code></pre>
+<p>Assignment is a call where the first element is the symbol <code>&lt;-</code>, the second is name of variable, and the third is the value to be assigned. Next, we need to decide what data structure we’re going to use for the results. Here I think it will be easiest it we return a character vector.</p>
+<p>With that in hand we can start by implementing the base cases and providing a helpful wrapper around the recursive function. The base cases here are really simple!</p>
+<pre class="r"><code>find_assign_rec &lt;- function(x) {
+    switch_expr(x, constant = , symbol = character())
+}
+find_assign &lt;- function(x) find_assign_rec(enexpr(x))
+
+find_assign(&quot;x&quot;)</code></pre>
+<pre><code>## character(0)</code></pre>
+<pre class="r"><code>find_assign(x)</code></pre>
+<pre><code>## character(0)</code></pre>
+<p>Next we implement the recursive cases. This is made easier by a function that should exist in purrr, but currently doesn’t. <code>flat_map_chr()</code> expects <code>.f</code> to return a character vector of arbitrary length, and flattens all results into a single character vector.</p>
+<pre class="r"><code>flat_map_chr &lt;- function(.x, .f, ...) {
+    purrr::flatten_chr(purrr::map(.x, .f, ...))
+}
+
+flat_map_chr(letters[1:3], ~rep(., sample(3, 1)))</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;a&quot; &quot;a&quot; &quot;b&quot; &quot;c&quot; &quot;c&quot;</code></pre>
+<p>The recursive case for pairlists is simple: we iterate over every element of the pairlist (i.e. each function argument) and combine the results. The case for calls is a little bit more complex - if this is a call to <code>&lt;-</code> then we should return the second element of the call:</p>
+<pre class="r"><code>find_assign_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = ,
+    symbol = character(),
+    
+    # Recursive cases
+    pairlist = flat_map_chr(as.list(x), find_assign_rec),
+    call = {
+      if (is_call(x, &quot;&lt;-&quot;)) {
+        as_string(x[[2]])
+      } else {
+        flat_map_chr(as.list(x), find_assign_rec)
+      }
+    }
+  )
+}
+
+find_assign(a &lt;- 1) # a is a symbol</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>find_assign(&quot;a&quot; &lt;- 1) # is a character. Note that &quot;a&quot; &lt;- 1 is valid syntax</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>find_assign({a &lt;- 1; b &lt;- 2})</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;b&quot;</code></pre>
+<pre class="r"><code># some ways of passing a pairlist directly
+pairlist(x = expr(a &lt;- 1))</code></pre>
+<pre><code>## $x
+## a &lt;- 1</code></pre>
+<pre class="r"><code>is.pairlist(pairlist(x = expr(a &lt;- 1)))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>find_assign(!!pairlist(x = expr(a &lt;- 1)))</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<pre class="r"><code>f &lt;- function(x = a &lt;- 1) TRUE
+formals(f)</code></pre>
+<pre><code>## $x
+## a &lt;- 1</code></pre>
+<pre class="r"><code>is.pairlist(formals(f))</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>find_assign(!!formals(f))</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<p>Now we need to make our function more robust by coming up with examples intended to break it. What happens when we assign to the same variable multiple times?</p>
+<pre class="r"><code>find_assign({
+    a &lt;- 1
+    a &lt;- 2
+})</code></pre>
+<pre><code>## [1] &quot;a&quot; &quot;a&quot;</code></pre>
+<p>It’s easiest to fix this at the level of the wrapper function:</p>
+<pre class="r"><code>find_assign &lt;- function(x) unique(find_assign_rec(enexpr(x)))
+
+find_assign({
+    a &lt;- 1
+    a &lt;- 2
+})</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<p>What happens if we have nested calls to <code>&lt;-</code>. Currently we only return the first. That’s because when <code>&lt;-</code> occurs we immediately terminate recursion.</p>
+<pre class="r"><code>find_assign({
+    a &lt;- b &lt;- c &lt;- 1
+})</code></pre>
+<pre><code>## [1] &quot;a&quot;</code></pre>
+<p>Instead we need to take a more rigorous approach. I think it’s best to keep the recursive function focused on the tree structure, so I’m going to extract out <code>find_assign_call()</code> into a separate function.</p>
+<pre class="r"><code>find_assign_call &lt;- function(x) {
+    if (is_call(x, &quot;&lt;-&quot;) &amp;&amp; is_symbol(x[[2]])) {
+        lhs &lt;- as_string(x[[2]])
+        children &lt;- as.list(x)[-1]
+    } else {
+        lhs &lt;- character()
+        children &lt;- as.list(x)
+    }
+    
+    c(lhs, flat_map_chr(children, find_assign_rec))
+}
+
+# Note that is_symbol(x[[2]]) means that assigments of the form 'a' &lt;- 1 are
+# not captured Should also check for a character Why check at all? Because
+# of replacement functions (see exercises)</code></pre>
+<p>and we have</p>
+<pre class="r"><code>find_assign_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = ,
+    symbol = character(),
+    
+    # Recursive cases
+    pairlist = flat_map_chr(x, find_assign_rec),
+    call = find_assign_call(x)
+  )
+}
+
+find_assign(a &lt;- b &lt;- c &lt;- 1)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre>
+<pre class="r"><code>find_assign(system.time(x &lt;- print(y &lt;- 5)))</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre>
+</div>
+<div id="exercises-31" class="section level3">
+<h3><span class="header-section-number">10.4.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p><code>logical_abbr()</code> returns <code>TRUE</code> for <code>T(1, 2, 3)</code>. How could you modify <code>logical_abbr_rec()</code> so that it ignores function calls that use <code>T</code> or <code>F</code>?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>logical_abbr_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+
+    constant = FALSE,
+    symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;),
+
+    # Recursive cases
+    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
+    pairlist = purrr::some(x, logical_abbr_rec)
+  )
+}
+
+logical_abbr(T(1, 2, 3))</code></pre>
+<pre><code>## [1] FALSE</code></pre></li>
+<li><p><code>logical_abbr()</code> works with expressions. It currently fails when you give it a function. Why not? How could you modify <code>logical_abbr()</code> to make it work? What components of a function will you need to recurse over?</p>
+<pre class="r"><code>f &lt;- function(x = TRUE) {
+    g(x + T)
+}
+
+logical_abbr(!!f)</code></pre>
+<p><strong>A</strong>: We need to modify <code>expr_type(x)</code> and <code>logical_abbr_rec()</code> to handle functions.</p>
+<pre class="r"><code>expr_type &lt;- function(x) {
+  if (rlang::is_syntactic_literal(x)) {
+    &quot;constant&quot;
+  } else if (is.symbol(x)) {
+    &quot;symbol&quot;
+  } else if (is.call(x)) {
+    &quot;call&quot;
+  } else if (is.pairlist(x)) {
+    &quot;pairlist&quot;
+  } else if (is_function(x)) {
+    &quot;fun&quot;
+  } else {
+    typeof(x)
+  }
+}
+
+logical_abbr_rec &lt;- function(x) {
+  switch_expr(x,
+    # Base cases
+    constant = FALSE,
+    symbol = as_string(x) %in% c(&quot;F&quot;, &quot;T&quot;),
+
+    # Recursive cases
+    call = purrr::some(as.pairlist(x[-1]), logical_abbr_rec),
+    pairlist = purrr::some(x, logical_abbr_rec),
+
+    # function
+    fun = if (logical_abbr_rec(formals(x))) TRUE else logical_abbr_rec(body(x))
+
+  )
+}
+
+f &lt;- function(x = TRUE) {
+  y &lt;- 1;
+  g(x + T)
+}
+expr(!!f)</code></pre>
+<pre><code>## function(x = TRUE) {
+##   y &lt;- 1;
+##   g(x + T)
+## }</code></pre>
+<pre class="r"><code>typeof(expr(!!f))</code></pre>
+<pre><code>## [1] &quot;closure&quot;</code></pre>
+<pre class="r"><code>formals(expr(!!f))</code></pre>
+<pre><code>## $x
+## [1] TRUE</code></pre>
+<pre class="r"><code>typeof(formals(expr(!!f)))</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code>body(expr(!!f))</code></pre>
+<pre><code>## {
+##     y &lt;- 1
+##     g(x + T)
+## }</code></pre>
+<pre class="r"><code>typeof(body(expr(!!f)))</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>logical_abbr(!!f)</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<pre class="r"><code>f &lt;- function(x = TRUE) {
+  y &lt;- 1;
+  g(x + TRUE)
+}
+logical_abbr(!!f)</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
+<pre class="r"><code>f &lt;- function(x = T) {
+  y &lt;- 1;
+  g(x + TRUE)
+}
+logical_abbr(!!f)</code></pre>
+<pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre></li>
+<li><p>Modify find assignment to also detect assignment using replacement functions, i.e. <code>names(x) &lt;- y</code>.<br />
+<strong>A</strong>: First let’s look at the AST:</p>
+<pre class="r"><code>lobstr::ast(names(x) &lt;- y)</code></pre>
+<pre><code>## o-`&lt;-` 
+## +-o-names 
+## | \-x 
+## \-y</code></pre>
+<pre class="r"><code>expr(names(x) &lt;- y)[[2]]</code></pre>
+<pre><code>## names(x)</code></pre>
+<pre class="r"><code>typeof(expr(names(x) &lt;- y)[[2]])</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<p>Note that the second element is a call, namely <code>names</code>. Hence we need to update <code>find_assign_call</code> as follows:</p>
+<pre class="r"><code>find_assign_call &lt;- function(x) {
+
+    # added is_character to handle assigments of form 'a' &lt;- 1
+    if (is_call(x, &quot;&lt;-&quot;) &amp;&amp; (is_symbol(x[[2]]) || is_character(x[[2]]))) {
+        lhs &lt;- as_string(x[[2]])
+        children &lt;- as.list(x)[-1]
+
+        # updated to handle replacement functions
+    } else if (is_call(x, &quot;&lt;-&quot;) &amp;&amp; is_call(x[[2]])) {
+        lhs &lt;- expr_text(x[[2]])
+        children &lt;- as.list(x)[-1]
+
+    } else {
+        lhs &lt;- character()
+        children &lt;- as.list(x)
+    }
+
+    c(lhs, flat_map_chr(children, find_assign_rec))
+}
+
+find_assign(&quot;a&quot; &lt;- 1)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre>
+<pre class="r"><code>find_assign(names(x) &lt;- 1)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre>
+<pre class="r"><code>find_assign(names({
+    z &lt;- 1
+    x
+}) &lt;- y)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre>
+<pre class="r"><code>find_assign(names(x) &lt;- y &lt;- 1)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre></li>
+<li><p>Write a function that extracts all calls to a specified function. <strong>A</strong>:</p>
+<pre class="r"><code># unchanged
+expr_type &lt;- function(x) {
+  if (rlang::is_syntactic_literal(x)) {
+    &quot;constant&quot;
+  } else if (is.symbol(x)) {
+    &quot;symbol&quot;
+  } else if (is.call(x)) {
+    &quot;call&quot;
+  } else if (is.pairlist(x)) {
+    &quot;pairlist&quot;
+  } else {
+    typeof(x)
+  }
+}
+
+switch_expr &lt;- function(x, ...) {
+  switch(expr_type(x), 
+         ..., 
+         stop(&quot;Don't know how to handle type &quot;, typeof(x), call. = FALSE)  
+  )
+}
+
+flat_map_chr &lt;- function(.x, .f, ...) {
+  purrr::flatten_chr(purrr::map(.x, .f, ...))
+}
+
+# changed
+find_function &lt;- function(x, FUN) unique(find_function_rec(enexpr(x), enexpr(FUN)))
+
+find_function_rec &lt;- function(x, FUN) {
+  switch_expr(x,
+              # Base cases
+              constant = ,
+              symbol = character(),
+
+              # Recursive cases
+              pairlist = flat_map_chr(x, find_funtion_rec, FUN),
+              call = find_function_call(x, FUN)
+  )
+}
+
+find_function_call &lt;- function(x, FUN) {
+  if (is_call(x, FUN)) {
+    lhs &lt;- expr_text(x)
+    children &lt;- as.list(x)[-1]
+  } else {
+    lhs &lt;- character()
+    children &lt;- as.list(x)
+  }
+
+  c(lhs, flat_map_chr(children, find_function_rec, FUN))
+}
+
+# examples
+find_function(a &lt;- 1, `&lt;-`)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_function_rec, FUN)): unused argument (flat_map_chr(children, find_function_rec, FUN))</code></pre>
+<pre class="r"><code>find_function(a &lt;- b &lt;- 1, `&lt;-`)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_function_rec, FUN)): unused argument (flat_map_chr(children, find_function_rec, FUN))</code></pre>
+<pre class="r"><code>find_function(mean(1:3), mean)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_function_rec, FUN)): unused argument (flat_map_chr(children, find_function_rec, FUN))</code></pre>
+<pre class="r"><code>find_function(mean(mean(1:3)), mean)</code></pre>
+<pre><code>## Error in c(lhs, flat_map_chr(children, find_function_rec, FUN)): unused argument (flat_map_chr(children, find_function_rec, FUN))</code></pre></li>
+</ol>
+</div>
+</div>
 </div>
 <div id="quasiquotation" class="section level1">
 <h1><span class="header-section-number">11</span> Quasiquotation</h1>
+<p>There are two sides to quasiquotation:</p>
+<ul>
+<li><p>Quotation allows you to capture the AST associated with an argument. As a function author, this gives you a lot of power to influence how expressions are evaluated.</p></li>
+<li><p>Unquotation allows you to selectively evaluate parts of a quoted expression. This is a powerful tool that makes it easy to build up a complex AST from simpler fragments.</p></li>
+</ul>
+<div id="example" class="section level2">
+<h2><span class="header-section-number">11.1</span> Example</h2>
+<p>Imagine you’re creating a lot of strings by joining together words:</p>
+<pre class="r"><code>paste(&quot;Good&quot;, &quot;morning&quot;, &quot;Hadley&quot;)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<pre class="r"><code>paste(&quot;Good&quot;, &quot;afternoon&quot;, &quot;Alice&quot;)</code></pre>
+<pre><code>## [1] &quot;Good afternoon Alice&quot;</code></pre>
+<p>You are sick and tired of writing all those quotes, and instead you just want to use bare words. To that end, you’ve managed to write the following function:</p>
+<pre class="r"><code>cement &lt;- function(...) {
+    dots &lt;- exprs(...)
+    paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)
+}
+
+cement(Good, morning, Hadley)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<pre class="r"><code>cement(Good, afternoon, Alice)</code></pre>
+<pre><code>## [1] &quot;Good afternoon Alice&quot;</code></pre>
+<p>Formally, this function quotes the arguments in <code>...</code>. You can think of it as automatically putting quotation marks around each argument. That’s not precisely true as the intermediate objects it generates are expressions, not strings, but it’s a useful approximation for now.</p>
+<p>This function is nice because we no longer need to type quotes. The problem, however, comes when we want to use variables. It’s easy to use variables with <code>paste()</code> as we just don’t surround them with quotes:</p>
+<pre class="r"><code>name &lt;- &quot;Hadley&quot;
+time &lt;- &quot;morning&quot;
+
+paste(&quot;Good&quot;, time, name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<p>Obviously this doesn’t work with <code>cement()</code> because every input is automatically quoted:</p>
+<pre class="r"><code>cement(Good, time, name)</code></pre>
+<pre><code>## [1] &quot;Good time name&quot;</code></pre>
+<p>We need some way to explicitly unquote the input, to tell <code>cement()</code> to remove the automatic quote marks. Here we need time and name to be treated differently to Good. Quasiquotation give us a standard tool to do so: <code>!!</code>, called “unquote”, and pronounced bang-bang. <code>!!</code> tells a quoting function to drop the implicit quotes:</p>
+<pre class="r"><code>cement(Good, !!time, !!name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<p>It’s useful to compare <code>cement()</code> and <code>paste()</code> directly. <code>paste()</code> evaluates its arguments, so we need to quote where needed; <code>cement()</code> quotes its arguments, so we need to unquote where needed.</p>
+<pre class="r"><code>paste(&quot;Good&quot;, time, name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<pre class="r"><code>cement(Good, !!time, !!name)</code></pre>
+<pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
+<div id="other" class="section level3">
+<h3><span class="header-section-number">11.1.1</span> Other</h3>
+<pre class="r"><code>name &lt;- &quot;tom&quot;
+time &lt;- &quot;morning&quot;
+
+dots &lt;- exprs(Good, morning, tom)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good morning tom&quot;</code></pre>
+<pre class="r"><code>dots &lt;- exprs(Good, time, name)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good time name&quot;</code></pre>
+<pre class="r"><code>dots &lt;- exprs(Good, !!time, !!name)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;character&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good morning tom&quot;</code></pre>
+<pre class="r"><code>time &lt;- 33
+dots &lt;- exprs(Good, !!time, !!name)
+typeof(dots[[2]])</code></pre>
+<pre><code>## [1] &quot;double&quot;</code></pre>
+<pre class="r"><code>paste(purrr::map(dots, expr_name), collapse = &quot; &quot;)</code></pre>
+<pre><code>## [1] &quot;Good 33 tom&quot;</code></pre>
+</div>
+</div>
+<div id="vocabulary" class="section level2">
+<h2><span class="header-section-number">11.2</span> Vocabulary</h2>
+<p>The distinction between quoted and evaluated arguments is important:</p>
+<ul>
+<li>An evaluated argument obeys R’s usual evaluation rules.</li>
+<li>A quoted argument is captured by the function and something unusual will happen.</li>
+</ul>
+<p>If you’re even unsure about whether an argument is quoted or evaluated, try executing the code outside of the function. If it doesn’t work, then that argument is quoted. For example, you can use this technique to determine that the first argument to <code>library()</code> is quoted:</p>
+<pre class="r"><code># works
+library(MASS)
+
+# fails
+MASS</code></pre>
+<p>Talking about whether an argument is quoted or evaluated is a more precise way of stating whether or not a function uses NSE.</p>
+<div id="exercises-32" class="section level3">
+<h3><span class="header-section-number">11.2.1</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>For each function in the following base R code, identify which arguments are quoted and which are evaluated.</p>
+<pre class="r"><code>library(MASS)
+
+mtcars2 &lt;- subset(mtcars, cyl == 4)
+
+with(mtcars2, sum(vs))
+sum(mtcars2$am)
+
+rm(mtcars2)</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>library(MASS)</code></pre>
+<pre><code>## 
+## Attaching package: 'MASS'</code></pre>
+<pre><code>## The following object is masked from 'package:dplyr':
+## 
+##     select</code></pre>
+<pre class="r"><code>MASS  # error - quoted</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'MASS' not found</code></pre>
+<pre class="r"><code>mtcars2 &lt;- subset(mtcars, cyl == 4)
+mtcars</code></pre>
+<pre><code>##                      mpg cyl     disp  hp drat    wt  qsec vs am gear carb
+## Mazda RX4           21.0   6 2.621936 110 3.90 2.620 16.46  0  1    4    4
+## Mazda RX4 Wag       21.0   6 2.621936 110 3.90 2.875 17.02  0  1    4    4
+## Datsun 710          22.8   4 1.769807  93 3.85 2.320 18.61  1  1    4    1
+## Hornet 4 Drive      21.4   6 4.227872 110 3.08 3.215 19.44  1  0    3    1
+## Hornet Sportabout   18.7   8 5.899356 175 3.15 3.440 17.02  0  0    3    2
+## Valiant             18.1   6 3.687098 105 2.76 3.460 20.22  1  0    3    1
+## Duster 360          14.3   8 5.899356 245 3.21 3.570 15.84  0  0    3    4
+## Merc 240D           24.4   4 2.403988  62 3.69 3.190 20.00  1  0    4    2
+## Merc 230            22.8   4 2.307304  95 3.92 3.150 22.90  1  0    4    2
+## Merc 280            19.2   6 2.746478 123 3.92 3.440 18.30  1  0    4    4
+## Merc 280C           17.8   6 2.746478 123 3.92 3.440 18.90  1  0    4    4
+## Merc 450SE          16.4   8 4.519562 180 3.07 4.070 17.40  0  0    3    3
+## Merc 450SL          17.3   8 4.519562 180 3.07 3.730 17.60  0  0    3    3
+## Merc 450SLC         15.2   8 4.519562 180 3.07 3.780 18.00  0  0    3    3
+## Cadillac Fleetwood  10.4   8 7.734711 205 2.93 5.250 17.98  0  0    3    4
+## Lincoln Continental 10.4   8 7.538066 215 3.00 5.424 17.82  0  0    3    4
+## Chrysler Imperial   14.7   8 7.210324 230 3.23 5.345 17.42  0  0    3    4
+## Fiat 128            32.4   4 1.289665  66 4.08 2.200 19.47  1  1    4    1
+## Honda Civic         30.4   4 1.240503  52 4.93 1.615 18.52  1  1    4    2
+## Toyota Corolla      33.9   4 1.165123  65 4.22 1.835 19.90  1  1    4    1
+## Toyota Corona       21.5   4 1.968091  97 3.70 2.465 20.01  1  0    3    1
+## Dodge Challenger    15.5   8 5.211098 150 2.76 3.520 16.87  0  0    3    2
+## AMC Javelin         15.2   8 4.981678 150 3.15 3.435 17.30  0  0    3    2
+## Camaro Z28          13.3   8 5.735485 245 3.73 3.840 15.41  0  0    3    4
+## Pontiac Firebird    19.2   8 6.554840 175 3.08 3.845 17.05  0  0    3    2
+## Fiat X1-9           27.3   4 1.294581  66 4.08 1.935 18.90  1  1    4    1
+## Porsche 914-2       26.0   4 1.971368  91 4.43 2.140 16.70  0  1    5    2
+## Lotus Europa        30.4   4 1.558413 113 3.77 1.513 16.90  1  1    5    2
+## Ford Pantera L      15.8   8 5.751872 264 4.22 3.170 14.50  0  1    5    4
+## Ferrari Dino        19.7   6 2.376130 175 3.62 2.770 15.50  0  1    5    6
+## Maserati Bora       15.0   8 4.932517 335 3.54 3.570 14.60  0  1    5    8
+## Volvo 142E          21.4   4 1.982839 109 4.11 2.780 18.60  1  1    4    2</code></pre>
+<pre class="r"><code>cyl  # error - quoted</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'cyl' not found</code></pre>
+<pre class="r"><code>with(mtcars2, sum(vs))</code></pre>
+<pre><code>## [1] 10</code></pre>
+<pre class="r"><code>vs  # error - quoted</code></pre>
+<pre><code>## Error in eval(expr, envir, enclos): object 'vs' not found</code></pre>
+<pre class="r"><code>sum(mtcars2$am)</code></pre>
+<pre><code>## [1] 8</code></pre>
+<pre class="r"><code>mtcars2$am</code></pre>
+<pre><code>##  [1] 1 0 0 1 1 1 0 1 1 1 1</code></pre></li>
+<li><p>For each function in the following tidyverse code, identify which arguments are quoted and which are evaluated.</p>
+<pre class="r"><code>library(dplyr)
+library(ggplot2)
+
+by_cyl &lt;- mtcars %&gt;% group_by(cyl) %&gt;% summarise(mean = mean(mpg))
+
+ggplot(by_cyl, aes(cyl, mean)) + geom_point()</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>by_cyl &lt;- mtcars %&gt;%
+  group_by(cyl) %&gt;%  # cyl - quoted
+  summarise(mean = mean(mpg)) # mean = mean(mpg) - quoted
+
+ggplot(by_cyl, aes(cyl, mean)) + geom_point() # cyl, mean - quoted</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="quotation" class="section level2">
+<h2><span class="header-section-number">11.3</span> Quotation</h2>
+<p>The first part of quasiquotation is quotation: capturing an AST without evaluating it. There are two components to this: capturing an expression directly, and capturing an expression from a lazily-evaluated function argument.</p>
+<div id="with-rlang" class="section level3">
+<h3><span class="header-section-number">11.3.1</span> With rlang</h3>
+<p>For interactive exploration, the most important quoting function is <code>expr()</code>. It captures its argument exactly as provided:</p>
+<pre class="r"><code>expr(x + y)</code></pre>
+<pre><code>## x + y</code></pre>
+<pre class="r"><code>expr(1/2/3)</code></pre>
+<pre><code>## 1/2/3</code></pre>
+<pre class="r"><code>expr(x + y)[[1]]</code></pre>
+<pre><code>## `+`</code></pre>
+<pre class="r"><code>expr(x + y)[[2]]</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>expr(x + y)[[3]]</code></pre>
+<pre><code>## y</code></pre>
+<p><code>exprs()</code> is useful interactively to make a list of expressions:</p>
+<pre class="r"><code>exprs(x = x^2, y = y^3, z = z^4)</code></pre>
+<pre><code>## $x
+## x^2
+## 
+## $y
+## y^3
+## 
+## $z
+## z^4</code></pre>
+<p><code>expr()</code> is great for interactive exploration, because it captures what you, the developer, typed. It’s not useful inside a function:</p>
+<pre class="r"><code>f1 &lt;- function(x) expr(x)
+f1(a + b + c)</code></pre>
+<pre><code>## x</code></pre>
+<p>Instead, we need another function: <code>enexpr()</code>. This captures what the user supplies to the function by looking at the internal promise object that powers lazy evaluation.</p>
+<pre class="r"><code>f2 &lt;- function(x) enexpr(x)
+f2(a + b + c)</code></pre>
+<pre><code>## a + b + c</code></pre>
+<p>To capture multiple arguments, use <code>enexprs()</code>:</p>
+<pre class="r"><code>f &lt;- function(...) enexprs(...)
+f(x = 1, y = 10 * z)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+<p>Note: <code>exprs()</code> can return missing arguments, but no<code>expr()</code></p>
+<pre class="r"><code>val &lt;- exprs(x = )
+is_missing(val$x)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>val &lt;- expr(x = )</code></pre>
+<pre><code>## Error in expr(x = ): unused argument (alist(x = ))</code></pre>
+</div>
+<div id="with-base-r" class="section level3">
+<h3><span class="header-section-number">11.3.2</span> With Base R</h3>
+<p>The base equivalent of <code>expr()</code> is <code>quote()</code>:</p>
+<pre class="r"><code>quote(x + y)</code></pre>
+<pre><code>## x + y</code></pre>
+<pre class="r"><code>quote(1/2/3)</code></pre>
+<pre><code>## 1/2/3</code></pre>
+<pre class="r"><code>quote(x + y)[[1]]</code></pre>
+<pre><code>## `+`</code></pre>
+<p>It is identical to <code>expr()</code> except that does not support unquoting, so it is a quoting function, not a quasiquoting function.</p>
+<p>The base function closest to <code>enexpr()</code> is <code>substitute()</code>:</p>
+<pre class="r"><code>f &lt;- function(x) substitute(x)
+f(x + y + z)</code></pre>
+<pre><code>## x + y + z</code></pre>
+<p>You’ll most often see it used to capture unevaluated arguments; often in concert with <code>deparse()</code> to create labels for output. However, <code>substitute()</code> also does “substitution”: if you give it an expression, rather than a symbol, it will substitute in values of symbols defined in the current environment.</p>
+<pre class="r"><code>f &lt;- function(x) substitute(x * 2)
+f(a + b + c)</code></pre>
+<pre><code>## (a + b + c) * 2</code></pre>
+<p>But:</p>
+<pre class="r"><code>f &lt;- function(x) enexpr(x * 2)
+f(a + b + c)</code></pre>
+<pre><code>## Error: `arg` must be a symbol</code></pre>
+<p><code>substitute()</code> provides a sort of automatic unquoting for any symbol that is bound to a value. However, making use of this behaviour can make for hard to read code, because for example, taken out of context, you can’t tell if the goal of <code>substitute(x + y)</code> is to replace <code>x</code>, or, <code>y</code>, or both. If you do want to use <code>substitute()</code> in this way, I recommend that you use the 2nd argument to make it clear that is your goal:</p>
+<pre class="r"><code>substitute(x * y * z, list(x = 10, y = quote(a + b)))</code></pre>
+<pre><code>## 10 * (a + b) * z</code></pre>
+<p>The base equivalent to <code>exprs()</code> is <code>alist()</code>:</p>
+<pre class="r"><code>alist(x = 1, y = x + 2)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## x + 2</code></pre>
+<pre class="r"><code>exprs(x = 1, y = x + 2)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## x + 2</code></pre>
+<p>Finally, there is no function in base R that is equivalent to <code>enexprs()</code> but you can reproduce its behaviour with <code>eval(substitute(alist(...)))</code>.</p>
+<pre class="r"><code>f &lt;- function(...) enexprs(...)
+f(x = 1, y = 10 * z)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+<pre class="r"><code>f1 &lt;- function(...) eval(substitute(alist(...)))
+f1(x = 1, y = 10 * z)</code></pre>
+<pre><code>## $x
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+<p>There are two other important base quoting functions that we’ll cover elsewhere:</p>
+<ul>
+<li><code>bquote()</code> provides a limited form of quasiquotation, and is discussed in unquoting with base R.</li>
+<li><code>~</code>, the formula, is a quoting function that also captures the environment. It’s the inspiration for quosures, the topic of the next chapter.</li>
+</ul>
+</div>
+<div id="exercises-33" class="section level3">
+<h3><span class="header-section-number">11.3.3</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>What happens if you try to use <code>enexpr()</code> with an expression? What happens if you try to use <code>enexpr()</code> with a missing argument?<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>f &lt;- function(x) enexpr(x)
+
+f(expr(x))  # return expr(x), a call</code></pre>
+<pre><code>## expr(x)</code></pre>
+<pre class="r"><code>class(f(expr(x)))</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>f()  # returns the missing arg</code></pre>
+<pre class="r"><code>is_missing(f())</code></pre>
+<pre><code>## [1] TRUE</code></pre></li>
+<li><p>Compare and contrast the following two functions. Can you predict the output before running them?</p>
+<pre class="r"><code>f1 &lt;- function(x, y) {
+    exprs(x = x, y = y)
+}
+f2 &lt;- function(x, y) {
+    enexprs(x = x, y = y)
+}
+f1(a + b, c + d)</code></pre>
+<pre><code>## $x
+## x
+## 
+## $y
+## y</code></pre>
+<pre class="r"><code>f2(a + b, c + d)</code></pre>
+<pre><code>## $x
+## a + b
+## 
+## $y
+## c + d</code></pre>
+<p><strong>A</strong>: Both return a named list of expressions. <code>f1()</code> will return the arguments supplied to <code>exprs()</code> within the body of <code>f1()</code>. <code>f2()</code> will return the arguments supplied to <code>f2()</code>.</p></li>
+<li><p>How are <code>exprs(a)</code> and <code>exprs(a = )</code> different? Think about both the input and the output.<br />
+<strong>A</strong>: <code>exprs(a)</code> returns an unamed list of one element, the symbol <code>a</code>. <code>exprs(a = )</code> return a list of one element, the missing argument, named <code>a</code>.</p>
+<pre class="r"><code>exprs(a)</code></pre>
+<pre><code>## [[1]]
+## a</code></pre>
+<pre class="r"><code>exprs(a = )</code></pre>
+<pre><code>## $a</code></pre></li>
+<li><p>What does the following command return? What information is lost? Why?</p>
+<pre class="r"><code>expr({
+    x + y  # comment  
+})</code></pre>
+<pre><code>## {
+##     x + y
+## }</code></pre>
+<p><strong>A</strong>: Whitespace and comments are not retained. However, you can get the source information from the attributes of the expresssion.</p>
+<pre class="r"><code>attributes(expr({
+    x + y  # comment
+}))</code></pre>
+<pre><code>## $srcref
+## $srcref[[1]]
+## {
+## 
+## $srcref[[2]]
+## x + y
+## 
+## 
+## $srcfile
+## &lt;text&gt; 
+## 
+## $wholeSrcref
+## attributes(expr({
+##     x + y  # comment
+## }</code></pre></li>
+<li><p>The documentation for <code>substitute()</code> says:</p>
+<p><em>Substitution takes place by examining each component of the parse tree as follows: If it is not a bound symbol in env, it is unchanged. If it is a promise object, i.e., a formal argument to a function or explicitly created using</em> <code>delayedAssign()</code><em>, the expression slot of the promise replaces the symbol. If it is an ordinary variable, its value is substituted, unless env is</em> <code>.GlobalEnv</code> <em>in which case the symbol is left unchanged.</em></p>
+<p>Create four examples that illustrate each of the different cases. <strong>A</strong>: If it is not a bound symbol in env, it is unchanged</p>
+<pre class="r"><code>substitute(x, list(y = 1))</code></pre>
+<pre><code>## x</code></pre>
+<p>If it is a promise object as a formal argument to a function, the expression slot of the promise replaces the symbol.</p>
+<pre class="r"><code>f &lt;- function(x) substitute(x)
+f(y)  # y </code></pre>
+<pre><code>## y</code></pre>
+<pre class="r"><code># BUT NOTE:
+f &lt;- function(x) {
+    x &lt;- 1
+    substitute(x)
+}
+f(y)  # 1 - env defaults to current evaluation environment</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>f &lt;- function(x) {
+    substitute(x, list(NULL))
+}
+f(y)  # x - env defaults evaluation environment with no bound symbols</code></pre>
+<pre><code>## x</code></pre>
+<p>If it is a promise object explicitly created using <code>delayedAssign()</code>, the expression slot of the promise replaces the symbol.</p>
+<pre class="r"><code>y &lt;- 1
+delayedAssign(&quot;x&quot;, y)
+substitute(x)  # shows only 'x', as it is in the global env.</code></pre>
+<pre><code>## x</code></pre>
+<pre class="r"><code>x  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>rm(x)
+
+e &lt;- new.env()
+e$z &lt;- 1
+delayedAssign(&quot;x&quot;, z, eval.env = e, assign.env = e)
+e$x  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>substitute(x, e)  # shows z</code></pre>
+<pre><code>## z</code></pre>
+<pre class="r"><code>eval(substitute(x, e), e)  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<p>If it is an ordinary variable, its value is substituted, unless env is <code>.GlobalEnv</code> in which case the symbol is left unchanged.</p>
+<pre class="r"><code>substitute(x, list(x = 1))  # x is substituted</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>e &lt;- new.env()
+e$x &lt;- 1
+substitute(x, e)  # x is substituted</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>x &lt;- 1
+substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
+<pre><code>## x</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="evaluation" class="section level2">
+<h2><span class="header-section-number">11.4</span> Evaluation</h2>
+<p>Typically you have quoted a function argument for one of two reasons:</p>
+<ul>
+<li>You want to operate on the AST using the techniques described in the previous chapter.</li>
+<li>You want to run, or evaluate the code in a special context, as described in depth next chapter.</li>
+</ul>
+<p>Evaluation is a rich topic, so we’ll cover it in depth in the next chapter. Here I’ll just illustrate the most important ideas. The most important base R function is <code>base::eval()</code>. Its first argument is the expression to evalute:</p>
+<pre class="r"><code>ru5 &lt;- expr(runif(5))
+ru5</code></pre>
+<pre><code>## runif(5)</code></pre>
+<pre class="r"><code>eval(ru5)</code></pre>
+<pre><code>## [1] 0.4830254 0.3320426 0.3080519 0.7090232 0.9459005</code></pre>
+<pre class="r"><code>eval(ru5)</code></pre>
+<pre><code>## [1] 0.76209907 0.09317998 0.77748530 0.12474838 0.84722569</code></pre>
+<p>Note that every time we evaluate this expression we get a different result.</p>
+<p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
+<pre class="r"><code>x &lt;- 9
+fx &lt;- expr(f(x))
+
+eval(fx, env(f = function(x) x * 10))</code></pre>
+<pre><code>## [1] 90</code></pre>
+<pre class="r"><code>eval(fx, env(f = function(x) x^2))</code></pre>
+<pre><code>## [1] 81</code></pre>
+<pre class="r"><code>eval(fx, env(f = function(x) {
+    print(env_parent())
+    x * 10
+}))</code></pre>
+<pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre>
+<pre><code>## [1] 90</code></pre>
+<pre class="r"><code># parent of function evaluation is Global Env, hence can find x env()
+# creates a child of the current environment by default and takes a variable
+# number of named objects to populate it.</code></pre>
+</div>
+<div id="unquotation" class="section level2">
+<h2><span class="header-section-number">11.5</span> Unquotation</h2>
+<p>Evaluation is a developer tool: in combination with quoting, it allows the author of a function to capture an argument and evaluate it in a special way. Unquoting is related to evaluation, but it’s a user tool: it allows the person calling the function to selectively evaluate parts of the expression that would otherwise be quoted.</p>
+<div id="with-rlang-1" class="section level3">
+<h3><span class="header-section-number">11.5.1</span> With rlang</h3>
+<p>All quoting functions in rlang (<code>expr()</code>, <code>enexpr()</code>, and friends) support unquoting with <code>!!</code> (called “unquote”, and pronounced bang-bang) and <code>!!!</code> (called “unquote-splice”, and pronounced bang-bang-bang). They both replace nodes in the AST. <code>!!</code> is a one-to-one replacement. It takes a single expression and inlines the AST at the location of the <code>!!</code>.</p>
+<pre class="r"><code>x &lt;- expr(a + b + c)
+expr(f(!!x, y))</code></pre>
+<pre><code>## f(a + b + c, y)</code></pre>
+<pre class="r"><code>expr(f(x, y))</code></pre>
+<pre><code>## f(x, y)</code></pre>
+<pre class="r"><code>lobstr::ast(f(!!x, y))</code></pre>
+<pre><code>## o-f 
+## +-o-`+` 
+## | +-o-`+` 
+## | | +-a 
+## | | \-b 
+## | \-c 
+## \-y</code></pre>
+<pre class="r"><code>lobstr::ast(f(x, y))</code></pre>
+<pre><code>## o-f 
+## +-x 
+## \-y</code></pre>
+<p><code>!!!</code> is a one-to-many replacement. It takes a list of expressions and inserts them at the location of the <code>!!!</code>:</p>
+<pre class="r"><code>x &lt;- exprs(1, 2, 3, y = 10)
+expr(f(!!!x, z = z))</code></pre>
+<pre><code>## f(1, 2, 3, y = 10, z = z)</code></pre>
+<pre class="r"><code>lobstr::ast(f(!!!x, z = z))</code></pre>
+<pre><code>## o-f 
+## +-1 
+## +-2 
+## +-3 
+## +-y = 10 
+## \-z = z</code></pre>
+</div>
+<div id="the-polite-fiction-of" class="section level3">
+<h3><span class="header-section-number">11.5.2</span> The polite fiction of <code>!!</code></h3>
+<p>So far we have acted as if <code>!!</code> and <code>!!!</code> are regular prefix operators like <code>+</code> , <code>-</code>, and <code>!</code>. They’re not. Instead, from R’s perspective, <code>!!</code> and <code>!!!</code> are simply the repeated application of <code>!</code>:</p>
+<pre class="r"><code>!!TRUE  # TRUE</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>!!!TRUE  # FALSE</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p><code>!!</code> and <code>!!!</code> have special behaviour inside all quoting functions powered by rlang, and the unquoting operators are given precedence similar to <code>+</code> and <code>-</code>, not <code>!</code>. We do this because the operator precedence for <code>!</code> is surprisingly low: it has lower precedence than that of the binary algebraic and logical operators. Most of the time this doesn’t matter as it is unusual to mix <code>!</code> and binary operators (e.g. you typically would not write <code>!x + y</code> or <code>!x &gt; y</code>). However, expressions like <code>!!x + !!y</code> are not uncommon when unquoting, and requiring explicit parentheses, <code>(!!x) + (!!y)</code>, feels onerous. For this reason, rlang manipulates the AST to give the unquoting operators a higher, more natural, precedence. (And if for some reason you do need to doubly negate a value in a quasiquoting function, you can just add parentheses <code>!(!x)</code>.)</p>
+<p>The biggest downside to using a fake operator is that you might get silent errors when misusing <code>!!</code> outside of quasiquoting functions. Most of the time this is not an issue because <code>!!</code> is typically used to unquote expressions or quosures. Since expressions are not supported by the negation operator, you will get an argument type error in this case:</p>
+<pre class="r"><code>x &lt;- quote(variable)
+!!x</code></pre>
+<pre><code>## Error in !x: invalid argument type</code></pre>
+<pre class="r"><code>y &lt;- expr(variable)
+!!y</code></pre>
+<pre><code>## Error in !y: invalid argument type</code></pre>
+<p>However be extra careful when unquoting numeric values that can be negated silently:</p>
+<pre class="r"><code>x &lt;- 100
+with(mtcars, cyl + !!x)</code></pre>
+<pre><code>##  [1] 7 7 5 7 9 7 9 5 5 7 7 9 9 9 9 9 9 5 5 5 5 9 9 9 9 5 5 5 9 7 9 5</code></pre>
+<pre class="r"><code>with(mtcars, cyl)</code></pre>
+<pre><code>##  [1] 6 6 4 6 8 6 8 4 4 6 6 8 8 8 8 8 8 4 4 4 4 8 8 8 8 4 4 4 8 6 8 4</code></pre>
+<p>Instead of adding the value of <code>x</code> to <code>cyl</code> as intended, we have in fact added the double negation of <code>x</code>:</p>
+<pre class="r"><code>!x</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code>!!x</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+</div>
+<div id="with-base-r-1" class="section level3">
+<h3><span class="header-section-number">11.5.3</span> With Base R</h3>
+<p>Base R has one function that implements quasiquotation: <code>bquote()</code>. It uses <code>.()</code> for unquoting:</p>
+<pre class="r"><code>xyz &lt;- bquote((x + y + z))
+bquote(-.(xyz)/2)</code></pre>
+<pre><code>## -(x + y + z)/2</code></pre>
+<pre class="r"><code># Also
+substitute(-XYZ/2, list(XYZ = xyz))</code></pre>
+<pre><code>## -(x + y + z)/2</code></pre>
+<p><code>bquote()</code> is a neat function, but is not used by any other function in base R. Instead functions that quote an argument use some other technique to allow indirect specification. There are four basic forms seen in base R:</p>
+<ol style="list-style-type: decimal">
+<li><p>A pair of quoting and non-quoting functions. For example, <code>$</code> has two arguments, and the second argument is quoted. This is easier to see if you write in prefix form: <code>mtcars$cyl</code> is equivalent to <code>$(mtcars, cyl)</code>. If you want to refer to a variable indirectly, you use <code>[[</code>, as it takes the name of a variable as a string.</p>
+<pre class="r"><code>x &lt;- list(var = 1, y = 2)
+var &lt;- &quot;y&quot;
+
+x$var  # 1</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>x[[var]]  # 2</code></pre>
+<pre><code>## [1] 2</code></pre>
+<p><code>&lt;-/assign()</code> work similarly:</p>
+<pre class="r"><code>y &lt;- 1
+x &lt;- y
+x</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>var &lt;- &quot;x&quot;
+assign(var, 3)
+x</code></pre>
+<pre><code>## [1] 3</code></pre>
+<pre class="r"><code># note
+z &lt;- 3
+&quot;x&quot; &lt;- z
+x</code></pre>
+<pre><code>## [1] 3</code></pre></li>
+<li><p>A pair of quoting and non-quoting arguments. For example, <code>data()</code>, <code>rm()</code>, and <code>save()</code> allow you to provide bare variable names in <code>...</code>, or a character vector of variable names in <code>list</code>:</p>
+<pre class="r"><code>x &lt;- 1
+rm(x)
+
+y &lt;- 2
+vars &lt;- c(&quot;y&quot;, &quot;vars&quot;)</code></pre>
+<pre><code>## Error in c(&quot;y&quot;, &quot;vars&quot;): unused argument (&quot;vars&quot;)</code></pre>
+<pre class="r"><code>rm(list = vars)</code></pre>
+<pre><code>## Error in rm(list = vars): invalid first argument</code></pre></li>
+<li><p>An argument that controls whether a different argument is quoting or non-quoting. For example, in <code>library()</code>, the character.only argument controls the quoting behaviour of of the first argument, package:</p>
+<pre class="r"><code>library(MASS)
+
+pkg &lt;- &quot;MASS&quot;
+library(pkg, character.only = TRUE)</code></pre>
+<p><code>demo()</code>, <code>detach()</code>, <code>example()</code>, and <code>require()</code> work similarly.</p></li>
+<li><p>Quoting if evaluation fails. For example, the first argument to <code>help()</code> is non-quoting if it evaluates to a string; if evaluation fails, the first argument is quoted.</p>
+<pre class="r"><code># Shows help for var
+help(var)
+
+var &lt;- &quot;mean&quot;
+# Shows help for mean
+help(var)
+
+var &lt;- 10
+# Shows help for var
+help(var)</code></pre>
+<p><code>ls()</code>, <code>page()</code>, and <code>match.fun()</code> work similarly.</p></li>
+</ol>
+<p>Some quoting functions, like <code>subset()</code>, <code>transform()</code>, and <code>with()</code>, don’t have a non-quoting form. This is because they are seen as wrappers around <code>[</code> and <code>[&lt;-</code> that are only suitable for interactive use.</p>
+</div>
+<div id="missing-arguments-1" class="section level3">
+<h3><span class="header-section-number">11.5.4</span> Missing arguments</h3>
+<p>Occasionally it is useful to unquote a missing argument, but the naive approach doesn’t work:</p>
+<pre class="r"><code>arg &lt;- missing_arg()
+expr(foo(!!arg, !!arg))</code></pre>
+<pre><code>## Error in enexpr(expr): argument &quot;arg&quot; is missing, with no default</code></pre>
+<p>You can either wrap in a list and use unquote-splice, or use the <code>maybe_missing()</code> helper:</p>
+<pre class="r"><code>args &lt;- list(missing_arg(), missing_arg())
+expr(foo(!!!args))</code></pre>
+<pre><code>## foo(, )</code></pre>
+<pre class="r"><code>expr(foo(!!maybe_missing(arg), !!maybe_missing(arg)))</code></pre>
+<pre><code>## foo(, )</code></pre>
+</div>
+<div id="exercises-34" class="section level3">
+<h3><span class="header-section-number">11.5.5</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Given the following components:</p>
+<pre class="r"><code>xy &lt;- expr(x + y)
+xz &lt;- expr(x + z)
+yz &lt;- expr(y + z)
+abc &lt;- exprs(a, b, c)</code></pre>
+<p>Use quasiquotation to construct the following calls:</p>
+<pre class="r"><code>(x + y)/(y + z)
+-(x + z)^(y + z)
+(x + y) + (y + z) - (x + y)
+atan2(x + y, y + z)
+sum(x + y, x + y, y + z)
+sum(a, b, c)
+mean(c(a, b, c), na.rm = TRUE)
+foo(a = x + y, b = y + z)</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>expr(!!xy/!!yz)</code></pre>
+<pre><code>## (x + y)/(y + z)</code></pre>
+<pre class="r"><code>expr(-(!!xz)^!!yz)</code></pre>
+<pre><code>## -(x + z)^(y + z)</code></pre>
+<pre class="r"><code>expr(!!xy + !!yz - !!xy)</code></pre>
+<pre><code>## x + y + (y + z) - (x + y)</code></pre>
+<pre class="r"><code>expr(atan2(!!xy, !!yz))</code></pre>
+<pre><code>## atan2(x + y, y + z)</code></pre>
+<pre class="r"><code>expr(sum(!!xy, !!xy, !!yz))</code></pre>
+<pre><code>## sum(x + y, x + y, y + z)</code></pre>
+<pre class="r"><code>expr(sum(!!!abc))</code></pre>
+<pre><code>## sum(a, b, c)</code></pre>
+<pre class="r"><code>expr(sum(!!!abc, na.rm = TRUE))</code></pre>
+<pre><code>## sum(a, b, c, na.rm = TRUE)</code></pre>
+<pre class="r"><code>expr(foo(a = !!xy, b = !!yz))</code></pre>
+<pre><code>## foo(a = x + y, b = y + z)</code></pre></li>
+<li><p>Explain why both <code>!0 + !0</code> and <code>!1 + !1</code> return <code>FALSE</code> while <code>!0 + !1</code> returns TRUE.<br />
+<strong>A</strong>: <code>!0 + !0 = !(0 + !0) = 0</code>. <code>!1 + !1 = !(1 + !1) = 0</code>. <code>!0 + !1 = !(0 + !1) = 1</code></p></li>
+<li>Base functions <code>match.fun()</code>, <code>page()</code>, and <code>ls()</code> all try to automatically determine whether you want standard or non-standard evaluation. Each uses a different approach. Figure out the essence of each approach by reading the source code, then compare and contrast the techniques.<br />
+<strong>A</strong>:</li>
+</ol>
+<ul>
+<li><code>match.fun()</code> -</li>
+</ul>
+<ol start="4" style="list-style-type: decimal">
+<li><p>The following two calls print the same, but are actually different:</p>
+<pre class="r"><code>(a &lt;- expr(mean(1:10)))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>(b &lt;- expr(mean(!!(1:10))))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>identical(a, b)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>What’s the difference? Which one is more natural?<br />
+<strong>A</strong>: in the 2nd expression <code>!!(1:10)</code> evaluates to a sequence of integers, but this prints as 1:10. In the first expression, <code>1:10</code> is a call, <code>:</code>(1, 10)`.</p>
+<pre class="r"><code>(a &lt;- expr(mean(1:10)))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>(b &lt;- expr(mean(!!(1:10))))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>eval(a)</code></pre>
+<pre><code>## [1] 5.5</code></pre>
+<pre class="r"><code>eval(b)</code></pre>
+<pre><code>## [1] 5.5</code></pre>
+<pre class="r"><code>a[[1]]</code></pre>
+<pre><code>## mean</code></pre>
+<pre class="r"><code>b[[1]]</code></pre>
+<pre><code>## mean</code></pre>
+<pre class="r"><code>typeof(a[[1]])  # symbol</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>typeof(b[[1]])  # symbol</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>a[[2]]</code></pre>
+<pre><code>## 1:10</code></pre>
+<pre class="r"><code>b[[2]]</code></pre>
+<pre><code>##  [1]  1  2  3  4  5  6  7  8  9 10</code></pre>
+<pre class="r"><code>typeof(a[[2]])  # language</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>typeof(b[[2]])  # integer</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>class(a[[2]])  # call</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>class(b[[2]])  # integer</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>lobstr::ast(!!a)</code></pre>
+<pre><code>## o-mean 
+## \-o-`:` 
+##   +-1 
+##   \-10</code></pre>
+<pre class="r"><code>lobstr::ast(!!b)</code></pre>
+<pre><code>## o-mean 
+## \-&lt;inline integer&gt;</code></pre></li>
+</ol>
+</div>
+</div>
 </div>
 <div id="debugging" class="section level1">
 <h1><span class="header-section-number">12</span> Debugging</h1>
