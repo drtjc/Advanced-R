@@ -283,6 +283,64 @@ There are two other important base quoting functions that we’ll cover elsewher
 * `bquote()` provides a limited form of quasiquotation, and is discussed in unquoting with base R.
 * `~`, the formula, is a quoting function that also captures the environment. It’s the inspiration for quosures, the topic of the next chapter.
 
+### More substitute
+When run from the global environment, it never does substitutions: in fact, in this situation it behaves just like `quote()`:
+
+```{r}
+a <- 1
+b <- 2
+substitute(a + b + z)
+```
+
+However, if you run it inside a function, `substitute()` does substitute and leaves everything else as is:
+
+```{r}
+f <- function() {
+  a <- 1
+  b <- 2
+  substitute(a + b + z)
+}
+
+f()
+```
+
+To make it easier to experiment with `substitute()`, pryr provides the `subs()` function. It works exactly the same way as `substitute()` except it has a shorter name and it works in the global environment. These two features make experimentation easier:
+
+```{r}
+a <- 1
+b <- 2
+subs(a + b + z)
+
+# Also
+expr(!!a + !!b + z)
+```
+
+Formally, substitution takes place by examining all the names in the expression. If the name refers to:
+
+* an ordinary variable, it’s replaced by the value of the variable.
+* a promise (a function argument), it’s replaced by the expression associated with the promise.
+* `...`, it’s replaced by the contents of `...`.
+
+Otherwise it’s left as is.
+
+A useful technique:
+
+```{r}
+dots <- function(...) {
+  eval(substitute(alist(...)))
+}
+```
+
+This uses the `alist()` function which simply captures all its arguments. This function is the same as `pryr::dots()`. Pryr also provides `pryr::named_dots()`, which, by using deparsed expressions as default names, ensures that all arguments are named (just like `data.frame()`).
+
+```{r}
+pryr::dots(1, y = 10 * z)
+pryr::named_dots(1, y = 10 * z)
+```
+
+
+
+
 ### Exercises
 1. What happens if you try to use `enexpr()` with an expression? What happens if you try to use `enexpr()` with a missing argument?  
 **A**:

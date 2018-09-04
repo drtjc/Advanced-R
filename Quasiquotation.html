@@ -497,8 +497,25 @@ f1(x = 1, y = 10 * z)</code></pre>
 <li><code>~</code>, the formula, is a quoting function that also captures the environment. It’s the inspiration for quosures, the topic of the next chapter.</li>
 </ul>
 </div>
+<div id="more-substitute" class="section level3">
+<h3><span class="header-section-number">1.3.3</span> More substitute</h3>
+<p>When run from the global environment, it never does substitutions: in fact, in this situation it behaves just like <code>quote()</code>:</p>
+<pre class="r"><code>a &lt;- 1
+b &lt;- 2
+substitute(a + b + z)</code></pre>
+<pre><code>## a + b + z</code></pre>
+<p>However, if you run it inside a function, <code>substitute()</code> does substitute and leaves everything else as is:</p>
+<pre class="r"><code>f &lt;- function() {
+    a &lt;- 1
+    b &lt;- 2
+    substitute(a + b + z)
+}
+
+f()</code></pre>
+<pre><code>## 1 + 2 + z</code></pre>
+</div>
 <div id="exercises-1" class="section level3">
-<h3><span class="header-section-number">1.3.3</span> Exercises</h3>
+<h3><span class="header-section-number">1.3.4</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>What happens if you try to use <code>enexpr()</code> with an expression? What happens if you try to use <code>enexpr()</code> with a missing argument?<br />
 <strong>A</strong>:</p>
@@ -628,9 +645,9 @@ substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
 ru5</code></pre>
 <pre><code>## runif(5)</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.5574422 0.7962974 0.8807551 0.1718135 0.3518811</code></pre>
+<pre><code>## [1] 0.4635747 0.3169646 0.6860149 0.5189812 0.2995447</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.3258965 0.4835559 0.2977913 0.3734334 0.1535241</code></pre>
+<pre><code>## [1] 0.30309386 0.04089097 0.76556322 0.56554630 0.99059386</code></pre>
 <p>Note that every time we evaluate this expression we get a different result.</p>
 <p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
 <pre class="r"><code>x &lt;- 9
@@ -785,6 +802,96 @@ expr(foo(!!!args))</code></pre>
 <pre><code>## foo(, )</code></pre>
 <pre class="r"><code>expr(foo(!!maybe_missing(arg), !!maybe_missing(arg)))</code></pre>
 <pre><code>## foo(, )</code></pre>
+</div>
+<div id="exercises-2" class="section level3">
+<h3><span class="header-section-number">1.5.5</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Given the following components:</p>
+<pre class="r"><code>xy &lt;- expr(x + y)
+xz &lt;- expr(x + z)
+yz &lt;- expr(y + z)
+abc &lt;- exprs(a, b, c)</code></pre>
+<p>Use quasiquotation to construct the following calls:</p>
+<pre class="r"><code>(x + y)/(y + z)
+-(x + z)^(y + z)
+(x + y) + (y + z) - (x + y)
+atan2(x + y, y + z)
+sum(x + y, x + y, y + z)
+sum(a, b, c)
+mean(c(a, b, c), na.rm = TRUE)
+foo(a = x + y, b = y + z)</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>expr(!!xy/!!yz)</code></pre>
+<pre><code>## (x + y)/(y + z)</code></pre>
+<pre class="r"><code>expr(-(!!xz)^!!yz)</code></pre>
+<pre><code>## -(x + z)^(y + z)</code></pre>
+<pre class="r"><code>expr(!!xy + !!yz - !!xy)</code></pre>
+<pre><code>## x + y + (y + z) - (x + y)</code></pre>
+<pre class="r"><code>expr(atan2(!!xy, !!yz))</code></pre>
+<pre><code>## atan2(x + y, y + z)</code></pre>
+<pre class="r"><code>expr(sum(!!xy, !!xy, !!yz))</code></pre>
+<pre><code>## sum(x + y, x + y, y + z)</code></pre>
+<pre class="r"><code>expr(sum(!!!abc))</code></pre>
+<pre><code>## sum(a, b, c)</code></pre>
+<pre class="r"><code>expr(sum(!!!abc, na.rm = TRUE))</code></pre>
+<pre><code>## sum(a, b, c, na.rm = TRUE)</code></pre>
+<pre class="r"><code>expr(foo(a = !!xy, b = !!yz))</code></pre>
+<pre><code>## foo(a = x + y, b = y + z)</code></pre></li>
+<li><p>Explain why both <code>!0 + !0</code> and <code>!1 + !1</code> return <code>FALSE</code> while <code>!0 + !1</code> returns TRUE.<br />
+<strong>A</strong>: <code>!0 + !0 = !(0 + !0) = 0</code>. <code>!1 + !1 = !(1 + !1) = 0</code>. <code>!0 + !1 = !(0 + !1) = 1</code></p></li>
+<li>Base functions <code>match.fun()</code>, <code>page()</code>, and <code>ls()</code> all try to automatically determine whether you want standard or non-standard evaluation. Each uses a different approach. Figure out the essence of each approach by reading the source code, then compare and contrast the techniques.<br />
+<strong>A</strong>:</li>
+</ol>
+<ul>
+<li><code>match.fun()</code> -</li>
+</ul>
+<ol start="4" style="list-style-type: decimal">
+<li><p>The following two calls print the same, but are actually different:</p>
+<pre class="r"><code>(a &lt;- expr(mean(1:10)))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>(b &lt;- expr(mean(!!(1:10))))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>identical(a, b)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<p>What’s the difference? Which one is more natural?<br />
+<strong>A</strong>: in the 2nd expression <code>!!(1:10)</code> evaluates to a sequence of integers, but this prints as 1:10. In the first expression, <code>1:10</code> is a call, <code>:</code>(1, 10)`.</p>
+<pre class="r"><code>(a &lt;- expr(mean(1:10)))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>(b &lt;- expr(mean(!!(1:10))))</code></pre>
+<pre><code>## mean(1:10)</code></pre>
+<pre class="r"><code>eval(a)</code></pre>
+<pre><code>## [1] 5.5</code></pre>
+<pre class="r"><code>eval(b)</code></pre>
+<pre><code>## [1] 5.5</code></pre>
+<pre class="r"><code>a[[1]]</code></pre>
+<pre><code>## mean</code></pre>
+<pre class="r"><code>b[[1]]</code></pre>
+<pre><code>## mean</code></pre>
+<pre class="r"><code>typeof(a[[1]])  # symbol</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>typeof(b[[1]])  # symbol</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code>a[[2]]</code></pre>
+<pre><code>## 1:10</code></pre>
+<pre class="r"><code>b[[2]]</code></pre>
+<pre><code>##  [1]  1  2  3  4  5  6  7  8  9 10</code></pre>
+<pre class="r"><code>typeof(a[[2]])  # language</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code>typeof(b[[2]])  # integer</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>class(a[[2]])  # call</code></pre>
+<pre><code>## [1] &quot;call&quot;</code></pre>
+<pre class="r"><code>class(b[[2]])  # integer</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>lobstr::ast(!!a)</code></pre>
+<pre><code>## o-mean 
+## \-o-`:` 
+##   +-1 
+##   \-10</code></pre>
+<pre class="r"><code>lobstr::ast(!!b)</code></pre>
+<pre><code>## o-mean 
+## \-&lt;inline integer&gt;</code></pre></li>
+</ol>
 </div>
 </div>
 </div>
