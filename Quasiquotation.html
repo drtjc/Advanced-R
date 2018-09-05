@@ -513,6 +513,38 @@ substitute(a + b + z)</code></pre>
 
 f()</code></pre>
 <pre><code>## 1 + 2 + z</code></pre>
+<p>To make it easier to experiment with <code>substitute()</code>, pryr provides the <code>subs()</code> function. It works exactly the same way as <code>substitute()</code> except it has a shorter name and it works in the global environment. These two features make experimentation easier:</p>
+<pre class="r"><code>a &lt;- 1
+b &lt;- 2
+subs(a + b + z)</code></pre>
+<pre><code>## 1 + 2 + z</code></pre>
+<pre class="r"><code># Also
+expr(!!a + !!b + z)</code></pre>
+<pre><code>## 1 + 2 + z</code></pre>
+<p>Formally, substitution takes place by examining all the names in the expression. If the name refers to:</p>
+<ul>
+<li>an ordinary variable, it’s replaced by the value of the variable.</li>
+<li>a promise (a function argument), it’s replaced by the expression associated with the promise.</li>
+<li><code>...</code>, it’s replaced by the contents of <code>...</code>.</li>
+</ul>
+<p>Otherwise it’s left as is.</p>
+<p>A useful technique:</p>
+<pre class="r"><code>dots &lt;- function(...) {
+    eval(substitute(alist(...)))
+}</code></pre>
+<p>This uses the <code>alist()</code> function which simply captures all its arguments. This function is the same as <code>pryr::dots()</code>. Pryr also provides <code>pryr::named_dots()</code>, which, by using deparsed expressions as default names, ensures that all arguments are named (just like <code>data.frame()</code>).</p>
+<pre class="r"><code>pryr::dots(1, y = 10 * z)</code></pre>
+<pre><code>## [[1]]
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
+<pre class="r"><code>pryr::named_dots(1, y = 10 * z)</code></pre>
+<pre><code>## $`1`
+## [1] 1
+## 
+## $y
+## 10 * z</code></pre>
 </div>
 <div id="exercises-1" class="section level3">
 <h3><span class="header-section-number">1.3.4</span> Exercises</h3>
@@ -645,9 +677,9 @@ substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
 ru5</code></pre>
 <pre><code>## runif(5)</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.4635747 0.3169646 0.6860149 0.5189812 0.2995447</code></pre>
+<pre><code>## [1] 0.4917477 0.9042571 0.5766124 0.8574982 0.7502255</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.30309386 0.04089097 0.76556322 0.56554630 0.99059386</code></pre>
+<pre><code>## [1] 0.40736450 0.99408548 0.31905553 0.81322598 0.01344634</code></pre>
 <p>Note that every time we evaluate this expression we get a different result.</p>
 <p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
 <pre class="r"><code>x &lt;- 9

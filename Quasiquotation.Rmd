@@ -665,7 +665,7 @@ Use quasiquotation to construct the following calls:
     identical(a, b)
     ```
 What’s the difference? Which one is more natural?  
-**A**: in the 2nd expression `!!(1:10)` evaluates to a sequence of integers, but this prints as 1:10. In the first expression, `1:10` is a call, `:`(1, 10)`.
+**A**: in the 2nd expression `!!(1:10)` evaluates to a sequence of integers, but this prints as 1:10. In the first expression, `1:10` is a call, `:(1, 10)`.
     ```{r}
     (a <- expr(mean(1:10)))
     (b <- expr(mean(!!(1:10))))
