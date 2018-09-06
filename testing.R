@@ -7,22 +7,50 @@ library(rlang)
 library(rlist)
 library(pryr)
 
-set_attr <- function(x, ...) {
-  attr <- rlang::list2(...)
-  attributes(x) <- attr
-  x
+z <- 50
+
+local3 <- function(expr, envir = new.env()) {
+  call <- substitute(eval(quote(expr), envir))
+  print(call)
+  print(envir)
+  print(environment())
+  print(parent.env(envir))
+  print(parent.env(parent.env(envir)))
+  print(parent.frame())
+  eval(call, envir = parent.frame())
 }
-set_attr(y = 1:10, x = 10)
+
+rm(x, y)
+foo <- local3({
+  x <- 10
+  y <- 200
+  x + y + z
+})
+
+foo
+x
 
 
-
-
-set_attr <- function(x, ...) {
-  attr <- rlang::list2(...)
-  attributes(x) <- attr
-  x
+local2 <- function(expr) {
+  env <- child_env(caller_env())
+  print(parent.env(env))
+  eval_bare(enexpr(expr), env)
 }
-set_attr(1:10, x = 10)
+
+foo <- local2({
+  x <- 10
+  y <- 200
+  x + y
+})
+
+foo
+
+
+
+
+# new.env returns a new (empty) environment with (by default) enclosure the parent frame.
+# parent.env returns the enclosing environment of its argument.
+
 
 
 
