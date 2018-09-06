@@ -692,6 +692,280 @@ What’s the difference? Which one is more natural?
     lobstr::ast(!!b)  
     ```
 
+## Case studies
+### Map-reduce to generate code
+Quasiquotation gives us powerful tools for generating code, particularly when combined with `purrr::map()` and `purr::reduce()`. For example, assume you have a linear model specified by the following coefficients:
 
+```{r}
+intercept <- 10
+coefs <- c(x1 = 5, x2 = -4)
+```
 
+And you want to convert it into an expression like `10 + (5 * x1) + (-4 * x2)`. The first thing we need to do is turn the character names vector into a list of symbols. `rlang::syms()` is designed precisely for this case:
+
+```{r}
+coef_sym <- syms(names(coefs))
+coef_sym
+```
+
+Next we need to combine each variable name with its coefficient. We can do this by combining `expr()` with `map2()`:
+
+```{r}
+summands <- map2(coef_sym, coefs, ~ expr((!!.x * !!.y)))
+summands
+```
+
+In this case, the intercept is also a part of the sum, although it doesn’t involve a multiplication. We can just add it to the start of the summands vector:
+
+```{r}
+summands <- c(intercept, summands)
+summands
+```
+
+Finally, we need to reduce the individual terms in to a single sum by adding the pieces together:
+
+```{r}
+eq <- reduce(summands, ~ expr(!!.x + !!.y))
+eq
+```
+
+Once you have this expression, you could evaluate it with new data, or turn it into a function:
+
+```{r}
+df <- data.frame(x1 = runif(5), x2 = runif(5))
+eval(eq, df)
+
+args <- map(coefs, ~ missing_arg())
+new_function(args, expr({!!eq}))
+```
+
+### Partition
+Imagine that you want to extend `dplyr::select()` to return two data frames: one with the variables you selected, and one with the variables that remain.
+
+here are plenty of ways to attack this problem, but one way is to take advantage of `select()`'s ability to negate column selection expression in order to remove those columns. We can capture the inputs with quasiquotation, then invert each selection call by negating it. We start by practicing interactively with a list of variables created with `exprs()`:
+
+```{r}
+vars <- exprs(x, y, c(a, b), starts_with("x"))
+map(vars, ~ expr(-!!.x))
+```
+
+Then turn it into a function:
+
+```{r, eval=FALSE}
+partition_cols <- function(.data, ...) {
+  included <- enexprs(...)
+  excluded <- map(included, ~ expr(-!!.x))
+
+  list(
+    incl = select(.data, !!!included),
+    excl = select(.data, !!!excluded)
+  )
+}
+
+df <- data.frame(x1 = 1, x2 = 3, y = "a", z = "b")
+partition_cols(df, starts_with("x"))
+
+#> $incl
+#>   x1 x2
+#> 1  1  3
+#> 
+#> $excl
+#>   y z
+#> 1 a b
+```
+
+### Slicing an array
+One occassionally useful tool that’s missing from base R is the ability to extract a slice of an array given a dimension and an index. For example, we’d like to write `slice(x, 2, 1)` to extract the first slice along the second dimension, which you can write as `x[, 1, ]`.
+
+We’ll need to generated a call will multiple missing arguments. Fortunately is easy with `rep()` and `missing_arg()`. Once we have those arguments, we can unquote-splice them into a call:
+
+```{r}
+(indices <- rep(list(missing_arg()), 3))
+expr(x[!!!indices])
+```
+
+We then wrap this into a function, using subset-assignment to insert the index in the desired position:
+
+```{r}
+slice <- function(x, along, index) {
+  stopifnot(length(index) == 1)
+    
+  nd <- length(dim(x))
+  indices <- rep(list(missing_arg()), nd)
+  indices[along] <- index
+  
+  expr(x[!!!indices])
+}
+
+x <- array(sample(30), c(5, 2, 3))
+slice(x, 1, 3)
+slice(x, 2, 2)
+slice(x, 3, 1)
+```
+
+A real `slice()` would evaluate the generated call, but here I think it’s more illuminating to see the code that’s generated, as that’s the hard part of the challenge.
+
+### Creating functions
+Another powerful function to use in combination with unquoting is `rlang::new_function()`: it allows us to create a function by supplying the arguments, the body, and (optionally) the environment:
+
+```{r}
+new_function(
+  exprs(x = , y = ), 
+  expr({x + y})
+)
+```
+
+One application is to create functions that work like `graphics::curve()`. `curve()` allows you to plot a mathematical expression, without creating a function:
+
+```{r}
+curve(sin(exp(4 * x)), n = 1000)
+```
+
+One way to implement `curve()` is to turn the expression into a function with a single argument, then call that function:
+
+```{r}
+curve2 <- function(expr, xlim = c(0, 1), n = 100) {
+  expr <- enexpr(expr)
+  f <- new_function(exprs(x = ), expr)
+  
+  x <- seq(xlim[1], xlim[2], length = n)
+  y <- f(x)
+
+  plot(x, y, type = "l", ylab = expr_text(expr))
+}
+curve2(sin(exp(4 * x)), n = 1000)
+```
+
+Another use for `new_function()` is as an alternative to simple function factories and function operators. The primary advantage is that the generated functions have readable source code:
+
+```{r}
+negate1 <- function(f) {
+  force(f)
+  function(...) !f(...)
+}
+negate1(is.null)
+
+negate2 <- function(f) {
+  f <- enexpr(f)
+  new_function(exprs(... = ), expr(!(!!f)(...)), caller_env())
+}
+negate2(is.null)
+```
+
+### Exercises
+1. Implement `arrange_desc()`, a variant of `dplyr::arrange()` that sorts in descending order by default.  
+**A**: 
+    ```{r}
+    arrange_desc <- function(.data, ...) {
+      dcols <- map(enexprs(...), ~ expr(desc(!!.x)))
+      arrange(.data, !!!dcols)
+    }
+    
+    df <- data.frame(x = c(1,3,3), y = c(6,4,5), z=c(9,7,8))
+    arrange_desc(df, x)
+    arrange_desc(df, x, y)
+    ```
+
+2. Implement `filter_or()`, a variant of `dplyr::filter()` that combines multiple arguments using `|` instead of `&`.
+**A**:
+    ```{r}
+    df <- data.frame(x = c(1,3,3), y = c(6,4,5), z=c(9,7,8))
+    dplyr::filter(df, x == 3)
+    dplyr::filter(df, x == 3, y == 4)
+    
+    
+    filter_or <- function(.data, ...) {
+      included <- enexprs(...)
+      
+      eq <- reduce(included, ~expr(!!.x | !!.y))
+      dplyr::filter(.data, !!eq)
+    }
+    
+    filter_or(df, x == 1, y == 4)
+    ```
+
+3. Implement `partition_rows()` which, like `partition_cols()`, returns two data frames, one containing the selected rows, and the other containing the rows that weren’t selected.  
+**A**:
+    ```{r}
+    partition_rows <- function(.data, ...) {
+      included <- enexprs(...)
+      excluded <- map(included, ~ expr(!(!!.x)))
+      
+      list(
+        incl = filter(.data, !!!included),
+        excl = filter_or(.data, !!!excluded) # note use of filter_or since!(a & b) = !a | !b
+      )
+    }
+    
+    df <- data.frame(x = c(1,3,3), y = c(6,4,5), z=c(9,7,8))
+    partition_rows(df, x == 1)
+    partition_rows(df, x == 3, y == 4)
+    ```
+
+4. Add error handling to `slice()`. Give clear error messages if either along or index have invalid values (i.e. not numeric, not length 1, too small, or too big).
+
+5. Re-implement the Box-Cox transform defined below using unquoting and `new_function()`:
+    ```{r, eval=FALSE}
+    bc <- function(lambda) {
+      if (lambda == 0) {
+        function(x) log(x)
+      } else {
+        function(x) (x ^ lambda - 1) / lambda
+      }
+    }
+    ```
+**A**:
+    ```{r}
+    bc <- function(lambda) {
+      if (lambda == 0) {
+        function(x) log(x)
+      } else {
+        function(x) (x ^ lambda - 1) / lambda
+      }
+    }
+    bc(0)
+    bc(1)
+    bc(2)
+    bc(4 ^ 0.5)
+    bc(2)(3)
+    
+    # reimplemented
+    bc2 <- function(lambda) {
+      if (lambda == 0) {
+        new_function(exprs(x = ), expr(log(x)))
+      } else {
+        new_function(exprs(x = ), expr((x ^ (!!lambda) - 1) / !!lambda))
+      }
+    }
+    # note there is no need to capture enexpr(lambda) as we will only evaluate lambda, not access its AST
+    
+    bc2(0)
+    bc2(1)
+    bc2(2)
+    bc2(4 ^ 0.5)
+    bc2(2)(3)
+    ```
+
+6. Re-implement the simple `compose()` defined below using quasiquotation and `new_function()`:
+    ```{r, eval=FALSE}
+    compose <- function(f, g) {
+      function(...) f(g(...))
+    }
+    ```
+**A**: 
+    ```{r}
+    compose <- function(f, g) {
+      function(...) f(g(...))
+    }
+    compose(sin, cos)
+    compose(sin, cos)(pi)
+    
+    compose2 <- function(f, g) {
+      f <- enexpr(f)
+      g <- enexpr(g)
+      new_function(exprs(... = ), expr((!!f)((!!g)(...))), caller_env())
+    }  
+    compose2(sin, cos)
+    compose2(sin, cos)(pi)
+    ```
 

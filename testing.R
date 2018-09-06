@@ -9,28 +9,6 @@ library(pryr)
 
 
 
-a <- 1
-b <- 2
-substitute(a + b + z)
-
-
-
-
-f1 <- function(...) eval(substitute(alist(...)))
-f1(x = 1, y = 10 * z)
-
-eval(substitute(alist(x = 1, y = 10 * z)))
-
-lobstr::ast(alist(...))
-
-
-
-
-
-
-
-
-
 
 
 f_match <- function(FUN) {
