@@ -164,7 +164,7 @@ Talking about whether an argument is quoted or evaluated is a more precise way o
     ggplot(by_cyl, aes(cyl, mean)) + geom_point()
     ```
 **A**:
-    ```{r, eval=FALSE}
+    ```{r, eval=FALSE, tidy=FALSE}
     by_cyl <- mtcars %>%
       group_by(cyl) %>%  # cyl - quoted
       summarise(mean = mean(mpg)) # mean = mean(mpg) - quoted
@@ -1061,13 +1061,13 @@ When used in this context, the behaviour of `!!!` is known as spatting in Ruby, 
 
 The second problem is like unquoting on the LHS of `=:` rather than interpreting var literaly, we want to use the value stored in the variable called var:
 
-```{r}
+```{r, tidy=FALSE}
 tibble::tibble(!!var := val)
 ```
 
 Note the use of `:=` (pronounced colon-equals) rather than `=`. Unfortunately we need this new operation because R’s grammar does not allow expressions as argument names:
 
-```{r, error=TRUE}
+```{r, error=TRUE, tidy=FALSE, cache=FALSE}
 tibble::tibble(!!var = value)
 ```
 
@@ -1123,7 +1123,7 @@ Base functions that use this technique include `interaction()`, `expand.grid()`,
     }
     ```
 Specific code is
-    ```{r, eval=FALSE}
+    ```{r, eval=FALSE, tidy=FALSE}
 
     # interaction
     interaction(..., drop = FALSE, sep = ".", lex.order = FALSE)

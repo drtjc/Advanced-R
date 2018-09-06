@@ -677,9 +677,9 @@ substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
 ru5</code></pre>
 <pre><code>## runif(5)</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.9599355 0.3651846 0.3793657 0.2072810 0.3414299</code></pre>
+<pre><code>## [1] 0.2840537 0.7558200 0.9579054 0.9540987 0.3936610</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.73366257 0.17686914 0.01345443 0.59742607 0.05448287</code></pre>
+<pre><code>## [1] 0.004300733 0.856285784 0.180474862 0.557238857 0.720874696</code></pre>
 <p>Note that every time we evaluate this expression we get a different result.</p>
 <p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
 <pre class="r"><code>x &lt;- 9
@@ -967,7 +967,7 @@ eq</code></pre>
 <p>Once you have this expression, you could evaluate it with new data, or turn it into a function:</p>
 <pre class="r"><code>df &lt;- data.frame(x1 = runif(5), x2 = runif(5))
 eval(eq, df)</code></pre>
-<pre><code>## [1] 12.790833 12.603165 12.115174 10.714702  7.196598</code></pre>
+<pre><code>## [1]  7.418841 10.335059 10.621838 10.122789 10.100385</code></pre>
 <pre class="r"><code>args &lt;- map(coefs, ~missing_arg())
 new_function(args, expr({
     !!eq
@@ -1073,7 +1073,7 @@ curve2(sin(exp(4 * x)), n = 1000)</code></pre>
 }
 negate1(is.null)</code></pre>
 <pre><code>## function(...) !f(...)
-## &lt;environment: 0x000000000d630428&gt;</code></pre>
+## &lt;environment: 0x000000000d5da8b0&gt;</code></pre>
 <pre class="r"><code>negate2 &lt;- function(f) {
     f &lt;- enexpr(f)
     new_function(exprs(... = ), expr(!(!!f)(...)), caller_env())
@@ -1244,19 +1244,19 @@ dim(x)</code></pre>
 }
 bc(0)</code></pre>
 <pre><code>## function(x) log(x)
-## &lt;environment: 0x000000000ace72e0&gt;</code></pre>
+## &lt;environment: 0x000000000ad5e938&gt;</code></pre>
 <pre class="r"><code>bc(1)</code></pre>
 <pre><code>## function(x) (x^lambda - 1)/lambda
-## &lt;bytecode: 0x000000000d063cc0&gt;
-## &lt;environment: 0x000000000a47efe0&gt;</code></pre>
+## &lt;bytecode: 0x000000000d030e78&gt;
+## &lt;environment: 0x000000000a6a4820&gt;</code></pre>
 <pre class="r"><code>bc(2)</code></pre>
 <pre><code>## function(x) (x^lambda - 1)/lambda
-## &lt;bytecode: 0x000000000d063cc0&gt;
-## &lt;environment: 0x000000000d1247b8&gt;</code></pre>
+## &lt;bytecode: 0x000000000d030e78&gt;
+## &lt;environment: 0x000000000d0ec4c8&gt;</code></pre>
 <pre class="r"><code>bc(4^0.5)</code></pre>
 <pre><code>## function(x) (x^lambda - 1)/lambda
-## &lt;bytecode: 0x000000000d063cc0&gt;
-## &lt;environment: 0x000000000d1b0960&gt;</code></pre>
+## &lt;bytecode: 0x000000000d030e78&gt;
+## &lt;environment: 0x000000000d187758&gt;</code></pre>
 <pre class="r"><code>bc(2)(3)</code></pre>
 <pre><code>## [1] 4</code></pre>
 <pre class="r"><code># reimplemented
@@ -1273,19 +1273,19 @@ bc2 &lt;- function(lambda) {
 bc2(0)</code></pre>
 <pre><code>## function (x) 
 ## log(x)
-## &lt;environment: 0x000000000d3fc3c8&gt;</code></pre>
+## &lt;environment: 0x000000000d3a6608&gt;</code></pre>
 <pre class="r"><code>bc2(1)</code></pre>
 <pre><code>## function (x) 
 ## (x^1 - 1)/1
-## &lt;environment: 0x000000000d4781b8&gt;</code></pre>
+## &lt;environment: 0x000000000d44ba78&gt;</code></pre>
 <pre class="r"><code>bc2(2)</code></pre>
 <pre><code>## function (x) 
 ## (x^2 - 1)/2
-## &lt;environment: 0x000000000dd000e0&gt;</code></pre>
+## &lt;environment: 0x000000000dcd2ac8&gt;</code></pre>
 <pre class="r"><code>bc2(4^0.5)</code></pre>
 <pre><code>## function (x) 
 ## (x^2 - 1)/2
-## &lt;environment: 0x000000000ddb7b98&gt;</code></pre>
+## &lt;environment: 0x000000000dd85f08&gt;</code></pre>
 <pre class="r"><code>bc2(2)(3)</code></pre>
 <pre><code>## [1] 4</code></pre></li>
 <li><p>Re-implement the simple <code>compose()</code> defined below using quasiquotation and <code>new_function()</code>:</p>
@@ -1298,7 +1298,7 @@ bc2(0)</code></pre>
 }
 compose(sin, cos)</code></pre>
 <pre><code>## function(...) f(g(...))
-## &lt;environment: 0x0000000008c73288&gt;</code></pre>
+## &lt;environment: 0x0000000008ce23a8&gt;</code></pre>
 <pre class="r"><code>compose(sin, cos)(pi)</code></pre>
 <pre><code>## [1] -0.841471</code></pre>
 <pre class="r"><code>compose2 &lt;- function(f, g) {
@@ -1352,7 +1352,7 @@ do.call(&quot;data.frame&quot;, args)</code></pre>
 ## 2 3 4</code></pre>
 <p>When used in this context, the behaviour of <code>!!!</code> is known as spatting in Ruby, Go, PHP, and Julia. It is closely related to <code>*args</code> (star-args) and <code>**kwarg</code> (star-star-kwargs) in Python, which are sometimes called argument unpacking.</p>
 <p>The second problem is like unquoting on the LHS of <code>=:</code> rather than interpreting var literaly, we want to use the value stored in the variable called var:</p>
-<pre class="r"><code>tibble::tibble(`:=`(!!var, val))</code></pre>
+<pre class="r"><code>tibble::tibble(!!var := val)</code></pre>
 <pre><code>## # A tibble: 3 x 1
 ##       x
 ##   &lt;dbl&gt;
