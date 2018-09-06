@@ -902,7 +902,44 @@ negate2(is.null)
     partition_rows(df, x == 3, y == 4)
     ```
 
-4. Add error handling to `slice()`. Give clear error messages if either along or index have invalid values (i.e. not numeric, not length 1, too small, or too big).
+4. Add error handling to `slice()`. Give clear error messages if either along or index have invalid values (i.e. not numeric, not length 1, too small, or too big).  
+**A**:
+    ```{r, error=TRUE}
+    slice <- function(x, along, index) {
+      if (dim(x) == 0) {message("x is empty"); return(NULL)}
+      
+      if (!(is.numeric(index) & length(index) == 1)) stop("index not a numeric of length 1", call. = FALSE)
+      if (!(is.numeric(along) & length(along) == 1)) stop("index not a numeric of length 1", call. = FALSE)
+      
+      if (index < 1) stop("index is less than 1", call. = FALSE)
+      if (along < 1) stop("index is less than 1", call. = FALSE)
+      
+      nd <- length(dim(x))
+      
+      if (along > nd) stop("along is greater than number of dimensions", call. = FALSE)
+      if (index > dim(x)[along]) stop("index is greater than size of dimension", call. = FALSE)
+        
+      indices <- rep(list(missing_arg()), nd)
+      indices[along] <- index
+      
+      expr(x[!!!indices])
+    }
+    
+    x <- array(sample(30), c(5, 2, 3))
+    slice(x, 1, 3)
+    slice(x, 1, numeric(0))
+    slice(x, 1, c(3, 2))
+    slice(x, 1, character(0))
+    slice(x, 1, "y")
+    slice(x, 1, -3)
+    slice(x, -1, 3)
+    slice(x, 4, 3)
+    slice(x, 1, 6)
+    
+    x <- array(numeric(0))
+    dim(x)
+    slice(x, 1, 3)
+    ```
 
 5. Re-implement the Box-Cox transform defined below using unquoting and `new_function()`:
     ```{r, eval=FALSE}
@@ -968,4 +1005,202 @@ negate2(is.null)
     compose2(sin, cos)
     compose2(sin, cos)(pi)
     ```
+
+## Dot-dot-dot (`...`)
+Quasiquotation ensures that every quoted argument has an escape hatch that allows the user to unquote, or evaluate, selected components, if needed. A similar and related need arises with functions that take arbitrary additional arguments with `...`.
+
+Take the following two motivating problems:
+
+What do you do if the elements you want to put in `...` are already stored in a list? For example, imagine you have a list of data frames that you want to `rbind()` together:
+
+```{r}
+dfs <- list(
+  a = data.frame(x = 1, y = 2),
+  b = data.frame(x = 3, y = 4)
+)
+```
+
+You could solve this specific case with `rbind(dfs$a, df$b)`, but how do you generalise that solution to a list of arbitrary length?
+
+What do you do if you want to supply the argument name indirectly? For example, imagine you want to create a single column data frame where the name of the column is specified in a variable:
+
+```{r}
+var <- "x"
+val <- c(4, 3, 9)
+```
+
+In this case, you could create a data frame and then change names (i.e. `setNames(data.frame(val), var)`), but this feels inelegant. How can we do better?
+
+### `do.call()`
+Base R provides a swiss-army knife to solve these problems: `do.call()`. `do.call()` has two main arguments. The first argument, `what`, gives a function to call. The second argument, `args`, is a list of arguments to pass to that function, and so `do.call("f", list(x, y, z))` is equivalent to `f(x, y, z)`.
+
+`do.call()` gives a straightforward solution to `rbind()`ing together many data frames:
+
+```{r}
+do.call("rbind", dfs)
+```
+
+With a little more work, we can use `do.call()` to solve the second problem. We first create a list of arguments, then name that, then use `do.call()`:
+
+```{r}
+args <- list(val)
+names(args) <- var
+do.call("data.frame", args)
+```
+
+### The tidyverse approach
+The tidyverse solves these problems in a different way to base R, by drawing parallel to quasiquotation:
+
+Row-binding multiple data frames is like unquote-splicing: we want to inline individual elements of the list into the call:
+
+```{r}
+dplyr::bind_rows(!!!dfs)
+```
+
+When used in this context, the behaviour of `!!!` is known as spatting in Ruby, Go, PHP, and Julia. It is closely related to `*args` (star-args) and `**kwarg` (star-star-kwargs) in Python, which are sometimes called argument unpacking.
+
+The second problem is like unquoting on the LHS of `=:` rather than interpreting var literaly, we want to use the value stored in the variable called var:
+
+```{r}
+tibble::tibble(!!var := val)
+```
+
+Note the use of `:=` (pronounced colon-equals) rather than `=`. Unfortunately we need this new operation because R’s grammar does not allow expressions as argument names:
+
+```{r, error=TRUE}
+tibble::tibble(!!var = value)
+```
+
+`:=` is like a vestigial organ: it’s recognised by R’s parser, but it doesn’t have any code associated with it. It looks like an `=` but allows expressions on either side, making it a more flexible alternative to `=`. It is used in data.table for similar reasons.
+
+### `list2()`
+Both `dplyr::bind_rows()` and `tibble::tibble()` are powered by `rlang::list2(...)`. This function is very similar to `list(...)`, but it understands `!!!` and `!!`. If you want to take advantage of this behaviour in your own function, all you need to do is use `list2()` in your own code. For example, imagine you want to make a version of `structure()` that understands `!!!` and `!!`. We’ll call it `set_attr()`:
+
+```{r}
+set_attr <- function(.x, ...) {
+  attr <- rlang::list2(...)
+  attributes(.x) <- attr
+  .x
+}
+
+attrs <- list(x = 1, y = 2)
+attr_name <- "z"
+
+1:10 %>%
+  set_attr(w = 0, !!!attrs, !!attr_name := 3) %>% 
+  str()
+```
+
+### Other approaches
+Apart from `rlang::list2()` there are several other techniques used to overcome the motivating challenges described above. One technique is to take `...` and a single unnamed argument that is a list, making `f(list(x, y, z))` equivalent to `f(x, y, z)`. The implementation looks something like this:
+
+```{r, eval=FALSE}
+f <- function(...) {
+  dots <- list(...)
+  if (length(dots) == 1 && is.list(dots[[1]])) {
+    dots <- dots[[1]]
+  }
+  
+  # Do something
+  ...
+}
+```
+
+Base functions that use this technique include `interaction()`, `expand.grid()`, `options()`, and `par()`. Since these functions take either a list or `...`, but not both, they are slightly less flexible than functions powered by `list2()`.
+
+### Exercises
+1. Carefully read the source code for `interaction()`, `expand.grid()`, and `par()`. Compare and contrast the techniques they use for switching between dots and list behaviour.
+**A**: They all check to see if `...` has one argument that is a list; if so then this list become the de facto arguments. General form is:
+    ```{r, eval=FALSE}
+    f <- function(...) {
+      dots <- list(...)
+      if (length(dots) == 1 && is.list(dots[[1]])) {
+        dots <- dots[[1]]
+      }
+      
+      # Do something
+      ...
+    }
+    ```
+Specific code is
+    ```{r, eval=FALSE}
+
+    # interaction
+    interaction(..., drop = FALSE, sep = ".", lex.order = FALSE)
+
+    args <- list(...)
+    narg <- length(args)
+    if (narg < 1L) 
+        stop("No factors specified")
+    if (narg == 1L && is.list(args[[1L]])) {
+        args <- args[[1L]]
+        narg <- length(args)
+    }
+    
+    # expand.grid
+    expand.grid(..., KEEP.OUT.ATTRS = TRUE, stringsAsFactors = TRUE)
+    
+    nargs <- length(args <- list(...))
+    if (!nargs) 
+        return(as.data.frame(list()))
+    if (nargs == 1L && is.list(a1 <- args[[1L]])) 
+        nargs <- length(args <- a1)
+    if (nargs == 0L) 
+        return(as.data.frame(list()))    
+    
+    # par
+    par(..., no.readonly = FALSE)
+    
+    args <- list(...)
+    if (!length(args)) 
+        args <- as.list(if (no.readonly) 
+            .Pars[-match(.Pars.readonly, .Pars)]
+        else .Pars)
+    else {
+        if (all(unlist(lapply(args, is.character)))) 
+            args <- as.list(unlist(args))
+        if (length(args) == 1) {
+            if (is.list(args[[1L]]) | is.null(args[[1L]])) 
+                args <- args[[1L]]
+            else if (is.null(names(args))) 
+                single <- TRUE
+        }
+    }    
+    ```
+
+2. Explain the problem with this definition of `set_attr()`
+    ```{r, error=TRUE}
+    set_attr <- function(x, ...) {
+      attr <- rlang::list2(...)
+      attributes(x) <- attr
+      x
+    }
+    set_attr(1:10, x = 10)
+    ```
+**A**: `x = 10` gets matched to the first argument of `set_attr`. Hence `1:10` is treated as `...` and hence as an attribute to be assigned to `x`. However `1:10` is not named.
+    ```{r}
+    # change first argument name to .x
+    set_attr <- function(.x, ...) {
+      attr <- rlang::list2(...)
+      attributes(.x) <- attr
+      .x
+    }
+    set_attr(1:10, x = 10)
+
+    # this works but is presumably not what was intended (x has value 10 an attribute y = 1:10)
+    set_attr <- function(x, ...) {
+      attr <- rlang::list2(...)
+      attributes(x) <- attr
+      x
+    }
+    set_attr(y = 1:10, x = 10)
+    
+    ```
+
+
+
+
+
+
+
 

@@ -7,6 +7,25 @@ library(rlang)
 library(rlist)
 library(pryr)
 
+set_attr <- function(x, ...) {
+  attr <- rlang::list2(...)
+  attributes(x) <- attr
+  x
+}
+set_attr(y = 1:10, x = 10)
+
+
+
+
+set_attr <- function(x, ...) {
+  attr <- rlang::list2(...)
+  attributes(x) <- attr
+  x
+}
+set_attr(1:10, x = 10)
+
+
+
 
 
 
@@ -274,13 +293,6 @@ rm(ex3)
 # eval
 # getParseData
 # srcfile
-
-
-
-
-
-
-
 
 
 

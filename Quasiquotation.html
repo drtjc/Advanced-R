@@ -677,9 +677,9 @@ substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
 ru5</code></pre>
 <pre><code>## runif(5)</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.7259564 0.6795794 0.9699572 0.4299944 0.8985774</code></pre>
+<pre><code>## [1] 0.9599355 0.3651846 0.3793657 0.2072810 0.3414299</code></pre>
 <pre class="r"><code>eval(ru5)</code></pre>
-<pre><code>## [1] 0.94604258 0.17569668 0.63865894 0.01856904 0.42217222</code></pre>
+<pre><code>## [1] 0.73366257 0.17686914 0.01345443 0.59742607 0.05448287</code></pre>
 <p>Note that every time we evaluate this expression we get a different result.</p>
 <p>The second argument to <code>eval()</code> is the environment in which the expression is evaluated. Manipulating this environment gives us amazing power to control the execution of R code.</p>
 <pre class="r"><code>x &lt;- 9
@@ -967,7 +967,7 @@ eq</code></pre>
 <p>Once you have this expression, you could evaluate it with new data, or turn it into a function:</p>
 <pre class="r"><code>df &lt;- data.frame(x1 = runif(5), x2 = runif(5))
 eval(eq, df)</code></pre>
-<pre><code>## [1]  9.862516  8.506077  7.594137 11.405883  7.031536</code></pre>
+<pre><code>## [1] 12.790833 12.603165 12.115174 10.714702  7.196598</code></pre>
 <pre class="r"><code>args &lt;- map(coefs, ~missing_arg())
 new_function(args, expr({
     !!eq
@@ -1073,7 +1073,7 @@ curve2(sin(exp(4 * x)), n = 1000)</code></pre>
 }
 negate1(is.null)</code></pre>
 <pre><code>## function(...) !f(...)
-## &lt;environment: 0x00000000195d9050&gt;</code></pre>
+## &lt;environment: 0x000000000d630428&gt;</code></pre>
 <pre class="r"><code>negate2 &lt;- function(f) {
     f &lt;- enexpr(f)
     new_function(exprs(... = ), expr(!(!!f)(...)), caller_env())
@@ -1152,6 +1152,142 @@ partition_rows(df, x == 1)</code></pre>
 ##   x y z
 ## 1 1 6 9
 ## 2 3 5 8</code></pre></li>
+<li><p>Add error handling to <code>slice()</code>. Give clear error messages if either along or index have invalid values (i.e. not numeric, not length 1, too small, or too big).<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>slice &lt;- function(x, along, index) {
+    if (dim(x) == 0) {
+        message(&quot;x is empty&quot;)
+        return(NULL)
+    }
+
+    if (!(is.numeric(index) &amp; length(index) == 1)) 
+        stop(&quot;index not a numeric of length 1&quot;, call. = FALSE)
+    if (!(is.numeric(along) &amp; length(along) == 1)) 
+        stop(&quot;index not a numeric of length 1&quot;, call. = FALSE)
+
+    if (index &lt; 1) 
+        stop(&quot;index is less than 1&quot;, call. = FALSE)
+    if (along &lt; 1) 
+        stop(&quot;index is less than 1&quot;, call. = FALSE)
+
+    nd &lt;- length(dim(x))
+
+    if (along &gt; nd) 
+        stop(&quot;along is greater than number of dimensions&quot;, call. = FALSE)
+    if (index &gt; dim(x)[along]) 
+        stop(&quot;index is greater than size of dimension&quot;, call. = FALSE)
+
+    indices &lt;- rep(list(missing_arg()), nd)
+    indices[along] &lt;- index
+
+    expr(x[!!!indices])
+}
+
+x &lt;- array(sample(30), c(5, 2, 3))
+slice(x, 1, 3)</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## x[3, , ]</code></pre>
+<pre class="r"><code>slice(x, 1, numeric(0))</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index not a numeric of length 1</code></pre>
+<pre class="r"><code>slice(x, 1, c(3, 2))</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index not a numeric of length 1</code></pre>
+<pre class="r"><code>slice(x, 1, character(0))</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index not a numeric of length 1</code></pre>
+<pre class="r"><code>slice(x, 1, &quot;y&quot;)</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index not a numeric of length 1</code></pre>
+<pre class="r"><code>slice(x, 1, -3)</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index is less than 1</code></pre>
+<pre class="r"><code>slice(x, -1, 3)</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index is less than 1</code></pre>
+<pre class="r"><code>slice(x, 4, 3)</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: along is greater than number of dimensions</code></pre>
+<pre class="r"><code>slice(x, 1, 6)</code></pre>
+<pre><code>## Warning in if (dim(x) == 0) {: the condition has length &gt; 1 and only the
+## first element will be used</code></pre>
+<pre><code>## Error: index is greater than size of dimension</code></pre>
+<pre class="r"><code>x &lt;- array(numeric(0))
+dim(x)</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>slice(x, 1, 3)</code></pre>
+<pre><code>## x is empty</code></pre>
+<pre><code>## NULL</code></pre></li>
+<li><p>Re-implement the Box-Cox transform defined below using unquoting and <code>new_function()</code>:</p>
+<pre class="r"><code>bc &lt;- function(lambda) {
+    if (lambda == 0) {
+        function(x) log(x)
+    } else {
+        function(x) (x^lambda - 1)/lambda
+    }
+}</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>bc &lt;- function(lambda) {
+    if (lambda == 0) {
+        function(x) log(x)
+    } else {
+        function(x) (x^lambda - 1)/lambda
+    }
+}
+bc(0)</code></pre>
+<pre><code>## function(x) log(x)
+## &lt;environment: 0x000000000ace72e0&gt;</code></pre>
+<pre class="r"><code>bc(1)</code></pre>
+<pre><code>## function(x) (x^lambda - 1)/lambda
+## &lt;bytecode: 0x000000000d063cc0&gt;
+## &lt;environment: 0x000000000a47efe0&gt;</code></pre>
+<pre class="r"><code>bc(2)</code></pre>
+<pre><code>## function(x) (x^lambda - 1)/lambda
+## &lt;bytecode: 0x000000000d063cc0&gt;
+## &lt;environment: 0x000000000d1247b8&gt;</code></pre>
+<pre class="r"><code>bc(4^0.5)</code></pre>
+<pre><code>## function(x) (x^lambda - 1)/lambda
+## &lt;bytecode: 0x000000000d063cc0&gt;
+## &lt;environment: 0x000000000d1b0960&gt;</code></pre>
+<pre class="r"><code>bc(2)(3)</code></pre>
+<pre><code>## [1] 4</code></pre>
+<pre class="r"><code># reimplemented
+bc2 &lt;- function(lambda) {
+    if (lambda == 0) {
+        new_function(exprs(x = ), expr(log(x)))
+    } else {
+        new_function(exprs(x = ), expr((x^(!!lambda) - 1)/!!lambda))
+    }
+}
+# note there is no need to capture enexpr(lambda) as we will only evaluate
+# lambda, not access its AST
+
+bc2(0)</code></pre>
+<pre><code>## function (x) 
+## log(x)
+## &lt;environment: 0x000000000d3fc3c8&gt;</code></pre>
+<pre class="r"><code>bc2(1)</code></pre>
+<pre><code>## function (x) 
+## (x^1 - 1)/1
+## &lt;environment: 0x000000000d4781b8&gt;</code></pre>
+<pre class="r"><code>bc2(2)</code></pre>
+<pre><code>## function (x) 
+## (x^2 - 1)/2
+## &lt;environment: 0x000000000dd000e0&gt;</code></pre>
+<pre class="r"><code>bc2(4^0.5)</code></pre>
+<pre><code>## function (x) 
+## (x^2 - 1)/2
+## &lt;environment: 0x000000000ddb7b98&gt;</code></pre>
+<pre class="r"><code>bc2(2)(3)</code></pre>
+<pre><code>## [1] 4</code></pre></li>
 <li><p>Re-implement the simple <code>compose()</code> defined below using quasiquotation and <code>new_function()</code>:</p>
 <pre class="r"><code>compose &lt;- function(f, g) {
     function(...) f(g(...))
@@ -1162,7 +1298,7 @@ partition_rows(df, x == 1)</code></pre>
 }
 compose(sin, cos)</code></pre>
 <pre><code>## function(...) f(g(...))
-## &lt;environment: 0x0000000019122690&gt;</code></pre>
+## &lt;environment: 0x0000000008c73288&gt;</code></pre>
 <pre class="r"><code>compose(sin, cos)(pi)</code></pre>
 <pre><code>## [1] -0.841471</code></pre>
 <pre class="r"><code>compose2 &lt;- function(f, g) {
@@ -1175,6 +1311,179 @@ compose2(sin, cos)</code></pre>
 ## sin(cos(...))</code></pre>
 <pre class="r"><code>compose2(sin, cos)(pi)</code></pre>
 <pre><code>## [1] -0.841471</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="dot-dot-dot-..." class="section level2">
+<h2><span class="header-section-number">1.7</span> Dot-dot-dot (<code>...</code>)</h2>
+<p>Quasiquotation ensures that every quoted argument has an escape hatch that allows the user to unquote, or evaluate, selected components, if needed. A similar and related need arises with functions that take arbitrary additional arguments with <code>...</code>.</p>
+<p>Take the following two motivating problems:</p>
+<p>What do you do if the elements you want to put in <code>...</code> are already stored in a list? For example, imagine you have a list of data frames that you want to <code>rbind()</code> together:</p>
+<pre class="r"><code>dfs &lt;- list(a = data.frame(x = 1, y = 2), b = data.frame(x = 3, y = 4))</code></pre>
+<p>You could solve this specific case with <code>rbind(dfs$a, df$b)</code>, but how do you generalise that solution to a list of arbitrary length?</p>
+<p>What do you do if you want to supply the argument name indirectly? For example, imagine you want to create a single column data frame where the name of the column is specified in a variable:</p>
+<pre class="r"><code>var &lt;- &quot;x&quot;
+val &lt;- c(4, 3, 9)</code></pre>
+<p>In this case, you could create a data frame and then change names (i.e. <code>setNames(data.frame(val), var)</code>), but this feels inelegant. How can we do better?</p>
+<div id="do.call" class="section level3">
+<h3><span class="header-section-number">1.7.1</span> <code>do.call()</code></h3>
+<p>Base R provides a swiss-army knife to solve these problems: <code>do.call()</code>. <code>do.call()</code> has two main arguments. The first argument, <code>what</code>, gives a function to call. The second argument, <code>args</code>, is a list of arguments to pass to that function, and so <code>do.call(&quot;f&quot;, list(x, y, z))</code> is equivalent to <code>f(x, y, z)</code>.</p>
+<p><code>do.call()</code> gives a straightforward solution to <code>rbind()</code>ing together many data frames:</p>
+<pre class="r"><code>do.call(&quot;rbind&quot;, dfs)</code></pre>
+<pre><code>##   x y
+## a 1 2
+## b 3 4</code></pre>
+<p>With a little more work, we can use <code>do.call()</code> to solve the second problem. We first create a list of arguments, then name that, then use <code>do.call()</code>:</p>
+<pre class="r"><code>args &lt;- list(val)
+names(args) &lt;- var
+do.call(&quot;data.frame&quot;, args)</code></pre>
+<pre><code>##   x
+## 1 4
+## 2 3
+## 3 9</code></pre>
+</div>
+<div id="the-tidyverse-approach" class="section level3">
+<h3><span class="header-section-number">1.7.2</span> The tidyverse approach</h3>
+<p>The tidyverse solves these problems in a different way to base R, by drawing parallel to quasiquotation:</p>
+<p>Row-binding multiple data frames is like unquote-splicing: we want to inline individual elements of the list into the call:</p>
+<pre class="r"><code>dplyr::bind_rows(!!!dfs)</code></pre>
+<pre><code>##   x y
+## 1 1 2
+## 2 3 4</code></pre>
+<p>When used in this context, the behaviour of <code>!!!</code> is known as spatting in Ruby, Go, PHP, and Julia. It is closely related to <code>*args</code> (star-args) and <code>**kwarg</code> (star-star-kwargs) in Python, which are sometimes called argument unpacking.</p>
+<p>The second problem is like unquoting on the LHS of <code>=:</code> rather than interpreting var literaly, we want to use the value stored in the variable called var:</p>
+<pre class="r"><code>tibble::tibble(`:=`(!!var, val))</code></pre>
+<pre><code>## # A tibble: 3 x 1
+##       x
+##   &lt;dbl&gt;
+## 1     4
+## 2     3
+## 3     9</code></pre>
+<p>Note the use of <code>:=</code> (pronounced colon-equals) rather than <code>=</code>. Unfortunately we need this new operation because R’s grammar does not allow expressions as argument names:</p>
+<pre class="r"><code>tibble::tibble(!!var = value)</code></pre>
+<pre><code>## Error: &lt;text&gt;:1:22: unexpected '='
+## 1: tibble::tibble(!!var =
+##                          ^</code></pre>
+<p><code>:=</code> is like a vestigial organ: it’s recognised by R’s parser, but it doesn’t have any code associated with it. It looks like an <code>=</code> but allows expressions on either side, making it a more flexible alternative to <code>=</code>. It is used in data.table for similar reasons.</p>
+</div>
+<div id="list2" class="section level3">
+<h3><span class="header-section-number">1.7.3</span> <code>list2()</code></h3>
+<p>Both <code>dplyr::bind_rows()</code> and <code>tibble::tibble()</code> are powered by <code>rlang::list2(...)</code>. This function is very similar to <code>list(...)</code>, but it understands <code>!!!</code> and <code>!!</code>. If you want to take advantage of this behaviour in your own function, all you need to do is use <code>list2()</code> in your own code. For example, imagine you want to make a version of <code>structure()</code> that understands <code>!!!</code> and <code>!!</code>. We’ll call it <code>set_attr()</code>:</p>
+<pre class="r"><code>set_attr &lt;- function(.x, ...) {
+    attr &lt;- rlang::list2(...)
+    attributes(.x) &lt;- attr
+    .x
+}
+
+attrs &lt;- list(x = 1, y = 2)
+attr_name &lt;- &quot;z&quot;
+
+1:10 %&gt;% set_attr(w = 0, !!!attrs, `:=`(!!attr_name, 3)) %&gt;% str()</code></pre>
+<pre><code>##  int [1:10] 1 2 3 4 5 6 7 8 9 10
+##  - attr(*, &quot;w&quot;)= num 0
+##  - attr(*, &quot;x&quot;)= num 1
+##  - attr(*, &quot;y&quot;)= num 2
+##  - attr(*, &quot;z&quot;)= num 3</code></pre>
+</div>
+<div id="other-approaches" class="section level3">
+<h3><span class="header-section-number">1.7.4</span> Other approaches</h3>
+<p>Apart from <code>rlang::list2()</code> there are several other techniques used to overcome the motivating challenges described above. One technique is to take <code>...</code> and a single unnamed argument that is a list, making <code>f(list(x, y, z))</code> equivalent to <code>f(x, y, z)</code>. The implementation looks something like this:</p>
+<pre class="r"><code>f &lt;- function(...) {
+    dots &lt;- list(...)
+    if (length(dots) == 1 &amp;&amp; is.list(dots[[1]])) {
+        dots &lt;- dots[[1]]
+    }
+    
+    # Do something
+    ...
+}</code></pre>
+<p>Base functions that use this technique include <code>interaction()</code>, <code>expand.grid()</code>, <code>options()</code>, and <code>par()</code>. Since these functions take either a list or <code>...</code>, but not both, they are slightly less flexible than functions powered by <code>list2()</code>.</p>
+</div>
+<div id="exercises-4" class="section level3">
+<h3><span class="header-section-number">1.7.5</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Carefully read the source code for <code>interaction()</code>, <code>expand.grid()</code>, and <code>par()</code>. Compare and contrast the techniques they use for switching between dots and list behaviour. <strong>A</strong>: They all check to see if <code>...</code> has one argument that is a list; if so then this list become the de facto arguments. General form is:</p>
+<pre class="r"><code>f &lt;- function(...) {
+    dots &lt;- list(...)
+    if (length(dots) == 1 &amp;&amp; is.list(dots[[1]])) {
+        dots &lt;- dots[[1]]
+    }
+
+    # Do something
+    ...
+}</code></pre>
+<p>Specific code is</p>
+<pre class="r"><code># interaction
+interaction(..., drop = FALSE, sep = &quot;.&quot;, lex.order = FALSE)
+
+args &lt;- list(...)
+narg &lt;- length(args)
+if (narg &lt; 1L) 
+    stop(&quot;No factors specified&quot;)
+if (narg == 1L &amp;&amp; is.list(args[[1L]])) {
+    args &lt;- args[[1L]]
+    narg &lt;- length(args)
+}
+
+# expand.grid
+expand.grid(..., KEEP.OUT.ATTRS = TRUE, stringsAsFactors = TRUE)
+
+nargs &lt;- length(args &lt;- list(...))
+if (!nargs) 
+    return(as.data.frame(list()))
+if (nargs == 1L &amp;&amp; is.list(a1 &lt;- args[[1L]])) 
+    nargs &lt;- length(args &lt;- a1)
+if (nargs == 0L) 
+    return(as.data.frame(list()))    
+
+# par
+par(..., no.readonly = FALSE)
+
+args &lt;- list(...)
+if (!length(args)) 
+    args &lt;- as.list(if (no.readonly) 
+        .Pars[-match(.Pars.readonly, .Pars)]
+    else .Pars)
+else {
+    if (all(unlist(lapply(args, is.character)))) 
+        args &lt;- as.list(unlist(args))
+    if (length(args) == 1) {
+        if (is.list(args[[1L]]) | is.null(args[[1L]])) 
+            args &lt;- args[[1L]]
+        else if (is.null(names(args))) 
+            single &lt;- TRUE
+    }
+}    </code></pre></li>
+<li><p>Explain the problem with this definition of <code>set_attr()</code></p>
+<pre class="r"><code>set_attr &lt;- function(x, ...) {
+    attr &lt;- rlang::list2(...)
+    attributes(x) &lt;- attr
+    x
+}
+set_attr(1:10, x = 10)</code></pre>
+<pre><code>## Error in attributes(x) &lt;- attr: attributes must be named</code></pre>
+<p><strong>A</strong>: <code>x = 10</code> gets matched to the first argument of <code>set_attr</code>. Hence <code>1:10</code> is treated as <code>...</code> and hence as an attribute to be assigned to <code>x</code>. However <code>1:10</code> is not named.</p>
+<pre class="r"><code># change first argument name to .x
+set_attr &lt;- function(.x, ...) {
+    attr &lt;- rlang::list2(...)
+    attributes(.x) &lt;- attr
+    .x
+}
+set_attr(1:10, x = 10)</code></pre>
+<pre><code>##  [1]  1  2  3  4  5  6  7  8  9 10
+## attr(,&quot;x&quot;)
+## [1] 10</code></pre>
+<pre class="r"><code># this works but is presumably not what was intended (x has value 10 an
+# attribute y = 1:10)
+set_attr &lt;- function(x, ...) {
+    attr &lt;- rlang::list2(...)
+    attributes(x) &lt;- attr
+    x
+}
+set_attr(y = 1:10, x = 10)</code></pre>
+<pre><code>## [1] 10
+## attr(,&quot;y&quot;)
+##  [1]  1  2  3  4  5  6  7  8  9 10</code></pre></li>
 </ol>
 </div>
 </div>
