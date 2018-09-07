@@ -7,16 +7,14 @@ library(rlang)
 library(rlist)
 library(pryr)
 
+
+
 z <- 50
 
 local3 <- function(expr, envir = new.env()) {
-  call <- substitute(eval(quote(expr), envir))
-  print(call)
-  print(envir)
-  print(environment())
+#local3 <- function(expr, envir = environment()) {
   print(parent.env(envir))
-  print(parent.env(parent.env(envir)))
-  print(parent.frame())
+  call <- substitute(eval(quote(expr), envir))
   eval(call, envir = parent.frame())
 }
 
@@ -33,7 +31,6 @@ x
 
 local2 <- function(expr) {
   env <- child_env(caller_env())
-  print(parent.env(env))
   eval_bare(enexpr(expr), env)
 }
 
@@ -43,9 +40,9 @@ foo <- local2({
   x + y
 })
 
-foo
+(foo)
 
-
+print(sys.status())
 
 
 # new.env returns a new (empty) environment with (by default) enclosure the parent frame.
