@@ -7,14 +7,28 @@ library(rlang)
 library(rlist)
 library(pryr)
 
+eval(quote(eval(quote(eval(quote(2 + 2))))))
+
+q1 <- quote(eval(quote(eval(quote(2 + 2)))))
+
+
+
+eval(q1)
+
+
+
+eval(eval(quote(eval(quote(eval(quote(2 + 2)))))))
+quote(eval(quote(eval(quote(eval(quote(2 + 2)))))))
+
 
 
 z <- 50
 
-local3 <- function(expr, envir = new.env()) {
+
 #local3 <- function(expr, envir = environment()) {
-  print(parent.env(envir))
+local3 <- function(expr, envir = new.env()) {
   call <- substitute(eval(quote(expr), envir))
+  print(call)
   eval(call, envir = parent.frame())
 }
 
@@ -22,7 +36,7 @@ rm(x, y)
 foo <- local3({
   x <- 10
   y <- 200
-  x + y + z
+  x + y
 })
 
 foo
