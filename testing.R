@@ -8,6 +8,44 @@ library(rlist)
 library(pryr)
 
 
+subset2 <- function(df, rows) {
+  rows <- enquo(rows)
+  
+  rows_val <- eval_tidy(rows, df)
+  stopifnot(is.logical(rows_val))
+  
+  df[rows_val, , drop = FALSE]
+}
+
+
+df$b == df$c
+df[c(TRUE, FALSE, FALSE, FALSE, TRUE), ]
+
+subset3 <- function(data, rows) {
+  eval_tidy(quo(data[!!enquo(rows), , drop = FALSE]), data = data)
+}
+
+
+subset4 <- function(data, rows) {
+  rows <- enquo(rows)
+  expr <- quo(data[!!rows, , drop = FALSE])
+  print(expr)
+  eval_tidy(expr, data = data)
+}
+
+df[df$b == df$c, ,drop=FALSE]
+
+
+df <- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))
+subset2(df, b == c)
+
+subset3(df, b == c)
+subset4(df, b == c)
+
+
+
+
+
 filter_all(mtcars, all_vars(. > 150))
 
 filter_all(mtcars, any_vars(. > 150)) #%>% nrow()

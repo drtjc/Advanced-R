@@ -751,5 +751,33 @@ eval_tidy(quo(new * 2), mask)
 ```
 
 ### Exercises
+3. Here’s an alternative implementation of `arrange()`:
+    ```{r}
+    invoke <- function(fun, ...) do.call(fun, dots_list(...))
+    arrange3 <- function(.data, ..., .na.last = TRUE) {
+      args <- enquos(...)
+    
+      ords <- purrr::map(args, eval_tidy, data = .data)
+      # ords is a list containing the cols (numeric vectors) of .data
+      
+      ord <- invoke(order, !!!ords, na.last = .na.last)
+    
+      .data[ord, , drop = FALSE]
+    }
+    ```
+Describe the primary difference in approach compared to the function defined in the text. One advantage of this approach is that you could check each element of `...` to make sure that input is correct. What property should each element of `ords` have?  
+**A**: each argument in `...` is evaluated seperately. Per the `order` help page - `...`: a sequence of numeric, complex, character or logical vectors, all of the same length, or a classed R object.
+    ```{r}
+    df <- data.frame(x = c(1,1,3:1,1:4,3), y = c(9,9:1), z = c(2,1:9))
+    order(df$x, df$y)
+    arrange3(df, x, y)
+    ```
 
+4. Here’s an alternative implementation of `subset2()`:
+    ```{r}
+    subset3 <- function(data, rows) {
+      eval_tidy(quo(data[!!enquo(rows), , drop = FALSE]), data = data)
+    }
+    ```
+Use intermediate variables to make the function easier to understand, then explain how this approach differs to the approach in the text.
 
