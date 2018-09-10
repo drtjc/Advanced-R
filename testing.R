@@ -7,65 +7,133 @@ library(rlang)
 library(rlist)
 library(pryr)
 
-eval(quote(eval(quote(eval(quote(2 + 2))))))
 
-q1 <- quote(eval(quote(eval(quote(2 + 2)))))
+filter_all(mtcars, all_vars(. > 150))
 
+filter_all(mtcars, any_vars(. > 150)) #%>% nrow()
 
+mtcars
 
-eval(q1)
-
-
-
-eval(eval(quote(eval(quote(eval(quote(2 + 2)))))))
-quote(eval(quote(eval(quote(eval(quote(2 + 2)))))))
+filter_at(mtcars, vars(starts_with("d")), all_vars(. > 4.0))
 
 
 
-z <- 50
+
+filter_if(mtcars, ~ TRUE, all_vars(. != 0))
 
 
-#local3 <- function(expr, envir = environment()) {
-local3 <- function(expr, envir = new.env()) {
-  call <- substitute(eval(quote(expr), envir))
-  print(call)
-  eval(call, envir = parent.frame())
+filter_if(mtcars, ~is.numeric(.), all_vars(. != 0)) #%>% nrow()
+
+filter_if(mtcars, ~sum(.) < 13.5, all_vars(. != 0)) #%>% nrow()
+
+
+
+as_tibble(mtcars)
+
+
+map_dbl(mtcars, sum)
+
+sum(mtcars$drat)
+
+mtcars$gear
+
+
+floor(mtcars$drat)
+
+
+
+floor(mtcars[1,])
+mtcars[1,]
+
+lm3 <- function(formula, data) {
+  formula <- enexpr(formula)
+  data <- enexpr(data)
+  
+  lm_call <- expr(lm(!!formula, data = !!data))
+  eval_bare(lm_call, caller_env())
+}
+lm3(mpg ~ disp, mtcars)
+
+
+
+
+
+
+subset2 <- function(df, rows) {
+  rows <- enquo(rows)
+  
+  rows_val <- eval_tidy(rows, df)
+  stopifnot(is.logical(rows_val))
+  
+  df[rows_val, , drop = FALSE]
 }
 
-rm(x, y)
-foo <- local3({
-  x <- 10
-  y <- 200
-  x + y
-})
-
-foo
-x
 
 
-local2 <- function(expr) {
-  env <- child_env(caller_env())
-  eval_bare(enexpr(expr), env)
+threshold_var1 <- function(df, var, val) {
+  var <- ensym(var)
+  subset2(df, `$`(.data, !!var) >= !!val)
 }
 
-foo <- local2({
-  x <- 10
-  y <- 200
-  x + y
-})
-
-(foo)
-
-print(sys.status())
-
-
-# new.env returns a new (empty) environment with (by default) enclosure the parent frame.
-# parent.env returns the enclosing environment of its argument.
+df <- data.frame(x = 1:3, val = 9:11)
+threshold_var1(df, x, 2)
 
 
 
 
+grouped_mean <- function(df, group_var, summary_var) {
+  group_var <- enquo(group_var)
+  summary_var <- enquo(summary_var)
+  
+  df %>% 
+    group_by(!!group_var) %>% 
+    summarise(mean = mean(!!summary_var))
+}
 
+df <- data.frame(x = c(1,1,2,2), y = c(4,6,8,10))
+grouped_mean(df, x, y)
+
+
+
+rm(x)
+f <- ~runif(3)
+f
+#> ~runif(3)
+
+f[[1]]
+f[[2]]
+
+str(f)
+View(f)
+eval(f)
+eval(f[[2]])
+
+terms(f)
+attributes(f)
+
+map(1:2, f)
+
+
+class(fo <- y ~ x1*x2) # "formula"
+fo
+typeof(fo)  # R internal : "language"
+terms(fo)
+
+
+
+
+
+f <- function(x) {
+  # this is a function
+  x ^ 2
+}
+
+l <- list()
+l[[1]] <- f
+
+print(f)
+print(l)
+print(l[[1]])
 
 
 
