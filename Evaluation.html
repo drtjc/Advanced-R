@@ -573,7 +573,7 @@ foo(a + b)</code></pre>
 x</code></pre>
 <pre><code>## &lt;quosure&gt;
 ##   expr: ^x + y
-##   env:  00000000158F8878</code></pre>
+##   env:  00000000189E4EA0</code></pre>
 <p>If you need to turn a quosure into text for output to the console you can use <code>quo_name()</code>, <code>quo_label()</code>, or <code>quo_text()</code>. <code>quo_name()</code> and <code>quo_label()</code> are guaranteed to be short; <code>quo_expr()</code> may span multiple lines.</p>
 <pre class="r"><code>y &lt;- quo(long_function_name(argument_1 = long_argument_value, argument_2 = long_argument_value, 
     argument_3 = long_argument_value, argument_4 = long_argument_value))
@@ -592,7 +592,7 @@ eval_tidy(x)</code></pre>
 <pre><code>## [1] 11</code></pre>
 <p>And you can extract its components with the quo_get_ helpers:</p>
 <pre class="r"><code>quo_get_env(x)</code></pre>
-<pre><code>## &lt;environment: 0x0000000018fe8c40&gt;</code></pre>
+<pre><code>## &lt;environment: 0x00000000197e3e90&gt;</code></pre>
 <pre class="r"><code>quo_get_expr(x)</code></pre>
 <pre><code>## x + y</code></pre>
 <p>For this simple case, <code>eval_tidy()</code> is basically a wrapper around <code>eval_bare()</code>. In the next section, you’ll learn about the data argument which makes <code>eval_tidy()</code> particularly powerful.</p>
@@ -609,16 +609,16 @@ foo &lt;- function(x_arg) {
 }
 foo(runif(3))</code></pre>
 <pre><code>## [[1]]
-## [1] 0.9990547 0.8897559 0.1578812
+## [1] 0.8833808 0.9829046 0.7999058
 ## 
 ## [[2]]
-## [1] 0.9990547 0.8897559 0.1578812</code></pre>
+## [1] 0.8833808 0.9829046 0.7999058</code></pre>
 <pre class="r"><code># The quosure x is evaluated afresh each time
 x_quo &lt;- quo(runif(3))
 eval_tidy(x_quo)</code></pre>
-<pre><code>## [1] 0.2144856 0.5988212 0.6764922</code></pre>
+<pre><code>## [1] 0.7563272 0.5118937 0.5415874</code></pre>
 <pre class="r"><code>eval_tidy(x_quo)</code></pre>
-<pre><code>## [1] 0.07457039 0.10187842 0.78205419</code></pre>
+<pre><code>## [1] 0.2282801 0.6645036 0.6780965</code></pre>
 </div>
 <div id="when-not-to-use-quosures" class="section level3">
 <h3><span class="header-section-number">1.3.5</span> When not to use quosures</h3>
@@ -637,6 +637,364 @@ quo(log(x, base = base))</code></pre>
 <pre class="r"><code>expr(log(x, base = !!base))</code></pre>
 <pre><code>## log(x, base = 2)</code></pre>
 <p>(Assuming that x will be supplied in some other way)</p>
+</div>
+<div id="exercises-1" class="section level3">
+<h3><span class="header-section-number">1.3.6</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Predict what evaluating each of the following quosures will return.</p>
+<pre class="r"><code>q1 &lt;- new_quosure(expr(x), env(x = 1))
+q1</code></pre>
+<pre><code>## &lt;quosure&gt;
+##   expr: ^x
+##   env:  0000000019983E98</code></pre>
+<pre class="r"><code>q2 &lt;- new_quosure(expr(x + !!q1), env(x = 10))
+q2</code></pre>
+<pre><code>## &lt;quosure&gt;
+##   expr: ^x + (^x)
+##   env:  000000001A539618</code></pre>
+<pre class="r"><code>q3 &lt;- new_quosure(expr(x + !!q2), env(x = 100))
+q3</code></pre>
+<pre><code>## &lt;quosure&gt;
+##   expr: ^x + (^x + (^x))
+##   env:  00000000159743C8</code></pre>
+<p><strong>A</strong>: 1, 11, 111</p>
+<pre class="r"><code>q1 &lt;- new_quosure(expr(x), env(x = 1))
+eval_tidy(q1)</code></pre>
+<pre><code>## [1] 1</code></pre>
+<pre class="r"><code>q2 &lt;- new_quosure(expr(x + !!q1), env(x = 10))
+eval_tidy(q2)</code></pre>
+<pre><code>## [1] 11</code></pre>
+<pre class="r"><code>q3 &lt;- new_quosure(expr(x + !!q2), env(x = 100))
+eval_tidy(q3)</code></pre>
+<pre><code>## [1] 111</code></pre></li>
+<li><p>Write a function <code>enenv()</code> that captures the environment associated with an argument.<br />
+<strong>A</strong>:</p>
+<pre class="r"><code>enenv &lt;- function(x) {
+    expr &lt;- enquo(x)
+    quo_get_env(expr)
+}
+
+x &lt;- 10
+enenv(x)</code></pre>
+<pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre>
+<pre class="r"><code>g &lt;- function() {
+    x &lt;- 10
+    enenv(x)
+}
+g()</code></pre>
+<pre><code>## &lt;environment: 0x000000001a48c460&gt;</code></pre>
+<pre class="r"><code>env_parent(g())</code></pre>
+<pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="tidy-evaluation" class="section level2">
+<h2><span class="header-section-number">1.4</span> Tidy evaluation</h2>
+<p>In the previous section, you learned how to capture quosures, why they are important, and the basics of <code>eval_tidy()</code>. In this section, we’ll go deep on <code>eval_tidy()</code> and talk more generally about the ideas of tidy evaluation. There are two big new concepts:</p>
+<ul>
+<li>A data mask is a data frame where the evaluated code will look first for variable definitions.</li>
+<li>A data mask introduces ambiguity, so to remove that ambiguity when necessary we introduce pronouns.</li>
+</ul>
+<p>We’ll explore tidy evaluation in the context of <code>base::subset()</code>, because it’s a simple yet powerful function that encapsulates one of the central ideas that makes R so elegant for data analysis. Once we’ve seen the tidy implementation, we’ll return to the base R implementation, learn how it works, and explore the limitations that make <code>subset()</code> suitable only for interactive usage.</p>
+<div id="data-masks" class="section level3">
+<h3><span class="header-section-number">1.4.1</span> Data masks</h3>
+<p>In the previous section, you learned that <code>eval_tidy()</code> is basically a wrapper around <code>eval_bare()</code> when evaluating a quosure. The real power of <code>eval_tidy()</code> comes with the second argument: data. This lets you set up a data mask, where variables in the environment are potentially masked by variables in a data frame. This allows you to mingle variables from the environment and variables from a data frame:</p>
+<pre class="r"><code>x &lt;- 10
+df &lt;- data.frame(y = 1:10)
+q1 &lt;- quo(x * y)
+
+eval_tidy(q1, df)</code></pre>
+<pre><code>##  [1]  10  20  30  40  50  60  70  80  90 100</code></pre>
+<p>The data mask is the key idea that powers base functions like <code>with()</code>, <code>subset()</code> and <code>transform()</code>, and that is used throughout tidyverse, in packages like dplyr.</p>
+<p>How does this work? Unlike environments, data frames don’t have parents, so we can effectively turn it into an environment using the environment of the quosure as its parent. The above code is basically equivalent to:</p>
+<pre class="r"><code>df_env &lt;- as_environment(df, parent = quo_get_env(q1))
+q2 &lt;- quo_set_env(q1, df_env)
+
+eval_tidy(q2)</code></pre>
+<pre><code>##  [1]  10  20  30  40  50  60  70  80  90 100</code></pre>
+</div>
+<div id="application-subset" class="section level3">
+<h3><span class="header-section-number">1.4.2</span> Application: <code>subset()</code>:</h3>
+<p>To see why the data mask is so useful, lets implement our own version of <code>subset()</code>. If you haven’t used it before, <code>subset()</code> (like <code>dplyr::filter()</code>), provides a convenient way of selecting rows of a data frame using an expression that is evaluated in the context of the data frame. It allows you to subset without repeatedly referring to the name of the data frame:</p>
+<pre class="r"><code>sample_df &lt;- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))
+
+# Shorthand for sample_df[sample_df$a &gt;= 4, ]
+subset(sample_df, a &gt;= 4)</code></pre>
+<pre><code>##   a b c
+## 4 4 2 4
+## 5 5 1 1</code></pre>
+<pre class="r"><code># Shorthand for sample_df[sample_df$b == sample_df$c, ]
+subset(sample_df, b == c)</code></pre>
+<pre><code>##   a b c
+## 1 1 5 5
+## 5 5 1 1</code></pre>
+<p>The core of our version of <code>subset()</code>, <code>subset2()</code>, is quite simple. It takes two arguments: a data frame, <code>df</code>, and an expression, <code>rows</code>. We evaluate <code>rows</code> using <code>df</code> as a data mask, then use the results to subset the data frame with <code>[</code>. I’ve included a very simple check to ensure the result is a logical vector; real code should do more work to create an informative error.</p>
+<pre class="r"><code>subset2 &lt;- function(df, rows) {
+    rows &lt;- enquo(rows)
+    
+    rows_val &lt;- eval_tidy(rows, df)
+    stopifnot(is.logical(rows_val))
+    
+    df[rows_val, , drop = FALSE]
+}
+
+subset2(sample_df, b == c)</code></pre>
+<pre><code>##   a b c
+## 1 1 5 5
+## 5 5 1 1</code></pre>
+</div>
+<div id="application-arrange" class="section level3">
+<h3><span class="header-section-number">1.4.3</span> Application: <code>arrange()</code></h3>
+<p>A slightly more complicated exercise is to implement the heart of <code>dplyr::arrange()</code>. The goal of <code>arrange()</code> is to allow you to sort a data frame by multiple variables, each evaluated in the context of the data frame. This is more challenging than <code>subset()</code> because we want to arrange by multiple variables captured in <code>...</code>.</p>
+<pre class="r"><code>arrange2 &lt;- function(.df, ..., .na.last = TRUE) {
+    # Capture all dots
+    args &lt;- enquos(...)
+    
+    # Create a call to order, using `!!!` to splice in the individual
+    # expressions, and `!!` to splice in na.last
+    order_call &lt;- quo(order(!!!args, na.last = !!.na.last))
+    
+    # Evaluate the call to order with
+    ord &lt;- eval_tidy(order_call, .df)
+    
+    .df[ord, , drop = FALSE]
+}
+
+df &lt;- data.frame(x = c(2, 3, 1), y = runif(3))
+
+arrange2(df, x)</code></pre>
+<pre><code>##   x         y
+## 3 1 0.7136586
+## 1 2 0.6289049
+## 2 3 0.7228581</code></pre>
+<pre class="r"><code>arrange2(df, -y)</code></pre>
+<pre><code>##   x         y
+## 2 3 0.7228581
+## 3 1 0.7136586
+## 1 2 0.6289049</code></pre>
+</div>
+<div id="ambiguity-and-pronouns" class="section level3">
+<h3><span class="header-section-number">1.4.4</span> Ambiguity and pronouns</h3>
+<p>One of the downsides of the data mask is that it introduces ambiguity: when you say <code>x</code>, are you refering to a variable in the data or in the environment? This ambiguity is ok when doing interactive data analysis because you are familiar with the data, and if there are problems, you’ll spot them quickly because you are looking at the data frequently. However, ambiguity becomes a problem when you start programming with functions that use tidy evaluation. For example, take this simple wrapper:</p>
+<pre class="r"><code>threshold_x &lt;- function(df, val) {
+    subset2(df, x &gt;= val)
+}</code></pre>
+<p>This function can silently return an incorrect result in two situations:</p>
+<ul>
+<li>If <code>df</code> does not contain a variable called <code>x</code> and <code>x</code> exists in the calling environment, <code>threshold_x()</code> will silently return an incorrect result:</li>
+</ul>
+<pre class="r"><code>x &lt;- 10
+no_x &lt;- data.frame(y = 1:3)
+threshold_x(no_x, 2)</code></pre>
+<pre><code>##   y
+## 1 1
+## 2 2
+## 3 3</code></pre>
+<pre class="r"><code>threshold_x(no_x, 20)</code></pre>
+<pre><code>## [1] y
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<pre class="r"><code># works as intended if x is a column
+yes_x &lt;- data.frame(x = 1:3)
+threshold_x(yes_x, 2)</code></pre>
+<pre><code>##   x
+## 2 2
+## 3 3</code></pre>
+<ul>
+<li>If <code>df</code> contains a variable called <code>val</code>, the function will always return an incorrect answer:</li>
+</ul>
+<pre class="r"><code>has_val &lt;- data.frame(x = 1:3, val = 9:11)
+threshold_x(has_val, 2)</code></pre>
+<pre><code>## [1] x   val
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<pre class="r"><code>has_val &lt;- data.frame(x = 4:6, val = c(5, 5, 5))
+threshold_x(has_val, 2)</code></pre>
+<pre><code>##   x val
+## 2 5   5
+## 3 6   5</code></pre>
+<p>These failure modes arise because tidy evaluation is ambiguous: each variable can be found in either the data mask or the environment. To make this function work we need to remove that ambiguity and ensure that <code>x</code> is always found in the data and <code>val</code> in the environment. To make this possible <code>eval_tidy()</code> provides <code>.data</code> and <code>.env</code> pronouns:</p>
+<pre class="r"><code>threshold_x &lt;- function(df, val) {
+    subset2(df, .data$x &gt;= .env$val)
+}
+
+x &lt;- 10
+threshold_x(no_x, 2)</code></pre>
+<pre><code>## Error: Column `x` not found in `.data`</code></pre>
+<pre class="r"><code>has_val &lt;- data.frame(x = 1:3, val = 9:11)
+threshold_x(has_val, 2)</code></pre>
+<pre><code>##   x val
+## 2 2  10
+## 3 3  11</code></pre>
+<p>Generally, whenever you use the <code>.env</code> pronoun, you can use unquoting instead:</p>
+<pre class="r"><code>threshold_x &lt;- function(df, val) {
+    subset2(df, .data$x &gt;= !!val)
+}</code></pre>
+<p>There are subtle differences in when <code>val</code> is evaluated. If you unquote, <code>val</code> will be evaluated by <code>enquo()</code>; if you use a pronoun, <code>val</code> will be evaluated by <code>eval_tidy()</code>. These differences are usually unimportant, so pick the form that looks most natural.</p>
+<p>What if we generalise <code>threshold_x()</code> slightly so that the user can pick the variable used for thresholding. There are two basic approaches. Both start by capturing a <em>symbol</em>:</p>
+<pre class="r"><code>threshold_var1 &lt;- function(df, var, val) {
+    var &lt;- ensym(var)
+    subset2(df, .data$!!var &gt;= !!val)
+}
+
+threshold_var2 &lt;- function(df, var, val) {
+    var &lt;- as.character(ensym(var))
+    subset2(df, .data[[var]] &gt;= !!val)
+}
+
+df &lt;- data.frame(x = 1:3, val = 9:11)
+threshold_var1(df, x, 2)
+# x val 2 2 10 3 3 11
+threshold_var2(df, val, 11)
+# x val 3 3 11</code></pre>
+<p>In <code>threshold_var1</code> we need to use the prefix form of <code>$</code>, because <code>.data$!!var</code> is not valid R syntax. Alternatively, we can convert the symbol to a string, and use <code>[[</code>.</p>
+</div>
+<div id="base-subset" class="section level3">
+<h3><span class="header-section-number">1.4.5</span> Base <code>subset()</code>:</h3>
+<p>Why is <code>subset()</code> dangerous for programming and how does tidy evaluation help us avoid those dangers? First, lets implement the key parts of <code>subset()</code> using base R, following the same structure as <code>subset2()</code>. We convert <code>enquo()</code> to <code>substitute()</code> and <code>eval_tidy()</code> to <code>eval()</code>. We also need to supply a backup environment to <code>eval()</code>. There’s no way to access the environment associated with an argument in base R, so we take the best approximation: the caller environment (aka parent frame).</p>
+<pre class="r"><code>subset_base &lt;- function(data, rows) {
+    rows &lt;- substitute(rows)
+    
+    rows_val &lt;- eval(rows, data, caller_env())
+    stopifnot(is.logical(rows_val))
+    
+    data[rows_val, , drop = FALSE]
+}</code></pre>
+<p>There are three problems with this implementation:</p>
+<ul>
+<li><code>subset()</code> doesn’t support unquoting, so wrapping the function is hard. First, you use <code>substitute()</code> to capture the complete expression, then you evaluate it. Because <code>substitute()</code> doesn’t use a syntactic marker for unquoting, it is hard to see exactly what’s happening here.</li>
+</ul>
+<pre class="r"><code>f1a &lt;- function(df, expr) {
+    call &lt;- substitute(subset(df, expr))
+    eval(call, caller_env())
+}
+
+df &lt;- data.frame(x = 1:3, y = 3:1)
+f1a(df, x == 1)</code></pre>
+<pre><code>##   x y
+## 1 1 3</code></pre>
+<p>I think the tidy evaluation equivalent is easier to understand because the quoting and unquoting is explicit:</p>
+<pre class="r"><code>f1b &lt;- function(df, expr) {
+    expr &lt;- enquo(expr)
+    subset2(df, !!expr)
+}
+
+f1b(df, x == 1)</code></pre>
+<pre><code>##   x y
+## 1 1 3</code></pre>
+<ul>
+<li><code>base::subset()</code> always evaluates rows in the parent frame, but if <code>...</code> has been used, then the expression might need to be evaluated elsewhere:</li>
+</ul>
+<pre class="r"><code>f &lt;- function(df, ...) {
+    xval &lt;- 3
+    subset(df, ...)
+}
+
+xval &lt;- 1
+f(df, x == xval)</code></pre>
+<pre><code>##   x y
+## 3 3 1</code></pre>
+<p>Because <code>enquo()</code> captures the environment of the argument as well as its expression, this is not a problem with <code>subset2()</code>:</p>
+<pre class="r"><code>f &lt;- function(df, ...) {
+    xval &lt;- 10
+    subset2(df, ...)
+}
+
+xval &lt;- 1
+f(df, x == xval)</code></pre>
+<pre><code>##   x y
+## 1 1 3</code></pre>
+<ul>
+<li>Finally, <code>eval()</code> doesn’t provide any pronouns so there’s no way to write a safe version of <code>threshold_x()</code>.</li>
+</ul>
+</div>
+</div>
+<div id="performance" class="section level2">
+<h2><span class="header-section-number">1.5</span> Performance</h2>
+<p>Note that there is some performance overhead when evaluating a quosure compared to evaluating an expression.</p>
+<p>However, most of the overhead is due to setting up the data mask so if you need to evaluate code repeatedly, it’s a good idea to define the data mask once then reuse it. This considerably reduces the overhead, with a small change in behaviour: if the code being evaluated creates objects in the “current” environment, those objects will persist across calls.</p>
+<pre class="r"><code>mask &lt;- as_data_mask(mtcars)
+eval_tidy(quo(cyl * 2), mask)</code></pre>
+<pre><code>##  [1] 12 12  8 12 16 12 16  8  8 12 12 16 16 16 16 16 16  8  8  8  8 16 16
+## [24] 16 16  8  8  8 16 12 16  8</code></pre>
+<pre class="r"><code>eval_tidy(quo(new &lt;- cyl + am), mask)</code></pre>
+<pre><code>##  [1] 7 7 5 6 8 6 8 4 4 6 6 8 8 8 8 8 8 5 5 5 4 8 8 8 8 5 5 5 9 7 9 5</code></pre>
+<pre class="r"><code>eval_tidy(quo(new * 2), mask)</code></pre>
+<pre><code>##  [1] 14 14 10 12 16 12 16  8  8 12 12 16 16 16 16 16 16 10 10 10  8 16 16
+## [24] 16 16 10 10 10 18 14 18 10</code></pre>
+<div id="exercises-2" class="section level3">
+<h3><span class="header-section-number">1.5.1</span> Exercises</h3>
+<ol start="3" style="list-style-type: decimal">
+<li><p>Here’s an alternative implementation of <code>arrange()</code>:</p>
+<pre class="r"><code>invoke &lt;- function(fun, ...) do.call(fun, dots_list(...))
+arrange3 &lt;- function(.data, ..., .na.last = TRUE) {
+    args &lt;- enquos(...)
+
+    ords &lt;- purrr::map(args, eval_tidy, data = .data)
+    # ords is a list containing the cols (numeric vectors) of .data
+
+    ord &lt;- invoke(order, !!!ords, na.last = .na.last)
+
+    .data[ord, , drop = FALSE]
+}</code></pre>
+<p>Describe the primary difference in approach compared to the function defined in the text. One advantage of this approach is that you could check each element of <code>...</code> to make sure that input is correct. What property should each element of <code>ords</code> have?<br />
+<strong>A</strong>: each argument in <code>...</code> is evaluated seperately. Per the <code>order</code> help page - <code>...</code>: a sequence of numeric, complex, character or logical vectors, all of the same length, or a classed R object.</p>
+<pre class="r"><code>df &lt;- data.frame(x = c(1, 1, 3:1, 1:4, 3), y = c(9, 9:1), z = c(2, 1:9))
+order(df$x, df$y)</code></pre>
+<pre><code>##  [1]  6  5  1  2  7  4 10  8  3  9</code></pre>
+<pre class="r"><code>arrange3(df, x, y)</code></pre>
+<pre><code>##    x y z
+## 6  1 5 5
+## 5  1 6 4
+## 1  1 9 2
+## 2  1 9 1
+## 7  2 4 6
+## 4  2 7 3
+## 10 3 1 9
+## 8  3 3 7
+## 3  3 8 2
+## 9  4 2 8</code></pre></li>
+<li><p>Here’s an alternative implementation of <code>subset2()</code>:</p>
+<pre class="r"><code>subset3 &lt;- function(data, rows) {
+    eval_tidy(quo(data[!!enquo(rows), , drop = FALSE]), data = data)
+}</code></pre>
+<p>Use intermediate variables to make the function easier to understand, then explain how this approach differs to the approach in the text.<br />
+<strong>A</strong></p>
+<pre class="r"><code>subset4 &lt;- function(data, rows) {
+    rows &lt;- enquo(rows)
+    expr &lt;- quo(data[!!rows, , drop = FALSE])
+    eval_tidy(expr, data = data)
+}</code></pre>
+<p>Let’s use the following as an example:</p>
+<pre class="r"><code>subset2 &lt;- function(df, rows) {
+    rows &lt;- enquo(rows)
+
+    rows_val &lt;- eval_tidy(rows, df)
+    stopifnot(is.logical(rows_val))
+
+    df[rows_val, , drop = FALSE]
+}
+
+df &lt;- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))
+subset2(df, b == c)</code></pre>
+<pre><code>##   a b c
+## 1 1 5 5
+## 5 5 1 1</code></pre>
+<pre class="r"><code>subset4(df, b == c)</code></pre>
+<pre><code>##   a b c
+## 1 1 5 5
+## 5 5 1 1</code></pre>
+<p><code>subset2</code> uses eval_tidy to essentially evaluate <code>df$b == df$c</code>. This is a logical vector that is hen uses to index <code>df</code></p>
+<pre class="r"><code>df$b == df$c</code></pre>
+<pre><code>## [1]  TRUE FALSE FALSE FALSE  TRUE</code></pre>
+<pre class="r"><code>df[c(TRUE, FALSE, FALSE, FALSE, TRUE), ]</code></pre>
+<pre><code>##   a b c
+## 1 1 5 5
+## 5 5 1 1</code></pre>
+<p><code>subset4</code> uses eval_tidy to essentially evaluate <code>df[df$b == df$c, , drop = FALSE]</code> in one go.</p>
+<pre class="r"><code>df[df$b == df$c, , drop = FALSE]</code></pre>
+<pre><code>##   a b c
+## 1 1 5 5
+## 5 5 1 1</code></pre></li>
+</ol>
 </div>
 </div>
 </div>

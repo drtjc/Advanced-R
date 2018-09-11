@@ -8,39 +8,23 @@ library(rlist)
 library(pryr)
 
 
-subset2 <- function(df, rows) {
-  rows <- enquo(rows)
-  
-  rows_val <- eval_tidy(rows, df)
-  stopifnot(is.logical(rows_val))
-  
-  df[rows_val, , drop = FALSE]
+
+threshold_var1 <- function(df, var, val) {
+  var <- ensym(var)
+  subset2(df, `$`(.data, !!var) >= !!val)
 }
 
-
-df$b == df$c
-df[c(TRUE, FALSE, FALSE, FALSE, TRUE), ]
-
-subset3 <- function(data, rows) {
-  eval_tidy(quo(data[!!enquo(rows), , drop = FALSE]), data = data)
+threshold_var2 <- function(df, var, val) {
+  var <- as.character(ensym(var))
+  subset2(df, .data[[var]] >= !!val)
 }
 
-
-subset4 <- function(data, rows) {
-  rows <- enquo(rows)
-  expr <- quo(data[!!rows, , drop = FALSE])
-  print(expr)
-  eval_tidy(expr, data = data)
-}
-
-df[df$b == df$c, ,drop=FALSE]
+df <- data.frame(x = 1:3, val = 9:11)
+threshold_var1(df, x, 2)
+threshold_var2(df, val, 11)
 
 
-df <- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))
-subset2(df, b == c)
 
-subset3(df, b == c)
-subset4(df, b == c)
 
 
 
