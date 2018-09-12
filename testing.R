@@ -6,24 +6,11 @@ library(pryr)
 library(rlang)
 library(rlist)
 library(pryr)
+library(sloop)
 
 
 
-threshold_var1 <- function(df, var, val) {
-  var <- ensym(var)
-  subset2(df, `$`(.data, !!var) >= !!val)
-}
-
-threshold_var2 <- function(df, var, val) {
-  var <- as.character(ensym(var))
-  subset2(df, .data[[var]] >= !!val)
-}
-
-df <- data.frame(x = 1:3, val = 9:11)
-threshold_var1(df, x, 2)
-threshold_var2(df, val, 11)
-
-
+typeof(TRUE)
 
 
 

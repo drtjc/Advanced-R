@@ -1,0 +1,29 @@
+---
+title: "S3"
+output:
+  html_document:
+    number_sections: yes
+    theme: sandstone
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(tidy=TRUE, fig.align='center')
+```
+
+```{r, echo=FALSE, include=FALSE}
+library(rlang)
+library(pryr)
+library(knitr)
+library(kableExtra)
+library(magrittr)
+library(dplyr)
+library(tidyverse)
+library(lobstr)
+library(memoise)
+library(purrr)
+```
+
+# Introduction

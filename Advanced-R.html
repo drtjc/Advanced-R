@@ -7383,11 +7383,143 @@ sapply(mtcars, length %o% unique)</code></pre>
 </div>
 </div>
 </div>
+<div id="introduction-4" class="section level1">
+<h1><span class="header-section-number">10</span> Introduction</h1>
+<p>To talk about objects and OOP in R we need to first deal with a fundamental confusion: we use the word object to mean two different things. In this book so far, we’ve used object in a general sense, as captured by John Chambers’ pithy quote: “Everything that exists in R is an object”. However, while everything is an object, not everything is “object-oriented”. This confusion arises because the base objects come from S, and were developed before anyone was thinking that S might need an OOP system. The tools and nomenclature evolved organically over many years without a single guiding principle.</p>
+<p>Most of the time, the distinction between objects and object-oriented objects is not important. But here we need to get into the nitty gritty details so we’ll use the terms base objects and OO objects to distinguish them.</p>
+</div>
+<div id="base-objects-vs-oo-objects" class="section level1">
+<h1><span class="header-section-number">11</span> Base objects vs OO objects</h1>
+<p>To tell the difference between a base and an OO object, use <code>is.object()</code>:</p>
+<pre class="r"><code># A base object:
+is.object(1:10)</code></pre>
+<pre><code>## [1] FALSE</code></pre>
+<pre class="r"><code># An OO object
+is.object(mtcars)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>(This function would be better called <code>is.oo()</code> because it tells you if an object is a base object or a OO object.)</p>
+<p>The primary attribute that distinguishes between base and OO object is the “class”. Base objects do not have a class attribute:</p>
+<pre class="r"><code>attr(1:10, &quot;class&quot;)</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>attr(mtcars, &quot;class&quot;)</code></pre>
+<pre><code>## [1] &quot;data.frame&quot;</code></pre>
+<p>Note that <code>attr(x, &quot;class&quot;)</code> and <code>class(x)</code> do not always return the same thing, as <code>class()</code> returns a value, not <code>NULL</code>, for base objects. We’ll talk about exactly what it does return in the next chapter.</p>
+</div>
 <div id="base-types" class="section level1">
-<h1><span class="header-section-number">10</span> Base types</h1>
+<h1><span class="header-section-number">12</span> Base types</h1>
+<p>While only OO objects have a class attribute, every object has a base type:</p>
+<pre class="r"><code>typeof(1:10)</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>typeof(mtcars)</code></pre>
+<pre><code>## [1] &quot;list&quot;</code></pre>
+<p>Base types do not form an OOP system because functions that behave differently for different base types are primarily written in C, where dispatch occurs using switch statements. This means only R-core can create new types, and creating a new type is a lot of work. As a consequence, new base types are rarely added.</p>
+<p>In total, there are 25 different base types. They are listed below, loosely grouped according to where they’re discussed in this book.</p>
+<ul>
+<li>The vectors: NULL, logical, integer, double, complex, character, list, raw.</li>
+</ul>
+<pre class="r"><code>typeof(1:10)</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'integer'
+typeof(NULL)</code></pre>
+<pre><code>## [1] &quot;NULL&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'NULL'
+typeof(0+1i)</code></pre>
+<pre><code>## [1] &quot;complex&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'complex'</code></pre>
+<p>*Functions: closure (regular R functions), special (internal functions), builtin (primitive functions) and environment.</p>
+<pre class="r"><code>typeof(mean)</code></pre>
+<pre><code>## [1] &quot;closure&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'closure'
+typeof(`[`)</code></pre>
+<pre><code>## [1] &quot;special&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'special'
+typeof(sum)</code></pre>
+<pre><code>## [1] &quot;builtin&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'builtin'
+typeof(globalenv())</code></pre>
+<pre><code>## [1] &quot;environment&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'environment'</code></pre>
+<ul>
+<li>Language components: symbol (aka names), language (usually called calls), pairlist (used for function arguments).</li>
+</ul>
+<pre class="r"><code>typeof(quote(a))</code></pre>
+<pre><code>## [1] &quot;symbol&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'symbol'
+typeof(quote(a + 1))</code></pre>
+<pre><code>## [1] &quot;language&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'language'
+typeof(formals(mean))</code></pre>
+<pre><code>## [1] &quot;pairlist&quot;</code></pre>
+<pre class="r"><code># &gt; [1] 'pairlist'</code></pre>
+<ul>
+<li><p>“Expression” is a special purpose type that’s only returned by <code>parse()</code> and <code>expression()</code>. They are not needed in user code.</p></li>
+<li><p>There are a few esoteric types that are important for C code but not generally available at the R level: externalptr, weakref, bytecode, S4, promise, “…”, and any.</p></li>
+</ul>
+<p>You may have heard of <code>mode()</code> and <code>storage.mode()</code>. I recommend ignoring these functions because they just provide S compatible aliases of <code>typeof()</code>. Read the source code if you want to understand exactly what they do.</p>
+</div>
+<div id="the-is-functions" class="section level1">
+<h1><span class="header-section-number">13</span> The <code>is</code> functions</h1>
+<p>This is also a good place to discuss the <code>is</code> functions because they’re often used to check if an object has a specific type:</p>
+<pre class="r"><code>is.function(mean)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.primitive(sum)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>“Is” functions are often surprising because there are several different classes, they often have a few special cases, and their names are historical so don’t always reflect the usage in this book. They fall roughly into six classes:</p>
+<ul>
+<li>A specific value of <code>typeof()</code>: <code>is.call()</code>, <code>is.character()</code>, <code>is.complex()</code>, <code>is.double()</code>, <code>is.environment()</code>, <code>is.expression()</code>, <code>is.list()</code>, <code>is.logical()</code>, <code>is.name()</code>, <code>is.null()</code>, <code>is.pairlist()</code>, <code>is.raw()</code>, <code>is.symbol()</code>.</li>
+</ul>
+<p><code>is.integer()</code> is almost in this class, but it specifically checks for the absense of a class attribute containing “factor”. Also note that <code>is.vector()</code> belongs to the “attributes” class, and <code>is.numeric()</code> is described specially below.</p>
+<ul>
+<li>A set of possible base types:
+<ul>
+<li><code>is.atomic()</code> = logical, integer, double, character, raw, and (surprisingly) NULL.</li>
+<li><code>is.function()</code> = special, builtin, closure.</li>
+<li><code>is.primitive()</code> = special, builtin.</li>
+<li><code>is.language()</code> = symbol, language, expression.</li>
+<li><code>is.recursive()</code> = list, language, expression.</li>
+</ul></li>
+<li>Attributes:
+<ul>
+<li><code>is.vector(x)</code> tests that <code>x</code> has no attributes apart from names. It does not check if an object is an atomic vector or list.</li>
+<li><code>is.matrix(x)</code> tests if <code>length(dim(x))</code> is <code>2</code>.</li>
+<li><code>is.array(x)</code> tests if <code>length(dim(x))</code> is greater than zero.</li>
+</ul></li>
+<li><p>Has an S3 class: <code>is.data.frame()</code>, <code>is.factor()</code>, <code>is.numeric_version()</code>, <code>is.ordered()</code>, <code>is.package_version()</code>, <code>is.qr()</code>, <code>is.table()</code>.</p></li>
+<li><p>Vectorised mathematical operation: <code>is.finite()</code>, <code>is.infinite()</code>, <code>is.na()</code>, <code>is.nan()</code>.</p></li>
+<li>Finally there are a bunch of special purpose functions that don’t fall into any other category:
+<ul>
+<li><code>is.loaded()</code>: tests if a C/Fortran subroutine is loaded.</li>
+<li><code>is.object()</code>: discussed above.</li>
+<li><code>is.R()</code> and <code>is.single()</code>: are included for S+ compatibility</li>
+<li><code>is.unsorted()</code> tests if a vector is unsorted.</li>
+<li><code>is.element(x, y</code>) checks if <code>x</code> is an element of <code>y</code>: it’s even more different as it takes two arguments, unlike every other <code>is.</code> function.</li>
+</ul></li>
+</ul>
+<div id="numeric-type" class="section level2">
+<h2><span class="header-section-number">13.1</span> Numeric type</h2>
+<p>One function, <code>is.numeric()</code>, is sufficiently complicated and important that it needs a little extra discussion. The complexity comes about because R uses “numeric” to mean three slightly different things:</p>
+<ol style="list-style-type: decimal">
+<li><p>In some places it’s used as an alias for “double”. For example <code>as.numeric()</code> is identical to <code>as.double()</code>, and <code>numeric()</code> is identical to <code>double()</code>. R also occasionally uses “real” instead of double; <code>NA_real_</code> is the one place that you’re likely to encounter this in practice.</p></li>
+<li><p>In S3 and S4 it is used to mean either integer or double. We’ll talk about <code>s3_class()</code> in the next chapter:</p>
+<pre class="r"><code>sloop::s3_class(1)</code></pre>
+<pre><code>## [1] &quot;double&quot;  &quot;numeric&quot;</code></pre>
+<pre class="r"><code>sloop::s3_class(1L)</code></pre>
+<pre><code>## [1] &quot;integer&quot; &quot;numeric&quot;</code></pre></li>
+<li><p>In <code>is.numeric()</code> it means an object built on a base type of integer or double that is not a factor, i.e. an object that behaves like a number.</p>
+<pre class="r"><code>is.numeric(1)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.numeric(1L)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>is.numeric(factor(&quot;x&quot;))</code></pre>
+<pre><code>## [1] FALSE</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="introduction-5" class="section level1">
+<h1><span class="header-section-number">14</span> Introduction</h1>
 </div>
 <div id="expressions" class="section level1">
-<h1><span class="header-section-number">11</span> Expressions</h1>
+<h1><span class="header-section-number">15</span> Expressions</h1>
 <p>It would be nice if we could capture the intent of the code, without executing the code. In other words, how can we separate our description of the action from performing it? One way is to use <code>rlang::expr()</code>:</p>
 <pre class="r"><code>z &lt;- expr(y &lt;- x * 10)
 z</code></pre>
@@ -7409,7 +7541,7 @@ u</code></pre>
 <pre><code>##  language y &lt;- x * 10</code></pre>
 <p><code>expr()</code> returns a quoted expression: the R code that captures our intent.</p>
 <div id="abstract-syntax-trees" class="section level2">
-<h2><span class="header-section-number">11.1</span> Abstract syntax trees</h2>
+<h2><span class="header-section-number">15.1</span> Abstract syntax trees</h2>
 <p>Quoted expressions are also called abstract syntax trees (AST). To make that more obvious we’re going to introduce some graphical conventions, illustrated with the very simple call <code>f(x, &quot;y&quot;, 1)</code>.</p>
 <p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAsQAAAFiCAIAAAB+mlm6AAAAAXNSR0IArs4c6QAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAgtpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IlhNUCBDb3JlIDUuNC4wIj4KICAgPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICAgICAgPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIKICAgICAgICAgICAgeG1sbnM6dGlmZj0iaHR0cDovL25zLmFkb2JlLmNvbS90aWZmLzEuMC8iPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpDb21wcmVzc2lvbj41PC90aWZmOkNvbXByZXNzaW9uPgogICAgICAgICA8dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPgogICAgICAgICA8dGlmZjpQaG90b21ldHJpY0ludGVycHJldGF0aW9uPjI8L3RpZmY6UGhvdG9tZXRyaWNJbnRlcnByZXRhdGlvbj4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+CobSriQAAEAASURBVHgB7Z0JmBXVmfe7G2hAQHZFugXZCahBQVlUXBAEIi4oKtFEo0bjmCcZY758MZlMzJM8MfkyOpPMOHGymJhFxQ3jDogLjgIqGhd2RURaUGQTEGiE/n5a5vThVt17695bt24tf5485tSpU2f5vadvvfWe97ynuqmpqUr/REAEREAEREAERKBYAjXFPqjnREAEREAEREAEROATAlImNA9EQAREQAREQARKIiBloiR8elgEREAEREAEREDKhOaACIiACIiACIhASQSkTJSETw+LgAiIgAiIgAhImdAcEAEREAEREAERKImAlImS8OlhERABERABERABKROaAyIgAiIgAiIgAiURkDJREj49LAIiIAIiIAIiIGVCc0AEREAEREAERKAkAlImSsKnh0VABERABERABKRMaA6IgAiIgAiIgAiUREDKREn49LAIiIAIiIAIiICUCc0BERABERABERCBkghImSgJnx4WAREQAREQARGQMqE5IAIiIAIiIAIiUBIBKRMl4dPDIiACIiACIiACUiY0B0RABERABERABEoiIGWiJHx6WAREQAREQAREQMqE5oAIiIAIiIAIiEBJBKRMlIRPD4uACIiACIiACEiZ0BwQAREQAREQAREoiUDLkp7WwyIgAqER+HB11Rt3VX3watW+xtDaDKChmtqqbkdW9T+v6sDDAqhNVYiACESSQHVTU1MkO6ZOiYAIWATeuLtq7qVVe7ZbWbFKtmpfNe7Wqv7TYtVpdVYERMAvASkTfkmpnAhUjAA2iTuOiLEm4YBDn5j+muwTFZtFalgEyklAPhPlpKu6RSAQAitnxF6TgANmFZZp9E8ERCCJBKRMJFGqGlPCCGx8LSEDwuFD/0RABJJIQMpEEqWqMSWMQLw8LnPAT8xAcoxRt0QglQSkTKRS7Bq0CIiACIiACARHQMpEcCxVkwiIgAiIgAikkoCUiVSKXYMWAREQAREQgeAISJkIjqVqEgEREAEREIFUEpAykUqxa9AiIAIiIAIiEBwBKRPBsVRNIiACIiACIpBKAlImUil2DVoEREAEREAEgiMgZSI4lqpJBERABERABFJJQMpEKsWuQYuACIiACIhAcASkTATHUjWJgAiIgAiIQCoJSJlIpdg1aBEQAREQAREIjoCUieBYqiYREAEREAERSCUBKROpFLsGLQIiIAIiIALBEZAyERxL1SQCIiACIiACqSQgZSKVYtegRUAEREAERCA4AlImgmOpmkRABERABEQglQSkTKRS7Bq0CIiACIiACARHQMpEcCxVkwiIgAiIgAikkoCUiVSKXYMWAREQAREQgeAISJkIjqVqEgEREAEREIFUEpAykUqxa9AiIAIiIAIiEBwBKRPBsVRNIiACIiACIpBKAlImUil2DVoEREAEREAEgiMgZSI4lqpJBERABERABFJJQMpEKsWuQYuACIiACIhAcASkTATHUjWJgAiIgAiIQCoJSJlIpdg1aBEQAREQAREIjoCUieBYqiYREAEREAERSCUBKROpFLsGLQIiIAIiIALBEZAyERxL1SQCIiACIiACqSQgZSKVYtegRUAEREAERCA4AlImgmOpmkRABERABEQglQSkTKRS7Bq0CIiACIiACARHQMpEcCxVkwiIgAiIgAikkoCUiVSKXYMWAREQAREQgeAISJkIjqVqEgEREAEREIFUEpAykUqxa9AiIAIiIAIiEBwBKRPBsVRNIiACIiACIpBKAlImUil2DVoEREAEREAEgiMgZSI4lqpJBERABERABFJJQMpEKsWuQceEwPr16x9//PF33303Jv3N080PPvhg5cqV+/bty1NOt0VABOJGoGXcOqz+ikDyCfC6ffPNN//+97+jTDDa3lU7qqqTMOrNmzc/9thj7du3HzZs2NChQ2tra5MwKo1BBESgqkrKhGaBCESIQGNj45IlS15++eXt27dHqFuBdoWh/e///u/ChQsPP/zwz3/+8x06dAi0elUmAiJQAQJSJioAXU2KgJvA1q1bX3vttddff33Pnj3uu8nLYZjoTFhfBgwYgKHi4IMPTt4YNSIRSA8BKRPpkbVGGlECrGW89NJLq1atampqcneRRYFubbpVbXTfiV9O69atq3bv122GvOLTf3V1dcOHD+/Vq1d1dSJWdPYbpS5EIPkEqj1/v5I/bo1QBCpNAMcIFAjUiPfee8+zLwcddBCf7Hy418y+oOqNuz3LxCyz/7T1w371wgsvrF692rPnnTp1QqUYOHBgy5b6zvEkpEwRiCgBKRMRFYy6lWACu3fvxjECC7+nYwSf5n369Dn66KMPOeSQzyA8dl5ilImqiXcxKNZ00KKWLVv28ccfuwXdpk0btCg8Ktq2beu+qxwREIEIEpAyEUGhqEuJJcBL9NVXX128eLGnY0SrVq2GDBnCe/TAAw/cD0HilAlndChVr7zyCm4iO3bs2G+8n160aNECGkceeWSXLl3cd5UjAiIQKQJSJiIlDnUmsQTWrVuHvyEbPj1HyI4G3pp8i3vvlkyoMuGg2Lt3LyYKdCyiUHjC6du371FHHdWzZ0/Pu8oUARGIAgEtTEZBCupDYgngGPHGG2+gRrz//vueg2QXA6aI/v3719SkNIIcFghiTvAPRwpArV27NgMUniX869at24gRI/r165daUBlYdCkCkSIgZSJS4lBnkkMAGz7LGThGeNrwcYzggxvHiB49eiRnzKWN5LBP/23cuHHRokXuQJnYLQh41a5dO6B97nOf+2RjiP6JgAhEhoCWOSIjCnUkKQS2bNniOEZ4eheykOE4RhQQrCnRyxyeYv/oo4+wUuCmumvXLncBnEuO+PRfpnOJu6hyREAEQiEgZSIUzGokHQQ4RINXIDZ5z+Hy5sMxAnu+t2OE5zNOZvqUCWfcaGO4Z6KZ4bjqxoN1h32zGCq6d+/uvqscERCBMAlomSNM2mormQRwIXQcIzZs2OA5QtYycCFkvV8RmTz5ZMsk2gQOJYTcdvBmBOQwAa/YQ0t0ChZJhDcbSeWLQLkJSJkoN2HVn2QCGOFxjGB/YzbHCBQIPp0VK7qUSeBYIDBCoEy8+OKLb731VkaoPXbKPPTQQx07dgT1oEGDWAQppTk9KwIiUAQBLXMUAU2PiEAVB2BifmdRP5tjBMsZfFUTDDsAWGld5vBE9+GHHzoBrzxjdeCYiSWDTba4ano+rkwREIFyEJAyUQ6qqjPJBBoaGnCM4PvYc5B8HzuOEUF+H0uZcLFmswzKHEejedqE2D7Kjg+0iq5du7oeVYYIiEDwBKRMBM9UNSaSAI4R7FdEjcgWW4mVe0wRZXGMmH1R1Yq/JoHqwAurJvwlwIEQxsMJeJXNWwVHCrxV6uvrA2xUVYmACLgJSJlwM1GOCOxHYOfOnY5jBPsV97vx6QUfwYSc4o3FuVzuu8HkvPT/qp77v8FUVdlaxvy86ujvlKMLa9asYe3jnXfe8awc+wQemoiJAFmeBZQpAiJQIgEpEyUC1ONJJrBp0yacK5cuXYpZwj1OludxjMCWHoxjhLsBk/Ph6qo7jqjas91kRDOxtanLI1WXb6o6eGjVghOr7qmu3v9E9Vbtq6a/VnXgYeXrPPJCpeBIc0954UWB6YggHxwkVr4+qGYRSCcBKRPplLtGnYcAQZ1Z0ch2UjaOEegQvJaCdIzI3SOOIJ97acT1iVlNF6+oGu6MY2TVw8dWz2oeE5rEuFur+k9rzilbCksSgUcJUOEZ8Irtprhn4teCEMvWBVUsAqkjIGUidSLXgHMQ4IuW71rUCII6exbjuClWNDgivAIhDbBPrJzx0dqF776z2uyN5JDu6DgEPLLuc29u7+Zwq65qOqf+lUPabquqqa3qekTVgPPLapNwC4tdNuy1wUmTfTfuu+Sw1xRRateuJxxlikChBKRMFEpM5ZNJgM9ZvmVZ1CDhHqHjGFHxYIs4bdx55532/oUzzzyzV69e7g5XJGf9+vX33HOPUXSIFz59+vTKHqJBZwhIinZILApPJsQTw52iMtqhZ4eUKQLxJCBlIp5yU6+DI5DbMYL1dccxouJxC9i5cP/997Mx1Qz9mGOOGTVqlLmMQuKFF15YsGCB6Qlf/xMnTjSXFUxwaivnh3EEvNF17M4Q6RxNcfDgweGtW9nNKy0C8ScgZSL+MtQIiiXAFgAW199++23PCjp16uQ4RrDK7lkg5Mxnn30W70LT6KGHHopZogKrLaYHXgle1ffddx9nlJib48aNw7nEXFY2sW3bNqwUeNQ2Nja6e4IRBV8KPCrK7lHrbls5IhBzAlImYi5Adb9wAjhGLF++nJcKNgnPp+vq6lhNj9RZD3xSP/LII6a3vO0uuOACHCZMTnQS27dvv/322wkq5XQJVYyudu7cOTo9RJMg2hX/0C3cvWJJi5jc7Pvo1u0z/w93GeWIgAhkEJAykQFEl0kmgM+BcwplNseIgQMHokZE7S3Cmea4Spjo0bztzj333Ch7DmaoPvA877zzohbjgWUjx9k2WxQynFGYDNFxSUnyX6bGFn8CUibiL0ONwAcBdmewokG0RF4h7uI4RmDcZlHjgAMOcN+tbA46xN13323vLjnppJOOOOKIyvYqb+tPPfUUn/6mGGzHjh1rLiOVwA0Fd4psq11dunTBnQItM2rKUKQYqjMiIGVCcyDJBFjCJyoiKxq4R3iOE/M77znOcYiIY4S7k7Nnz2ZRxuRjgZ8wYYK5jGyCnZkzZsywF5KmTJnCylFkO4z5B5UC1J4Br1hRYuEDV9xoLi1Flqo6lh4CUibSI+t0jZSXmeMYkS3MAOEZMGL37t07aj6MtpwIk/D000+bHMJCT5s2LS47DrCmoE+YdzOv4S9+8YsRtP0YvCRY/2J7MGthngthaJw4k6J94pxrP6W0CIiAlAnNgaQRwDECAzuvYc8AiI57HWpE9M+TJGzDvffea9Zlamtrzz///Hi9xhAE6x1mhkVzB4rpnkmgADkBr2zLirlLguPcmEIc7WZnKi0CaSYgZSLN0k/a2PGkwzECg4R5Adsj5MvYiaMc8Y9jp898GeN0yc4IM4TJkyfzDjOXcUk89NBD9nHtY8aMIUhUXDpPz9mOa+90tXvO0W6MpW/fvmiodr7SIpBCAlImUij0pA0Zxwi851Ajsh0aiQ+d4xgRFx86RvS3v/3NHg4+gMcdd1wcJYd9iJ2iJmpn9LeiuCFzvjkqxRtvvOGppBLoEysFbjeYjtzPKkcEUkJAykRKBJ3MYeIYwQYN1IhsjhHY1R3HiHiNnyCShJI0fSbuxVlnnRXfz19OTZs5c6YZDidsEXkidq9erETMNA6j9wx4xXDYYkPMKwW8MoJWIlUEpEykStzJGSxfuqzH88/TMQILBLseUCOwScRuzJjWWRow3SaMN6/eWCzNmD67ExnqUVz2pLgHwk5dJ1TJhx9+6L6LMy9DwwzGCoj7rnJEIMEEpEwkWLjJHBo2Zz4QCTfkaXPGMcL5QIzpFr6tW7eyA8KEj8QaMXXq1AQ4+iEsnElxKTWTkg2uvHfNZbwSDIdVD7Ycc+SHZ88dkxgBr6K8V8iz58oUgeIISJkojpueCpsAbgSrV69GjcBm7tk2uzOIBMD7KS6OEe5RsGrDqZtoS+bWCSecwKDMZawTfMrfcccdZo2ADa6cKcqSR6wHxWGkRKewPUzt4RDFxAl4FdkoJnZvlRaBUghImSiFnp4NgwCGZccxgrBCnu0lJuzx3Llz2ZFoxhidIzdNl0pMYE+aNWuWqYSI4Oecc058lT8zEOxJeGgyS1EHTaZJEF+VhQ8MZjG1lpmBKCECOQhImcgBR7cqTACXN8cxwpj97Q7xEuLMaD7c4+gYYQ/ESePZ98QTT5h8Pmo5zyJ2Xoqm/9kSGQpTfHepuAeI+w7RTZixRDpx32W6suMDrSIZ09U9QOWknICUiZRPgIgOn6VoVjRWrlzp6RiBNyLfeUn61GNpgwM4TLBIlgDQJBL51sHORPwM28jERhU8DCI6EQvvFkLEREEYTfs4FbuaPn364BrMDh07U2kRiDsBKRNxl2Ci+o9jBMvPqBGcveQ5MM6f5Nsu1o4R7nHxRYvTpb07YOLEiaxxuEsmIwfN6a677jJqIqohYbaTtwSAiw8emtlcfLp3745Vpn///vHd8ZuM2ahRBEVAykRQJFVPSQT4YF26dClqBMvPnhVxRhQrGkn6hHWGif7ERlBePGbUDBO/S3OZyASCfuaZZ8zQEC7HgJnLJCWwT+Chmc3GRlAKxM35Yclbz0qSEDUWPwSkTPihpDJlJIBjhHO0kvHztxvDDd5xjMCHwM5PTPr5559fuHChGQ67QNkLmvivVVSoBx980D71O0n7Vow0TYKwKOhPuMV4ev+wquUEej/wwAPNI0qIQLwISJmIl7wS1dv33nuPX1g+2ni1uAdGsCbHMQJnePfdZORwMDphs81YMPUTnyolIRTxUmSnqPFVRH/CTQTjv6GRvATmN/QJnDQ9zW9EpGBtC0MFm1ySN3aNKPEEpEwkXsSRGyCqw6pVq1Ajsp2fxBuFn1R+WBOwaTAH/W3btuGKaCJ48i45++yzU+WXl6FLYXziWNS4HLCeQ7K5bzH/33zzTbaSokx7lmQO4KHJ0o8CXnnyUWY0CUiZiKZcktkrFjIcxwjb2dAeKj+g/IzW19fbmYlM4/NPREj7dRKv4zSDEsqzzz7La9XUNmTIkHHjxpnLZCeIB8rYUaw9LXOE88JDkzU+BbxK9jRIzOikTCRGlJEeCF/hWHc51CCbYwRb8LFGdOrUKdLDCK5zTz75JDRMfRxj/YUvfMFcpieBUkXQTzso9aRJk9jjkB4CKNZs+kDJZhHEPWrW+Dg8jPW+uB/O4h6achJGQMpEwgQaueHw+cWKBgcZeH5+4Rjh/Fa2bt06cl0vW4eIQzBnzhxTfUxP0TT9LzFBzAmWe8yrlH0N7BTlXO8Sq43X4zhmEu0Khduc1W73H4cSR9tOZOgRe6RKx5eAlIn4yi7SPSeKAPZbPrnss53sHnOsouMYkfidC/aoSX/wwQfEpzJxlzFiT5s2jfgZGcVSdZmhXaVkS4tbxNhpiDiO8s0kcd8lJz3rgJ7DV2aUCUiZiLJ0Ytk3FjI4YIIfRJY2PAeASR81IlWehoYDcPgKt535x48fz7q4KZDaBGd28B41wz/mmGNGjRplLtOWwDUVRZz/eg4c1dMJeJVsD2XPsSszsgSkTERWNPHrGKu/RIxg85sxWdtjwEvfMdXG/aBIe1CFph9++GEMNuYp1sJPOukkc5nmBGoWO0WNZ24K97a4pb9p0yY8NNGxsFi477JESDRYAlSkaonQzUE5ESEgZSIigoh3N1jL4EOKDW+ejhEETsAxQr96REJ87rnnjKQTc2amGVGJCWYRO1xMmG2mDWeUJzjKiE9chOJworqZXcT2g+jobIFBq0izjm4DUbpSBKRMVIp8Etrldx8FAjXC3uJoD4z3JSsaOoAAJpzRcP/99xtli3ck8anS5mZozw3PdIa+1a9fv8mTJ3uWTFsmTjasHqJV2GekGQgYcmDFtuoePXqYTCVEIEwCUibCpJ2ctnA+dxwjCIbtHhU/bY5jRM+ePd13U5gDJVwldu7cacZ+5pln9urVy1wq4RBA2SIk6DvvvGOAsAzEYpC5THkCPo5f87p16zxRoEzgTsFfnwJeefJRZvkISJkoH9tk1ozzIJ9HaBLZHCMwumKN0CkDRvzYb+677z771x/XQhwMTQElbALsjbz99tuNSR8fQ0w42hJpIyJNZA6sONkWFvnrw0qBi1Liw4lmYNFlBQlImagg/Jg1TfRr9mjw++XZbyz2jmOEzj/M4DNv3jzUL5PJ7r7TTz9dH44GiDvBMfScpGryu3btyrEdCgRpgJgEG6ZYZMym2eOYiVGHv0pcNc0jSohAmQhImSgT2ORUy4c1Iaf4zbLDFNrDwzGCzyCWbNMWMcKGkC3NMWaPPfaYucsnI8dPyKnQAMmWyNDAtO0lGyjy2QjjBLzyXHPkr3LQoEEYC1MeyyQHQN0KhICUiUAwJrMSHCMI+UxUPs8fKfl85ZU6W/vuuususx6ExZ74VMk+GDMvE58F2AwJOjt2E+HGcQXw+XgKi6H0o7liO8ym9OOjg9IvT50Uzo1whixlIhzOMWsFxwh+lTCfmkCN9gBYyHB2o8kxwsaSkeZ7kdfh5s2bTT5HWMHNXCqRmwCq2IwZM8wMxJzDTtGUnM+em0zuu+wbwo64evVqz2J4n+ChOXDgQAW88uSjzKIJSJkoGl0yH2xoaECNsAMr2eNEe2BHO29EOUbYWDzTrG7wpWhuAS0952GaUZeYIADaE088YSohaiqntMvdxADJkUCLRaUgTrlnwCuODXMCXmnFLQdD3SqIgJSJgnAltjC/OI5jxIYNGzwHyZYzxzFCP+WefDIyUcieeeYZk8nSxrnnnisXQgPEf+LRRx9lZpry2ghjUPhJsBuZZUo8KuxtyeZBJqRjYkzPab1m7EoETkDKROBIY1Yhe/D4/mO7gedxhagOhJxCjcDLMmYDC6i7OI4UGq6YbS8zZ85kDdvpAo/jdKkAhcUJBP6E2TbnvDAhUcv8h2bCYQVdhE2SxbWejKf4VOCIcxRce9HNHpoT8Irz1exMpUWgIAJSJgrClajChNLj94VfGbMsbQ+PhYyhQ4diC015lMa5c+eChdBJPteYCX5MfCpbM5syZQrbQW22ShdEAOWMQB0meChrbUSe8KPhYWZjsQlZXHHFFdpqBEAcKVj7YCnTkz8fDE7AK7Hy5KPM3ASkTOTmk8y7uGihRrCb33N4cowwWPj9/f3vf4+JmHUK4jrndTjFGkHMbPvHOuWnXxqSJSaef/75hQsXmkoGDBgwceJEc+lOIDiMbc8++6xjH5o6dWo6T6l1kyEHHYvzwzDYGOOZXYyPB/aRyi/KZqK0HwJSJvxQSkgZrJ24BPJpYu+4s8dG9Gt+RxSL1zAhbOU999zjXPIpPGHChNw2Bt5e/Eybxw899FDCZsvLxAApOoFygHECE4WpIcfWGIxDjz/++Ntvv20KS6UzKEyC/d58UbDEybYjk2kSGCY5mQ/DpLbPGCZK5CYgZSI3n4Tc5dvaiRjB76x7SFg1HceIgw46yH03zTkZygEoeC2NHDnSUz8gNugjjzxicPErjDW+bdu2JkeJUgjw8iPMNi4UTiU4D4K3c+fOGXWuWbNm9uzZGf6GTGzcVjJK6hICaBKOy5TxSrGx8MuAEQiXKQVHsbEo7UlAyoQnluRk4nLlOEZ47hDja9txjND3h6fI//znP7sPaSTsDyaKDC2BYgRFMB95/Aqfc845/v0EPVtXZgaBDHWNNxxBwIwvCzN8wYIFtmXIfvzyyy/PEJl9N+Vp1jtY9eCHItvxv/X19agUvXv39lSjU05Pw3cISJlI7Ezg6EV+HbLFrmFzASsaOgooh/gJmvTXv/7VswC6Fy4UZocLWwbuvvvujRs3msI669KgCDbx5JNPYmMzdTKHTzjhBC5R5mbNmpUt+CMFTjvtNCI1mQeV8CSAuw/LoNm8qbADoVIQnFubnD3ppTxTykTSJgDfZytWrOAXwX632YPEMYJfhD59+ugjw8biTr/44ovz58935zs52B7Gjh3rnI6NXX358uWmJL+2mC7MpRIBEmDnERYg9DxT5xlnnMGixlNPPWXClptbdgK9+dRTT7VzlM5GAM2MHxACXnnu88LAw+FhzHxZerIBTGe+lInkyJ2fVKLT8C+bY4SWPwsSNsGws1l9TT2DBw/G2G7Hp+KIS2zvOvrZIAo8gZaMPmGW7VjmMOkcbXFy5qWXXpqjgG5lECACjRPwyvP3BOzoZ1iG3G4rGfXoMiUEpEwkQdB8qLGikS10Lo4ROGbzMSHHCP/CJjjBrbfe6r+8UxIfeBz9FE+wUG6Flucl9/TTTxf61IUXXsjJFIU+lfLyKGpY3fh5yWbpxMaJpVM7b1M+Txh+SyGINQF81/k7t3fB2cPhrcanA1/P+lC2sfhJZ1s2zv0shnRpErkRBXIXGzv6RLZ4jtma4M9EykQ2ONnysUAQc4J/0GPtA0+sjJL8pfAP+xwBr9gUxvJfRgFdpoSALBOxFLTzucDftr14bI8E72vUCIIiyDHCxuI//cADD2RT0bJVgj8mkZ71Y5qNT1D5GI1wUiHwWqEVsg2HsB+FPqXyNgFC1PCzg1eWZ8ArbJ/87LBBTAcB2tBSkpYyEaSg2RlY7r8i1i8dx4iMnfTOMHiT4bLO37P2hZciV+T429/+1vPnMne1GHuJzMiRjLmL6W7RBPgIJiAVy/lF1MBH9pVXXsl/i3hWj9gE0OcIMMq2GhP2w76LHdQJeFXWSPxbt27VeTc29oqnpUwEJgJe8xzvRGC+MkUXYM2SFQ3WLz3dzThKGNsv/3A0C2xIaa2IPfccVlnc6OE/adIknZlUHL0cTzHtiSHGOyxHmby3sExgn8hbTAX8EGD7zJIlS/hR+vDDD93lsYni8c2HjdlB7S5TdA6T4bbbbqNy1laKrkQPBktAykQwPFHV0SRYxM17akCh7RFIGMcIz9VKpyq8qfmjwjFCm78LZZutfMZWz2zFsuVjHzruuOMQSrYCyi+UAMt5hJHIFgbef228exCN//IqmZcAP1AEE+MHav369Z6F2YsO9mCXXHE2nzNnDs2NGTNm+PDhnu0qM2QCcsAMADiBftEknFCJfNQSmDYQ+x6bvLFD8FeazdGMox94YyksXQAitKpgdSNbpC+rVK4kNbBZlN9WzFRyfc1Fyt894j3PmzfPM+aBvwqaS+EHI2WiGUcQKSwQ+F3yjwlP+NFVq1ahXtgVc6IK/xxncHaTBvLNw6+i08Rzzz1HcyNGjLBbVLoiBGSZKBU7mgRHELGAZypio9Txxx9vLotIsGLi7PD2XBvmw5ewSKgR3bp1K6JyPZKbAJ59qIa5y/i8i9GIQJnaQeATl7sYS/JPPPEECrr7VtE5RJvQUmDR9PI+yC8hCx9Lly71jCHmrMayTb0UvyJ2lHA2r92TUaNGcWiOnaN0+ASkTJTEnMVCXjwZS4b4YH7lK18pzhMTQ67jGOHp/RfIn2JJA07Bw3wEl7gwb0PCMoF9gsUvO1NpPwT4nGW9yfMAKj+PZyvD9l2+j7PdVX4gBNAC8RPni4j1X3eFfA6xLMtHV3F6tudOK47fO/bYY91tKSc0Ai2uv/760BpLWEPo4GgS7h87nIPQuwtyw8RShwGWkMC4mKFPZNgJ4cZf3ejRo/kdxH1MlvOyTiROfzDndZXeEEohH9ZUyJqUtun654mTxL333utpmfNfiWdJzOzY5D1vKTMoAkDGVQILBBsu+NbKiKHJ79uGDRvQNogwy09lQZsymBh2wFnTYU4V4e9LsbMMkPATskwUyRwPCTQJ1jg8nz/wwAO//OUv+3l5sBKMSZBP4WyOEWgPjmOEZ0PKDJYAv3F33nlnsHU6tRH5g60EfJOVo/JE1slrg12geSOaFzp2TpS47LLL/PxtFlqzymcj4LiQ81/PAizXYqXAeudn1+7cuXPZQuJZD5ksdrDkke2u8stKQJaJYvDy4keT8LTgOdVh5eMvJLcRj8cXLVqEIZcvV/cXGH9XGGM5L4o/MwVVLEZIRT3D1nk+cYp6NNdDaBInn3yyDkbKxch1D1z8CWCHY73DbatzFfebgfret29fuU345RVEOWwPrGugLgAfHTFDmtgtcNtERcCMx9E2OTw0KYl+mfG43UFnqvDnZmcqHQ4BWSYK5swfA5pEhuHOXQtWvnPOOcedTw6fvzhGZIsix2+oDuXz5BZC5h133FH6/kO7n0iTM7JxmLUzlS6IALo7r5BsOw8LqsoprP2ERUAL6hF+OXN4l6M7ErobWyzGXXeLCxYseOGFF9z5GTls7mBROCNTl+UmIGWiMMJEjkKT8Iw+6a7ovPPOswO2oFCz55BNTdm+fdHK+SvixePH3OduTjklEsD95Y9//GOJldiPEweQ9xYHrdmZShdBgL8d/nB4l3hGbCu0QlbWp06dWuhTKh8gAWd5l28qZ0d9Rs0sQvXr1w+jrO15xiN/+MMf3EbcjGedS4JP8KfneUuZZSIgZaIAsHyzokn4nM3US2Tr0047jQS7pIiyku0vhwLEikCNUGy+AoRRhqJ4rrCVI5CKWeRiXcP+KQyk2pRXwosHE8W6detK5IDnyhVXXCFH5hIxlv44OiLx0VETWZ7wrI1IsqgULEuhXuCwiYu6ZzHPTAUo88RSvkwpE37ZsjbB5mb/mgT18pvFyU+Eh8sWxB4LBEuJqBG5vSv8dlHlSiOApljE8VEZbfKKwgWMhSr5WmaQCeSS1w863/z58/lOLaXC008/nbOzS6lBzwZIADdbVAq8x5Cvu1pcLj7/+c8jdzucj7uYOwdFpMSQP+46lZONgJSJbGT2y2eu/+1vf/M81Wa/cr4v2BDlHKUhpzzfzMpbEOFyuJfnb5n/hrHNjh07lrMT/T+ikkUQ4KWCiSLb56yfCnk5ISk/JVUmNAKsM2K+JeCpZ8Cr4rrBpxpOS8U9q6cKIiBlIj8uPL/QJIKKPYABnPnNCogcI/KjD7EEkcvZWVN0g/iLnXjiiRxAUHQNerAgAqh92L2Jplzci4cdUl/60pcKalGFwyHALy2mXOwQ2TbeF9oNKY6FEiuuvJSJPNxYoEWTKO4HK6Nq3jSoEQQvysjXZRQIcExocWGbWc7Amkr0vRxb2qIwwET2gYBIBB4obnHqkksuCeQMnUSCrfig2Ca6cuVK1j5YXy69M9InSmeYtwYpE7kQse3iwQcfLF2TGDp0KO8bTmrI1ZjuVY4AewRY4yhC0GwAxtFSLi+VE10VJgo+ZAkdW6j4TjnlFP4wK9hzNe2HAJoiJsMcQX38VEIZ3JiwHfosrGJFENCpoVmhMYnRJEr083JqxyYhTSIr6AjcQNaFvoo4JwXfLp3yUHHp4eeP+xF/YpgoOALKf38IYC9lwj+uSpXE+zJvUB8/fSO4BXon+oSCn/rBVUQZBff1hkbkV46TCUSToAGMdd7NKDcaBAjAV1BHiKvDirs0iYKglbUwCxZnnXUWxgb/Gz7RID2P0ytrP1V5oQRwySzRLdq06GwuDao2U60SDgFZJjxmAp8sDz/8cCDhcZzacTtn5a979+4ejSmr0gT4cfGvTBBYjHUNtr9Xutdq34MAlgZCtnBqOX/CHrf3z2L/zvvvv69YIPtTidYVzphs7giwT6yI8ffOn7DsEwFSdaqSZSITKUFUHnrooQA1CacBGScyQUfmmn2/fuyo+FcSU++CCy6QJhEZ0Xl0hH25Z5xxBse+19bWetzePyvb0VP7l9JVxQjw7i90/TFvX9FOUDdln8gLqtACUib2I8YX6iOPPFIO4yeeyUHtdNqvx7oomYAfswQBji666CJi9CoUVcm8w6iAdagLL7ww705dPwaMMLqrNrwI8DvMBlGvO6XmcagYHjbSJ0rluP/zUiaaebAzkP2B5dAkaINq8QBqbkypyBDIrUzwpfuFL3yBgInaRhgZifnqCIKbMmXK+PHjc5yNglEqwEh0vrqlQr4JlPUDbOnSpdInfIvCV0EpE59h4gzPxx57rEyahNNGOUx2voSsQtkJcNwDh1J63mdVlfD+GCQ4GsCzgDKjT4Bw9ZgoskmQb1PcMKM/inT2sNxLw+gTuQ80Tyf2okctZeITdE70w3JbvfgG4rivokWlB8tBIJtZAseI6dOnH3fccf53B5Sje6qzdALt2rXDtjRhwgR287prk9uEm0kUcojxE0i4qtxj4Qd5zpw55f7lz92HxNzVbo4qRz8NR6Jsc+JYajkSh0PbTytuZQKrODoEi+4Skx+AcSkzaNAggs9y7CQH79l9ljJh04hO+qWXXgqnM3xJokywHCZ3qBKBp90ygWcvlq4SIfp/HKP66tWr/ZdXybIS2LlzZ8Z51oSOIIAEOwylSZSVfEUq53S9yZMnT5w40TZREJCbv8qK9EeNZiPAymOYv5OscWOfKOsad7aRJik/1ZYJJ4ZJyOLEOKGzj0Nmnq05tgGbW4QoZfd5XV2dyVEikQQGDBhQX1//9NNP49/nDBDjBOd+JXKwMR0UP5Ih9xx9AvsEa2GyTxRNPr2WCfZWYPMsGlzRD+LwFcJaYNHdS9WDzhoHx7eOHj0aDwlpEimRftu2bbFPYKUgwZC1QTRScidQFepd+Icqo1zOmjVL9omiJ0NKLRNovs8880zR1NwPEtGIIDkst/Nfk3BfOjmYW901KCdkAgTD4TeLgImE6yf+f8itq7mKE+jXrx/qIyYKDFQEqQv/7VVxAtHsAL+fF198MX1DKLt27cJv3fxDzyCH/5ocO1G6HyXRAagERVP2iSLmRtinhu7bu2/b2m2bV23e1rBtz/bGPTv2NO7Ys+/jvUV0vehHNrTdsK79+hyPVzdVt9jXokUT/6up4b+fpD9NfJKuIf+TzKZPE5/eIqe6qtpUWNOyRW27Vq34X/vaDnUdOvft3KG+Q02L9BqBDJmMRGUnw0ctP9pTs6djY3nViARPBpaZicvCr3mGWGN3SUQK3k/8i13Ps3WYj5ZJkybhVJitQPnyKzgr8HNCI0QP4L8m4Vx6/jebX9S2bdvYS1I+RBWpOYQpEYYy0bit8d3nG9bOX9uwoGHTyk379uyrCE2n0abuTU1HVlU1VlXzG8ivB/91/mfS3Gpq1gwC6WpNq5ouA7rUjaqrH13f89i62g75A/0G0m4EK4nUZKgIn2RMBt4ZLDBXBKAa9UmAk7tD1ifiNStY5HL+YSrOSLDlJ3y/DZ9iLaVYWadEGZc59u7e+9bct5bPXPb2U2837W0qBUGAz1ZvqK6eG2B9vqpCf/pgyQf875VbX6lpWdPrxF6Dzh7cZ1yfFq1b+Ho+/oWiORkqwjUZkwGbREXoqVH/BJBRyMpEvGYFm7n4559nAkqWdUqURZn4aMNHf//9y4vvWMxnaAIEEOwQ9n28b/Xc1fwP+8TQ6UOHXXbUAd2T7EKhyZBj/sR3MiRgdSOHXJJxK3wZhd9iMiQV2ijKKqCAlYkdG3YsunnRkhmL+RLNAahN5zad+nRq3anNp74FtTUtA15WyNF0CLf2fdy0Z0cjviC7t+za8taWXZt3eTaKpvXyb15+9bZXh5w/dPjVw9t1b+dZLL6ZmgzILg2TgThsY8eOje9ETVLP582bR9j+KIxIsyIKUqAPoU2JwJQJnOle/8trC29a6GmNaFHbosfwHnWj6+uOresysEubTh5xbSOCPvBu7Nqya9OKTQ3PNzTMX7t+0fq9jfupWWhdr/3pVRaDRn5r5OEXHZEMP01NhmyzKJGTAU3i5ptvzjZk5YdJ4Oqrr46IMqFZEabcc7QV2pQIRpnYuHzj49fOwScgc0jVVbgcDpo6uO9pfWvbpdTrEM2p57E9+d8xXz+mcUfjqlmrlt+3DHfUKsuNBA3smR89s/TupafeOL7roK6ZGGN1rcmQQ1xpmww5UOiWCIhAkggEoEwsmbFk3vVPZ6xr4LI+eOrgo68a3rFXebfexUsYaFRg4X9b12x96deLlt23zN7bgjZ291l3jb3+xCHnD4nXuExvNRkMiryJxE+GvARUQAREIDEESlImsNg/+d0nlt+/PAPH4HMGj/zWqPaHtM/I16UhgI518g2nHPONYxfetGDZvc1HiaKTPXndE+8ubDj5Z6ewNmTKRz+hyVC0jJI3GYpGoQdFQARiSqB4ZaJxe+OjX3tk7XNr7ZF3GdT1pB+fdMiIQ+xMpbMRQN8a94tTccB86gdPbVq+0RRDP9vx/o5Jt0yubR+PtSFNBiO7ohOJmQxFE9CDIiAC8SVQZFjGnRt3zpw+M0OTGHT2oPPuP0+aRKGzAWJwg579IGwhDGc7M5ppTYYA5RL3yRAgClUlAiIQIwLFKBN8hj5wyQMfLN7QPM7qqjHXjcF5MD1RmJrHHkQKbtCDoRWVuwrCcIZ2EC2Uqw5NhsDJxncyBI5CFYqACMSFQMHKBEvjrG7YmkSr9q2+8LvTj/rq0XEZc2T7CUNIwtP0EM7QzthNau5WPKHJUD4RxG4ylA+FahYBEYg+gYKVCTwu7dUNDrI6975ph518WPSHGoseQhKeUDW9hTbMzWWkEpoMZRVHvCZDWVGochEQgYgTKEyZYOOfvXeDb+jT/zClS/8uER9kvLoHT6ja9gmYQz5qo9BkCEEicZkMIaBQEyIgAlEmUIAyQTAi4kk0D6a6asIvT5Mm0QwkuBRUYWv7T0Ae/sG1UGpNmgylEvT9fPQng++hqKAIiEBiCfhVJgiQTIxLOzLVmO+OwQybWDCVHhhsIWx6AXn4IwWTU8GEJkPI8KM8GUJGoeZEQASiScCvMsG5G3a0bPYxyuOy3BKFsL1fFP5IodyN+qlfk8EPpWDLRHYyBDtM1SYCIhBTAr6UCY5/5AQvM0IiU53801PMpRLlIwBnaJv6kQKyMJcVSWgyVAQ7jUZwMlQKhdoVARGIGgFfygSnittngRLjUvEkwhEknKFt2kIKyMJcViShyVAR7DQawclQKRRqVwREIGoE8isTH234aMmMxabfg8/9nGJcGhohJKDNWSemIWSBRMxlyAlNhpCBZzQXqcmQ0TddioAIpJlAfmXi779/2fhdchboyGtGpplXRcbOqWmQd5pGFkikIt2gUU2GSpE37UZnMpguKSECIiACeZQJXl2L77DMElMH6yzQ8CcNzDm13LSLRIx6ZzJDSGgyhAA5bxMRmQx5+6kCIiACqSKQR5l4a+5bzd4S1VVHXzU8VXSiM9hPyFd/1h0kglzC75smQ/jMPVuMwmTw7JgyRUAEUksgjzKxfOYyg6Z+dH3HXh3NpRJhEoA8/E2LtlxMZrkTdqOaDOWmnaP+KEyGHN3TLREQgRQSyKVM8AX89lNvGyiDLEu7yVQiNAI2f+TSbDEKpQeaDKFg9ttIZSeD316qnAiIQGoI5FIm3n2+oWlvk4OiRW2Lvqf1TQ2WKA4U/kjB6RlyQTph9lKTIUzaeduq7GTI2z0VEAERSBuBXMrE2vlrDY4ew3vUtqs1l0qETwD+SMG0a0vHZJYvYTenyVA+zj5rruxk8NlJFRMBEUgPgVzKRMP85m9fe8E+PXSiNtI6y23Clk4I/bSb02QIAXjeJio4GfL2TQVEQATSRiCrMsFhTpve2GRw9Dy2zqSVqBSBOksKSCe0c780GSol8RztVmoy5OiSbomACKSWQFZlYtvabfv2NJ9R2WVgl9Qyis7AbSkgHWQUTt80GcLhXFArlZoMBXVShUVABFJCIKsysXnVZoOgTec2bTq1MZdKVIoAUkAWpnVbRiazHAm7IU2GchAuos5KTYYiuqpHREAEEk8gqzKxraH5q7dTn06JBxGXAdqysGVU1v7bDdkdKGujqjwvAVsWtozyPqgCIiACIhAsgazKxJ7tjaal1jJLGBaVTtiysGVU1n7ZDdkdKGujqjwvAVsWtozyPqgCIiACIhAsgazKROOOPaal2natTFqJyhKwZWHLqKy9shuyO1DWRlV5XgK2LGwZ5X1QBURABEQgWAJZlYk9ljLRShEmgqVeQm22LGwZlVBl/kfthuwO5H9SJcpJwJaFLaNytqm6RUAERMCDQFZlYt/He03xmpb/OGPKZClRIQK2LGwZlbU7dkN2B8raqCrPS8CWhS2jvA+qgAiIgAgESyCrMhFsM6pNBERABERABEQgqQSkTCRVshqXCIiACIiACIREQMpESKDVjAiIgAiIgAgklYCUiaRKVuMSAREQAREQgZAISJkICbSaEQEREAEREIGkEpAykVTJalwiIAIiIAIiEBIBKRMhgVYzIiACIiACIpBUAlImkipZjUsEREAEREAEQiIgZSIk0GpGBERABERABJJKQMpEUiWrcYmACIiACIhASASkTIQEWs2IgAiIgAiIQFIJSJlIqmQ1LhEQAREQAREIiYCUiZBAqxkREAEREAERSCoBKRNJlazGJQIiIAIiIAIhEZAyERJoNSMCIiACIiACSSUgZSKpktW4REAEREAERCAkAlImQgKtZkRABERABEQgqQSkTCRVshqXCIiACIiACIREQMpESKDVjAiIgAiIgAgklUDLpA6soHE1NTVt2LChoaHhgAMOGDRoUEHPqrAIiIAIiIAIpJxASi0Te/bsWbhw4Y033jh16tTevXu3bt364IMPPvroo8lJ+YTQ8EUgOgQ2btz40Ucf5e7PO++8s2/fvtxldFcERKDcBFKnTLz99tvf+9736uvrR40a9e1vf3vmzJlr1qxBt3BAb9q0qdzEVb8IiIAfAqgR48aN6969+5VXXpmt/Kuvvjp48OBDDjnkD3/4Q7Yylcrftm0bik7u1rdv3563TO4adFcEIkIgRcsc/DZ95zvf+fWvf53j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ISBlIi6SUj9FQAREQAREIKIEpExEVDDqlgiIgAiIgAjEhYCUibhISv0UAREQAREQgYgSkDIRUcGoWyIgAiIgAiIQFwJSJuIiKfVTBERABERABCJKQMpERAWjbomACIiACIhAXAhImYiLpNRPERABERABEYgoASkTERWMuiUCIiACIiACcSEgZSIuklI/RUAEREAERCCiBKRMRFQw6pYIiIAIiIAIxIWAlIm4SEr9FAEREAEREIGIEpAyEVHBqFsiIAIiIAIiEBcCUibiIin1UwREQAREQAQiSkDKREQFo26JgAiIgAiIQFwISJmIi6TUTxEQAREQARGIKAEpExEVjLolAiIgAiIgAnEhIGUiLpJSP0VABERABEQgogSkTERUMOqWCIiACIiACMSFgJSJuEhK/RQBERABERCBiBKQMhFRwahbIiACIiACIhAXAlIm4iIp9VMEREAEREAEIkpAykREBaNuiYAIiIAIiEBcCEiZiIuk1E8REAEREAERiCgBKRMRFYy6JQIiIAIiIAJxISBlIi6SUj9FQAREQAREIKIEpExEVDDqlgiIgAiIgAjEhYCUibhISv0UAREQAREQgYgSkDIRUcGoWyIgAiIgAiIQFwJSJuIiKfVTBERABERABCJKQMpERAWjbomACIiACIhAXAhImYiLpNRPERABERABEYgoASkTERWMuiUCIiACIiACcSEgZSIuklI/RUAEREAERCCiBP4/iUfdcbaD6HIAAAAASUVORK5CYII=" width="200px" style="display: block; margin: auto;" /></p>
 <ul>
@@ -7436,7 +7568,7 @@ lobstr::ast(!!x)</code></pre>
 ## +-&quot;y&quot; 
 ## \-1</code></pre>
 <div id="infix-vs.prefix-calls" class="section level3">
-<h3><span class="header-section-number">11.1.1</span> Infix vs. prefix calls</h3>
+<h3><span class="header-section-number">15.1.1</span> Infix vs. prefix calls</h3>
 <p>In R, any infix call can be converted to a prefix call if you escape the function name with backticks. That means that these two lines of code are equivalent:</p>
 <pre class="r"><code>y &lt;- x * 10
 `&lt;-`(y, `*`(x, 10))</code></pre>
@@ -7454,7 +7586,7 @@ lobstr::ast(!!x)</code></pre>
 ##   \-10</code></pre>
 </div>
 <div id="special-forms-1" class="section level3">
-<h3><span class="header-section-number">11.1.2</span> Special forms</h3>
+<h3><span class="header-section-number">15.1.2</span> Special forms</h3>
 <p>R has a small number of other syntactical constructs that don’t look like either prefix or infix function calls. These are called special forms and include <code>function</code>, the control flow operators (<code>if</code>, <code>for</code>, <code>while</code>, <code>repeat</code>), and parentheses (<code>{</code>, <code>(</code>, <code>[[</code>, and <code>[</code>). These can also be written in prefix form, and hence appear in the same way in the AST:</p>
 <pre class="r"><code>lobstr::ast(function(x, y) {
     if (x &gt; y) {
@@ -7478,7 +7610,7 @@ lobstr::ast(!!x)</code></pre>
 ## \-&lt;inline srcref&gt;</code></pre>
 </div>
 <div id="function-factories-1" class="section level3">
-<h3><span class="header-section-number">11.1.3</span> Function factories</h3>
+<h3><span class="header-section-number">15.1.3</span> Function factories</h3>
 <p>Another small detail we need to consider are calls like <code>f()()</code>. The first component of the call is usually a symbol:</p>
 <pre class="r"><code>lobstr::ast(f(a, 1))</code></pre>
 <pre><code>## o-f 
@@ -7496,7 +7628,7 @@ lobstr::ast(!!x)</code></pre>
 ## \-1</code></pre>
 </div>
 <div id="argument-names" class="section level3">
-<h3><span class="header-section-number">11.1.4</span> Argument names</h3>
+<h3><span class="header-section-number">15.1.4</span> Argument names</h3>
 <p>So far the examples have only used unnamed arguments. Named arguments don’t change the parsing rules, but just add some additional metadata:</p>
 <pre class="r"><code>lobstr::ast(mean(x = mtcars$cyl, na.rm = TRUE))</code></pre>
 <pre><code>## o-mean 
@@ -7507,10 +7639,10 @@ lobstr::ast(!!x)</code></pre>
 </div>
 </div>
 <div id="rs-grammar" class="section level2">
-<h2><span class="header-section-number">11.2</span> R’s grammar</h2>
+<h2><span class="header-section-number">15.2</span> R’s grammar</h2>
 <p>The process by which a computer language takes a sequence of tokens (like <code>x</code>, +, <code>y</code>) and constructs a tree is called <strong>parsing</strong>, and it is governed by a set of rules known as a <strong>grammar</strong>.</p>
 <div id="operator-precedence" class="section level3">
-<h3><span class="header-section-number">11.2.1</span> Operator precedence</h3>
+<h3><span class="header-section-number">15.2.1</span> Operator precedence</h3>
 <p>Infix functions introduce ambiguity in a way that prefix functions do not. The parser has to resolve two sources of ambiguity when parsing infix operators. First, what does <code>1 + 2 * 3</code> yield? Programming langauges use conventions called <strong>operator precedence</strong> to resolve this ambiguity.</p>
 <pre class="r"><code>lobstr::ast(1 + 2 * 3)</code></pre>
 <pre><code>## o-`+` 
@@ -7526,7 +7658,7 @@ lobstr::ast(!!x)</code></pre>
 ##   \-y</code></pre>
 </div>
 <div id="associativity" class="section level3">
-<h3><span class="header-section-number">11.2.2</span> Associativity</h3>
+<h3><span class="header-section-number">15.2.2</span> Associativity</h3>
 <p>Another source of ambiguity is introduced by repeated usage of the same infix function. For example, is <code>1 + 2 + 3</code> equivalent to <code>(1 + 2) + 3</code> or to <code>1 + (2 + 3)</code>? This normally doesn’t matter because <code>x + (y + z) == (x + y) + z</code>, i.e. addition is associative, but is needed because some S3 classes define <code>+</code> in a non-associative way.</p>
 <p>In R, most operators are left-associative, i.e. the operations on the left are evaluated first:</p>
 <pre class="r"><code>lobstr::ast(1 + 2 + 3)</code></pre>
@@ -7550,7 +7682,7 @@ lobstr::ast(!!x)</code></pre>
 ##   \-z</code></pre>
 </div>
 <div id="exercises-28" class="section level3">
-<h3><span class="header-section-number">11.2.3</span> Exercises</h3>
+<h3><span class="header-section-number">15.2.3</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>R uses parentheses in two slightly different ways as illustrated by these two calls:</p>
 <pre class="r"><code>f((1))
@@ -7640,7 +7772,7 @@ lobstr::ast(!!x)</code></pre>
 </div>
 </div>
 <div id="data-structures" class="section level2">
-<h2><span class="header-section-number">11.3</span> Data structures</h2>
+<h2><span class="header-section-number">15.3</span> Data structures</h2>
 <p>In this section you’ll learn about the data structures that appear in the AST:</p>
 <ul>
 <li>Constants and symbols form the leaves of the tree.</li>
@@ -7648,13 +7780,13 @@ lobstr::ast(!!x)</code></pre>
 <li>Pairlists are a largely historical data structure that are now only used for function arguments.</li>
 </ul>
 <div id="naming-conventions" class="section level3">
-<h3><span class="header-section-number">11.3.1</span> Naming conventions</h3>
+<h3><span class="header-section-number">15.3.1</span> Naming conventions</h3>
 <p>Before we continue, a word of caution about the naming conventions used in this book. Because base R evolved organically, it does not have a set of names that are used consistently throughout all functions. Instead, we’ve adopted our own set of conventions, and used them consistently throughout the book and in rlang. You will need to remember some translations when reading base R documentation.</p>
 <p>The biggest difference is the use of the term “expression”. We use expression to refer to the set containing <strong>constants</strong>, <strong>symbols</strong>, <strong>calls</strong>, and <strong>pairlists</strong>. In base R, “expression” is a special type that is basically equivalent to a list of what we call expressions. To avoid confusion we’ll call these expression objects, and we’ll discuss them in expression objects. Base R does not have an equivalent term for our “expression”. The closest is “language object”, which includes symbols and calls, but not constants or pairlists.</p>
 <p>But note that <code>typeof()</code> and <code>str()</code> use “language” not for language objects, but instead to mean calls. Base R uses symbol and name interchangeably; we prefer symbol because “name” has other common meanings (e.g. the name of a variable).</p>
 </div>
 <div id="constants" class="section level3">
-<h3><span class="header-section-number">11.3.2</span> Constants</h3>
+<h3><span class="header-section-number">15.3.2</span> Constants</h3>
 <p>Constants occurred in the leaves of the AST. They are the simplest data structure found in the AST because they are atomic vectors of length 1. Constants are “self-quoting” in the sense that the expression used to represent a constant is the constant itself:</p>
 <pre class="r"><code>identical(expr(&quot;x&quot;), &quot;x&quot;)</code></pre>
 <pre><code>## [1] TRUE</code></pre>
@@ -7666,7 +7798,7 @@ lobstr::ast(!!x)</code></pre>
 <pre><code>## [1] TRUE</code></pre>
 </div>
 <div id="symbols" class="section level3">
-<h3><span class="header-section-number">11.3.3</span> Symbols</h3>
+<h3><span class="header-section-number">15.3.3</span> Symbols</h3>
 <p>Symbols represent variable names. They are basically a single string stored in a special way. You can convert back and forth between symbols and the strings that represent them with <code>sym()</code> and <code>as_string()</code>:</p>
 <pre class="r"><code>&quot;x&quot;</code></pre>
 <pre><code>## [1] &quot;x&quot;</code></pre>
@@ -7718,7 +7850,7 @@ m3  # error</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x0000000019c1b2b0&gt;
+## &lt;bytecode: 0x00000000192b6e90&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre>
 <pre class="r"><code>m1 &lt;- missing_arg()
 m1</code></pre>
@@ -7729,7 +7861,7 @@ m1</code></pre>
 <p>You only need to care about the missing symbol if you’re programmatically creating functions with missing arguments.</p>
 </div>
 <div id="calls" class="section level3">
-<h3><span class="header-section-number">11.3.4</span> Calls</h3>
+<h3><span class="header-section-number">15.3.4</span> Calls</h3>
 <p>Calls define the tree in AST. A call behaves similarly to a list:</p>
 <ul>
 <li>It has a <code>length()</code>.</li>
@@ -7784,7 +7916,7 @@ x</code></pre>
 <pre><code>## mean(x = x, na.rm = TRUE)</code></pre>
 </div>
 <div id="pairlists" class="section level3">
-<h3><span class="header-section-number">11.3.5</span> Pairlists</h3>
+<h3><span class="header-section-number">15.3.5</span> Pairlists</h3>
 <p>There is one data structure we need to discuss for completeness: the pairlist. Pairlists are a remnant of R’s past and have been replaced by lists almost everywhere. The only place you are likely to see pairlists in R is when working with function arguments:</p>
 <pre class="r"><code>f &lt;- function(x = 10) x + 1
 formals(f)</code></pre>
@@ -7803,7 +7935,7 @@ length(pl)</code></pre>
 <pre><code>## [1] 1</code></pre>
 </div>
 <div id="expression-objects" class="section level3">
-<h3><span class="header-section-number">11.3.6</span> Expression objects</h3>
+<h3><span class="header-section-number">15.3.6</span> Expression objects</h3>
 <p>Finally, we need to briefly discuss the expression object. Expression objects are produced by only two base functions: <code>expression()</code> and <code>parse()</code>:</p>
 <pre class="r"><code>exp1 &lt;- parse(text = &quot;x &lt;- 4 \n x&quot;)
 exp1</code></pre>
@@ -7831,7 +7963,7 @@ exp2</code></pre>
 <pre><code>## [1] 4</code></pre>
 </div>
 <div id="examples" class="section level3">
-<h3><span class="header-section-number">11.3.7</span> Examples</h3>
+<h3><span class="header-section-number">15.3.7</span> Examples</h3>
 <pre class="r"><code>e1 &lt;- expression(a + 1)
 e1[[1]]</code></pre>
 <pre><code>## a + 1</code></pre>
@@ -7895,7 +8027,7 @@ q2[[1]]</code></pre>
 <pre><code>## [1] &quot;srcref&quot;</code></pre>
 <pre class="r"><code>str(q2[[4]])</code></pre>
 <pre><code>##  'srcref' int [1:8] 2 13 2 25 13 25 2 2
-##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000019227ee8&gt;</code></pre>
+##  - attr(*, &quot;srcfile&quot;)=Classes 'srcfilecopy', 'srcfile' &lt;environment: 0x0000000018a66368&gt;</code></pre>
 <pre class="r"><code>identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] FALSE</code></pre>
 <pre class="r"><code>q2[[4]] &lt;- NULL  # srcref for function
@@ -7904,7 +8036,7 @@ identical(q2, e2[[1]])</code></pre>
 <pre><code>## [1] TRUE</code></pre>
 </div>
 <div id="exercises-29" class="section level3">
-<h3><span class="header-section-number">11.3.8</span> Exercises</h3>
+<h3><span class="header-section-number">15.3.8</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Which two of the six types of atomic vector can’t appear in an expression? Why? Why can’t you create an expression that contains an atomic vector of length greater than one?<br />
 <strong>A</strong>: Raw and Complex are not self quoting. A call to a function is needed to construct a vector longer than length 1.</p>
@@ -7964,7 +8096,7 @@ lobstr::ast(1L)</code></pre>
 ##         x
 ##     }
 ## }
-## &lt;bytecode: 0x0000000019c1b2b0&gt;
+## &lt;bytecode: 0x00000000192b6e90&gt;
 ## &lt;environment: namespace:rlang&gt;</code></pre></li>
 <li><p><code>rlang::call_standardise()</code> doesn’t work so well for the following calls. Why? What makes <code>mean()</code> special?</p>
 <pre class="r"><code>call_standardise(quote(mean(1:10, na.rm = TRUE)))
@@ -8014,7 +8146,7 @@ eval(y)</code></pre>
 </ol>
 </div>
 <div id="parsing-and-deparsing" class="section level3">
-<h3><span class="header-section-number">11.3.9</span> Parsing and deparsing</h3>
+<h3><span class="header-section-number">15.3.9</span> Parsing and deparsing</h3>
 <p>Most of the time you type code into the console, and R takes care of turning the characters you’ve typed into an AST. But occasionally you have code stored in a string, and you want to parse it yourself. You can do so using <code>rlang::parse_expr()</code>:</p>
 <pre class="r"><code>x1 &lt;- &quot;y &lt;- x + 10&quot;
 lobstr::ast(!!x1)</code></pre>
@@ -8050,7 +8182,7 @@ expr_text(z)</code></pre>
 <p>Parsing and deparsing are not perfectly symmetric because parsing throws away all information not directly related to the AST. This includes backticks around ordinary names, comments, and whitespace. The base R equivalent is <code>deparase()</code>.</p>
 </div>
 <div id="exercises-30" class="section level3">
-<h3><span class="header-section-number">11.3.10</span> Exercises</h3>
+<h3><span class="header-section-number">15.3.10</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>What happens if you attempt to parse an invalid expression? e.g. <code>&quot;a +&quot;</code> or <code>&quot;f())&quot;</code>.<br />
 <strong>A</strong>: an error occurs</p>
@@ -8087,7 +8219,7 @@ deparse(expr)</code></pre>
 </div>
 </div>
 <div id="case-studies" class="section level2">
-<h2><span class="header-section-number">11.4</span> Case Studies</h2>
+<h2><span class="header-section-number">15.4</span> Case Studies</h2>
 <p>To conclude the chapter I’m going to pull together everything that you’ve learned about ASTs and use that knowledge to solve more complicated problems. The inspiration comes from the base codetools package, which provides two interesting functions:</p>
 <ul>
 <li><p><code>findGlobals()</code> locates all global variables used by a function. This can be useful if you want to check that your function doesn’t inadvertently rely on variables defined in their parent environment.</p></li>
@@ -8134,7 +8266,7 @@ expr_type(expr(&quot;a&quot;))</code></pre>
   )
 }</code></pre>
 <div id="finding-f-and-t" class="section level3">
-<h3><span class="header-section-number">11.4.1</span> Finding F and T</h3>
+<h3><span class="header-section-number">15.4.1</span> Finding F and T</h3>
 <p>We’ll start simple with a function that determines whether a function uses the logical abbreviations <code>T</code> and <code>F</code>: it will return <code>TRUE</code> if it finds a logical abbreviation, and <code>FALSE</code> otherwise. Using <code>T</code> and <code>F</code> is generally considered to be poor coding practice, and is something that <code>R CMD check</code> will warn about.</p>
 <p>Let’s first compare the AST for <code>T</code> vs. <code>TRUE</code>:</p>
 <pre class="r"><code>ast(TRUE)</code></pre>
@@ -8186,7 +8318,7 @@ logical_abbr(mean(x, na.rm = T)) # matches as call, but then 'pairlist' line is 
 <pre><code>## Error in c(&quot;F&quot;, &quot;T&quot;): unused argument (&quot;T&quot;)</code></pre>
 </div>
 <div id="finding-all-variables-created-by-assignment" class="section level3">
-<h3><span class="header-section-number">11.4.2</span> Finding all variables created by assignment</h3>
+<h3><span class="header-section-number">15.4.2</span> Finding all variables created by assignment</h3>
 <p>The next task, listing all variables created by assignment, is a little more complicated. We’ll start simply, and then make the function progressively more rigorous. We start by looking at the AST for assignment:</p>
 <pre class="r"><code>ast(x &lt;- 10)</code></pre>
 <pre><code>## \- ()
@@ -8306,7 +8438,7 @@ find_assign(a &lt;- b &lt;- c &lt;- 1)</code></pre>
 <pre><code>## Error in c(lhs, flat_map_chr(children, find_assign_rec)): unused argument (flat_map_chr(children, find_assign_rec))</code></pre>
 </div>
 <div id="exercises-31" class="section level3">
-<h3><span class="header-section-number">11.4.3</span> Exercises</h3>
+<h3><span class="header-section-number">15.4.3</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p><code>logical_abbr()</code> returns <code>TRUE</code> for <code>T(1, 2, 3)</code>. How could you modify <code>logical_abbr_rec()</code> so that it ignores function calls that use <code>T</code> or <code>F</code>?<br />
 <strong>A</strong>:</p>
@@ -8512,14 +8644,14 @@ find_function(a &lt;- 1, `&lt;-`)</code></pre>
 </div>
 </div>
 <div id="quasiquotation" class="section level1">
-<h1><span class="header-section-number">12</span> Quasiquotation</h1>
+<h1><span class="header-section-number">16</span> Quasiquotation</h1>
 <p>There are two sides to quasiquotation:</p>
 <ul>
 <li><p>Quotation allows you to capture the AST associated with an argument. As a function author, this gives you a lot of power to influence how expressions are evaluated.</p></li>
 <li><p>Unquotation allows you to selectively evaluate parts of a quoted expression. This is a powerful tool that makes it easy to build up a complex AST from simpler fragments.</p></li>
 </ul>
 <div id="example" class="section level2">
-<h2><span class="header-section-number">12.1</span> Example</h2>
+<h2><span class="header-section-number">16.1</span> Example</h2>
 <p>Imagine you’re creating a lot of strings by joining together words:</p>
 <pre class="r"><code>paste(&quot;Good&quot;, &quot;morning&quot;, &quot;Hadley&quot;)</code></pre>
 <pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
@@ -8554,7 +8686,7 @@ paste(&quot;Good&quot;, time, name)</code></pre>
 <pre class="r"><code>cement(Good, !!time, !!name)</code></pre>
 <pre><code>## [1] &quot;Good morning Hadley&quot;</code></pre>
 <div id="other" class="section level3">
-<h3><span class="header-section-number">12.1.1</span> Other</h3>
+<h3><span class="header-section-number">16.1.1</span> Other</h3>
 <pre class="r"><code>name &lt;- &quot;tom&quot;
 time &lt;- &quot;morning&quot;
 
@@ -8582,7 +8714,7 @@ typeof(dots[[2]])</code></pre>
 </div>
 </div>
 <div id="vocabulary" class="section level2">
-<h2><span class="header-section-number">12.2</span> Vocabulary</h2>
+<h2><span class="header-section-number">16.2</span> Vocabulary</h2>
 <p>The distinction between quoted and evaluated arguments is important:</p>
 <ul>
 <li>An evaluated argument obeys R’s usual evaluation rules.</li>
@@ -8596,7 +8728,7 @@ library(MASS)
 MASS</code></pre>
 <p>Talking about whether an argument is quoted or evaluated is a more precise way of stating whether or not a function uses NSE.</p>
 <div id="exercises-32" class="section level3">
-<h3><span class="header-section-number">12.2.1</span> Exercises</h3>
+<h3><span class="header-section-number">16.2.1</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>For each function in the following base R code, identify which arguments are quoted and which are evaluated.</p>
 <pre class="r"><code>library(MASS)
@@ -8673,10 +8805,10 @@ ggplot(by_cyl, aes(cyl, mean)) + geom_point() # cyl, mean - quoted</code></pre><
 </div>
 </div>
 <div id="quotation" class="section level2">
-<h2><span class="header-section-number">12.3</span> Quotation</h2>
+<h2><span class="header-section-number">16.3</span> Quotation</h2>
 <p>The first part of quasiquotation is quotation: capturing an AST without evaluating it. There are two components to this: capturing an expression directly, and capturing an expression from a lazily-evaluated function argument.</p>
 <div id="with-rlang" class="section level3">
-<h3><span class="header-section-number">12.3.1</span> With rlang</h3>
+<h3><span class="header-section-number">16.3.1</span> With rlang</h3>
 <p>For interactive exploration, the most important quoting function is <code>expr()</code>. It captures its argument exactly as provided:</p>
 <pre class="r"><code>expr(x + y)</code></pre>
 <pre><code>## x + y</code></pre>
@@ -8722,7 +8854,7 @@ is_missing(val$x)</code></pre>
 <pre><code>## Error in expr(x = ): unused argument (alist(x = ))</code></pre>
 </div>
 <div id="with-base-r" class="section level3">
-<h3><span class="header-section-number">12.3.2</span> With Base R</h3>
+<h3><span class="header-section-number">16.3.2</span> With Base R</h3>
 <p>The base equivalent of <code>expr()</code> is <code>quote()</code>:</p>
 <pre class="r"><code>quote(x + y)</code></pre>
 <pre><code>## x + y</code></pre>
@@ -8781,7 +8913,7 @@ f1(x = 1, y = 10 * z)</code></pre>
 </ul>
 </div>
 <div id="more-substitute" class="section level3">
-<h3><span class="header-section-number">12.3.3</span> More substitute</h3>
+<h3><span class="header-section-number">16.3.3</span> More substitute</h3>
 <p>When run from the global environment, it never does substitutions: in fact, in this situation it behaves just like <code>quote()</code>:</p>
 <pre class="r"><code>a &lt;- 1
 b &lt;- 2
@@ -8830,7 +8962,7 @@ expr(!!a + !!b + z)</code></pre>
 ## 10 * z</code></pre>
 </div>
 <div id="exercises-33" class="section level3">
-<h3><span class="header-section-number">12.3.4</span> Exercises</h3>
+<h3><span class="header-section-number">16.3.4</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>What happens if you try to use <code>enexpr()</code> with an expression? What happens if you try to use <code>enexpr()</code> with a missing argument?<br />
 <strong>A</strong>:</p>
@@ -8949,7 +9081,7 @@ substitute(x, .GlobalEnv)  # x is not substituted</code></pre>
 </div>
 </div>
 <div id="evaluation" class="section level2">
-<h2><span class="header-section-number">12.4</span> Evaluation</h2>
+<h2><span class="header-section-number">16.4</span> Evaluation</h2>
 <p>Typically you have quoted a function argument for one of two reasons:</p>
 <ul>
 <li>You want to operate on the AST using the techniques described in the previous chapter.</li>
@@ -8983,10 +9115,10 @@ eval(fx, env(f = function(x) x * 10))</code></pre>
 # number of named objects to populate it.</code></pre>
 </div>
 <div id="unquotation" class="section level2">
-<h2><span class="header-section-number">12.5</span> Unquotation</h2>
+<h2><span class="header-section-number">16.5</span> Unquotation</h2>
 <p>Evaluation is a developer tool: in combination with quoting, it allows the author of a function to capture an argument and evaluate it in a special way. Unquoting is related to evaluation, but it’s a user tool: it allows the person calling the function to selectively evaluate parts of the expression that would otherwise be quoted.</p>
 <div id="with-rlang-1" class="section level3">
-<h3><span class="header-section-number">12.5.1</span> With rlang</h3>
+<h3><span class="header-section-number">16.5.1</span> With rlang</h3>
 <p>All quoting functions in rlang (<code>expr()</code>, <code>enexpr()</code>, and friends) support unquoting with <code>!!</code> (called “unquote”, and pronounced bang-bang) and <code>!!!</code> (called “unquote-splice”, and pronounced bang-bang-bang). They both replace nodes in the AST. <code>!!</code> is a one-to-one replacement. It takes a single expression and inlines the AST at the location of the <code>!!</code>.</p>
 <pre class="r"><code>x &lt;- expr(a + b + c)
 expr(f(!!x, y))</code></pre>
@@ -9018,7 +9150,7 @@ expr(f(!!!x, z = z))</code></pre>
 ## \-z = z</code></pre>
 </div>
 <div id="the-polite-fiction-of" class="section level3">
-<h3><span class="header-section-number">12.5.2</span> The polite fiction of <code>!!</code></h3>
+<h3><span class="header-section-number">16.5.2</span> The polite fiction of <code>!!</code></h3>
 <p>So far we have acted as if <code>!!</code> and <code>!!!</code> are regular prefix operators like <code>+</code> , <code>-</code>, and <code>!</code>. They’re not. Instead, from R’s perspective, <code>!!</code> and <code>!!!</code> are simply the repeated application of <code>!</code>:</p>
 <pre class="r"><code>!!TRUE  # TRUE</code></pre>
 <pre><code>## [1] TRUE</code></pre>
@@ -9045,7 +9177,7 @@ with(mtcars, cyl + !!x)</code></pre>
 <pre><code>## [1] TRUE</code></pre>
 </div>
 <div id="with-base-r-1" class="section level3">
-<h3><span class="header-section-number">12.5.3</span> With Base R</h3>
+<h3><span class="header-section-number">16.5.3</span> With Base R</h3>
 <p>Base R has one function that implements quasiquotation: <code>bquote()</code>. It uses <code>.()</code> for unquoting:</p>
 <pre class="r"><code>xyz &lt;- bquote((x + y + z))
 bquote(-.(xyz)/2)</code></pre>
@@ -9108,7 +9240,7 @@ help(var)</code></pre>
 <p>Some quoting functions, like <code>subset()</code>, <code>transform()</code>, and <code>with()</code>, don’t have a non-quoting form. This is because they are seen as wrappers around <code>[</code> and <code>[&lt;-</code> that are only suitable for interactive use.</p>
 </div>
 <div id="missing-arguments-1" class="section level3">
-<h3><span class="header-section-number">12.5.4</span> Missing arguments</h3>
+<h3><span class="header-section-number">16.5.4</span> Missing arguments</h3>
 <p>Occasionally it is useful to unquote a missing argument, but the naive approach doesn’t work:</p>
 <pre class="r"><code>arg &lt;- missing_arg()
 expr(foo(!!arg, !!arg))</code></pre>
@@ -9121,7 +9253,7 @@ expr(foo(!!!args))</code></pre>
 <pre><code>## foo(, )</code></pre>
 </div>
 <div id="exercises-34" class="section level3">
-<h3><span class="header-section-number">12.5.5</span> Exercises</h3>
+<h3><span class="header-section-number">16.5.5</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Given the following components:</p>
 <pre class="r"><code>xy &lt;- expr(x + y)
@@ -9212,9 +9344,9 @@ foo(a = x + y, b = y + z)</code></pre>
 </div>
 </div>
 <div id="case-studies-1" class="section level2">
-<h2><span class="header-section-number">12.6</span> Case studies</h2>
+<h2><span class="header-section-number">16.6</span> Case studies</h2>
 <div id="map-reduce-to-generate-code" class="section level3">
-<h3><span class="header-section-number">12.6.1</span> Map-reduce to generate code</h3>
+<h3><span class="header-section-number">16.6.1</span> Map-reduce to generate code</h3>
 <p>Quasiquotation gives us powerful tools for generating code, particularly when combined with <code>purrr::map()</code> and <code>purr::reduce()</code>. For example, assume you have a linear model specified by the following coefficients:</p>
 <pre class="r"><code>intercept &lt;- 10
 coefs &lt;- c(x1 = 5, x2 = -4)</code></pre>
@@ -9251,7 +9383,7 @@ eval(eq, df)</code></pre>
 <pre><code>## Error in new_function(args, expr({: all(have_name(args)) is not TRUE</code></pre>
 </div>
 <div id="partition" class="section level3">
-<h3><span class="header-section-number">12.6.2</span> Partition</h3>
+<h3><span class="header-section-number">16.6.2</span> Partition</h3>
 <p>Imagine that you want to extend <code>dplyr::select()</code> to return two data frames: one with the variables you selected, and one with the variables that remain.</p>
 <p>here are plenty of ways to attack this problem, but one way is to take advantage of <code>select()</code>’s ability to negate column selection expression in order to remove those columns. We can capture the inputs with quasiquotation, then invert each selection call by negating it. We start by practicing interactively with a list of variables created with <code>exprs()</code>:</p>
 <pre class="r"><code>vars &lt;- exprs(x, y, c(a, b), starts_with(&quot;x&quot;))
@@ -9281,7 +9413,7 @@ partition_cols(df, starts_with(&quot;x&quot;))
 # &gt; $incl &gt; x1 x2 &gt; 1 1 3 &gt; &gt; $excl &gt; y z &gt; 1 a b</code></pre>
 </div>
 <div id="slicing-an-array" class="section level3">
-<h3><span class="header-section-number">12.6.3</span> Slicing an array</h3>
+<h3><span class="header-section-number">16.6.3</span> Slicing an array</h3>
 <p>One occassionally useful tool that’s missing from base R is the ability to extract a slice of an array given a dimension and an index. For example, we’d like to write <code>slice(x, 2, 1)</code> to extract the first slice along the second dimension, which you can write as <code>x[, 1, ]</code>.</p>
 <p>We’ll need to generated a call will multiple missing arguments. Fortunately is easy with <code>rep()</code> and <code>missing_arg()</code>. Once we have those arguments, we can unquote-splice them into a call:</p>
 <pre class="r"><code>(indices &lt;- rep(list(missing_arg()), 3))</code></pre>
@@ -9316,7 +9448,7 @@ x &lt;- array(sample(30), c(5, 2, 3))</code></pre>
 <p>A real <code>slice()</code> would evaluate the generated call, but here I think it’s more illuminating to see the code that’s generated, as that’s the hard part of the challenge.</p>
 </div>
 <div id="creating-functions" class="section level3">
-<h3><span class="header-section-number">12.6.4</span> Creating functions</h3>
+<h3><span class="header-section-number">16.6.4</span> Creating functions</h3>
 <p>Another powerful function to use in combination with unquoting is <code>rlang::new_function()</code>: it allows us to create a function by supplying the arguments, the body, and (optionally) the environment:</p>
 <pre class="r"><code>new_function(exprs(x = , y = ), expr({
     x + y
@@ -9347,7 +9479,7 @@ curve2(sin(exp(4 * x)), n = 1000)</code></pre>
 }
 negate1(is.null)</code></pre>
 <pre><code>## function(...) !f(...)
-## &lt;environment: 0x0000000016588928&gt;</code></pre>
+## &lt;environment: 0x0000000018492708&gt;</code></pre>
 <pre class="r"><code>negate2 &lt;- function(f) {
     f &lt;- enexpr(f)
     new_function(exprs(... = ), expr(!(!!f)(...)), caller_env())
@@ -9357,7 +9489,7 @@ negate2(is.null)</code></pre>
 ## !is.null(...)</code></pre>
 </div>
 <div id="exercises-35" class="section level3">
-<h3><span class="header-section-number">12.6.5</span> Exercises</h3>
+<h3><span class="header-section-number">16.6.5</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Implement <code>arrange_desc()</code>, a variant of <code>dplyr::arrange()</code> that sorts in descending order by default.<br />
 <strong>A</strong>:</p>
@@ -9479,16 +9611,16 @@ dim(x)</code></pre>
 }
 bc(0)</code></pre>
 <pre><code>## function(x) log(x)
-## &lt;environment: 0x000000001cbb37b8&gt;</code></pre>
+## &lt;environment: 0x000000001d449168&gt;</code></pre>
 <pre class="r"><code>bc(1)</code></pre>
 <pre><code>## function(x) (x^lambda - 1)/lambda
-## &lt;environment: 0x000000001cc1e050&gt;</code></pre>
+## &lt;environment: 0x000000001c52b030&gt;</code></pre>
 <pre class="r"><code>bc(2)</code></pre>
 <pre><code>## function(x) (x^lambda - 1)/lambda
-## &lt;environment: 0x000000001d0976e8&gt;</code></pre>
+## &lt;environment: 0x000000001cdd91f0&gt;</code></pre>
 <pre class="r"><code>bc(4^0.5)</code></pre>
 <pre><code>## function(x) (x^lambda - 1)/lambda
-## &lt;environment: 0x000000001d111290&gt;</code></pre>
+## &lt;environment: 0x000000001d475fe0&gt;</code></pre>
 <pre class="r"><code>bc(2)(3)</code></pre>
 <pre><code>## [1] 4</code></pre>
 <pre class="r"><code># reimplemented
@@ -9505,19 +9637,19 @@ bc2 &lt;- function(lambda) {
 bc2(0)</code></pre>
 <pre><code>## function (x) 
 ## log(x)
-## &lt;environment: 0x000000001d27baf0&gt;</code></pre>
+## &lt;environment: 0x000000001cdc03b8&gt;</code></pre>
 <pre class="r"><code>bc2(1)</code></pre>
 <pre><code>## function (x) 
 ## (x^1 - 1)/1
-## &lt;environment: 0x000000001d2f97b0&gt;</code></pre>
+## &lt;environment: 0x000000001cd777d8&gt;</code></pre>
 <pre class="r"><code>bc2(2)</code></pre>
 <pre><code>## function (x) 
 ## (x^2 - 1)/2
-## &lt;environment: 0x00000000193f3ae0&gt;</code></pre>
+## &lt;environment: 0x000000001d2c88f0&gt;</code></pre>
 <pre class="r"><code>bc2(4^0.5)</code></pre>
 <pre><code>## function (x) 
 ## (x^2 - 1)/2
-## &lt;environment: 0x00000000192a0128&gt;</code></pre>
+## &lt;environment: 0x000000001cad9f90&gt;</code></pre>
 <pre class="r"><code>bc2(2)(3)</code></pre>
 <pre><code>## [1] 4</code></pre></li>
 <li><p>Re-implement the simple <code>compose()</code> defined below using quasiquotation and <code>new_function()</code>:</p>
@@ -9530,7 +9662,7 @@ bc2(0)</code></pre>
 }
 compose(sin, cos)</code></pre>
 <pre><code>## function(...) f(g(...))
-## &lt;environment: 0x00000000165384c0&gt;</code></pre>
+## &lt;environment: 0x000000001881caf0&gt;</code></pre>
 <pre class="r"><code>compose(sin, cos)(pi)</code></pre>
 <pre><code>## [1] -0.841471</code></pre>
 <pre class="r"><code>compose2 &lt;- function(f, g) {
@@ -9547,7 +9679,7 @@ compose2(sin, cos)</code></pre>
 </div>
 </div>
 <div id="dot-dot-dot-..." class="section level2">
-<h2><span class="header-section-number">12.7</span> Dot-dot-dot (<code>...</code>)</h2>
+<h2><span class="header-section-number">16.7</span> Dot-dot-dot (<code>...</code>)</h2>
 <p>Quasiquotation ensures that every quoted argument has an escape hatch that allows the user to unquote, or evaluate, selected components, if needed. A similar and related need arises with functions that take arbitrary additional arguments with <code>...</code>.</p>
 <p>Take the following two motivating problems:</p>
 <p>What do you do if the elements you want to put in <code>...</code> are already stored in a list? For example, imagine you have a list of data frames that you want to <code>rbind()</code> together:</p>
@@ -9559,7 +9691,7 @@ val &lt;- c(4, 3, 9)</code></pre>
 <pre><code>## Error in c(4, 3, 9): unused arguments (3, 9)</code></pre>
 <p>In this case, you could create a data frame and then change names (i.e. <code>setNames(data.frame(val), var)</code>), but this feels inelegant. How can we do better?</p>
 <div id="do.call" class="section level3">
-<h3><span class="header-section-number">12.7.1</span> <code>do.call()</code></h3>
+<h3><span class="header-section-number">16.7.1</span> <code>do.call()</code></h3>
 <p>Base R provides a swiss-army knife to solve these problems: <code>do.call()</code>. <code>do.call()</code> has two main arguments. The first argument, <code>what</code>, gives a function to call. The second argument, <code>args</code>, is a list of arguments to pass to that function, and so <code>do.call(&quot;f&quot;, list(x, y, z))</code> is equivalent to <code>f(x, y, z)</code>.</p>
 <p><code>do.call()</code> gives a straightforward solution to <code>rbind()</code>ing together many data frames:</p>
 <pre class="r"><code>do.call(&quot;rbind&quot;, dfs)</code></pre>
@@ -9573,7 +9705,7 @@ do.call(&quot;data.frame&quot;, args)</code></pre>
 <pre><code>## Error in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE, : argument is missing, with no default</code></pre>
 </div>
 <div id="the-tidyverse-approach" class="section level3">
-<h3><span class="header-section-number">12.7.2</span> The tidyverse approach</h3>
+<h3><span class="header-section-number">16.7.2</span> The tidyverse approach</h3>
 <p>The tidyverse solves these problems in a different way to base R, by drawing parallel to quasiquotation:</p>
 <p>Row-binding multiple data frames is like unquote-splicing: we want to inline individual elements of the list into the call:</p>
 <pre class="r"><code>dplyr::bind_rows(!!!dfs)</code></pre>
@@ -9595,7 +9727,7 @@ do.call(&quot;data.frame&quot;, args)</code></pre>
 <p><code>:=</code> is like a vestigial organ: it’s recognised by R’s parser, but it doesn’t have any code associated with it. It looks like an <code>=</code> but allows expressions on either side, making it a more flexible alternative to <code>=</code>. It is used in data.table for similar reasons.</p>
 </div>
 <div id="list2" class="section level3">
-<h3><span class="header-section-number">12.7.3</span> <code>list2()</code></h3>
+<h3><span class="header-section-number">16.7.3</span> <code>list2()</code></h3>
 <p>Both <code>dplyr::bind_rows()</code> and <code>tibble::tibble()</code> are powered by <code>rlang::list2(...)</code>. This function is very similar to <code>list(...)</code>, but it understands <code>!!!</code> and <code>!!</code>. If you want to take advantage of this behaviour in your own function, all you need to do is use <code>list2()</code> in your own code. For example, imagine you want to make a version of <code>structure()</code> that understands <code>!!!</code> and <code>!!</code>. We’ll call it <code>set_attr()</code>:</p>
 <pre class="r"><code>set_attr &lt;- function(.x, ...) {
     attr &lt;- rlang::list2(...)
@@ -9614,7 +9746,7 @@ attr_name &lt;- &quot;z&quot;
 ##  - attr(*, &quot;z&quot;)= num 3</code></pre>
 </div>
 <div id="other-approaches" class="section level3">
-<h3><span class="header-section-number">12.7.4</span> Other approaches</h3>
+<h3><span class="header-section-number">16.7.4</span> Other approaches</h3>
 <p>Apart from <code>rlang::list2()</code> there are several other techniques used to overcome the motivating challenges described above. One technique is to take <code>...</code> and a single unnamed argument that is a list, making <code>f(list(x, y, z))</code> equivalent to <code>f(x, y, z)</code>. The implementation looks something like this:</p>
 <pre class="r"><code>f &lt;- function(...) {
     dots &lt;- list(...)
@@ -9628,7 +9760,7 @@ attr_name &lt;- &quot;z&quot;
 <p>Base functions that use this technique include <code>interaction()</code>, <code>expand.grid()</code>, <code>options()</code>, and <code>par()</code>. Since these functions take either a list or <code>...</code>, but not both, they are slightly less flexible than functions powered by <code>list2()</code>.</p>
 </div>
 <div id="exercises-36" class="section level3">
-<h3><span class="header-section-number">12.7.5</span> Exercises</h3>
+<h3><span class="header-section-number">16.7.5</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Carefully read the source code for <code>interaction()</code>, <code>expand.grid()</code>, and <code>par()</code>. Compare and contrast the techniques they use for switching between dots and list behaviour. <strong>A</strong>: They all check to see if <code>...</code> has one argument that is a list; if so then this list become the de facto arguments. General form is:</p>
 <pre class="r"><code>f &lt;- function(...) {
@@ -9717,9 +9849,9 @@ set_attr(y = 1:10, x = 10)</code></pre>
 </div>
 </div>
 <div id="evaluation-1" class="section level1">
-<h1><span class="header-section-number">13</span> Evaluation</h1>
-<div id="introduction-4" class="section level2">
-<h2><span class="header-section-number">13.1</span> Introduction</h2>
+<h1><span class="header-section-number">17</span> Evaluation</h1>
+<div id="introduction-6" class="section level2">
+<h2><span class="header-section-number">17.1</span> Introduction</h2>
 <p>The user-facing opposite of quotation is unquotation: it gives the user the ability to selectively evaluate parts of an otherwise quoted argument. The developer-facing complement of quotation is evaluation: this gives the developer the ability to evaluate quoted expressions in custom environments to achieve specific goals.</p>
 <p>This chapter begins with a discussion of evaluation in its purest form with <code>rlang::eval_bare()</code> which evaluates an expression in given environment. We’ll then see how these ideas are used to implement a handful of base R functions, and then learn about the similar <code>base::eval()</code>.</p>
 <p>The meat of the chapter focusses on extensions needed to implement evaluation robustly. There are two big new ideas:</p>
@@ -9730,7 +9862,7 @@ set_attr(y = 1:10, x = 10)</code></pre>
 <p>Together, quasiquotation, quosures, data masks, and pronouns form what we call tidy evaluation, or tidy eval for short. Tidy eval provides a principled approach to NSE that makes it possible to use such functions both interactively and embedded with other functions. We’ll finish off the chapter showing the basic pattern you use to wrap quasiquoting functions, and how you can adapt that pattern to base R NSE functions.</p>
 </div>
 <div id="evaluation-basics" class="section level2">
-<h2><span class="header-section-number">13.2</span> Evaluation basics</h2>
+<h2><span class="header-section-number">17.2</span> Evaluation basics</h2>
 <p>In the previous chapter, we briefly mentioned eval(). Here, however, we’re going to start with <code>rlang::eval_bare()</code> which is the purest evocation of the idea of evaluation. The first argument, <code>expr</code> is an expression to evaluate. This will usually be either a symbol or expression:</p>
 <pre class="r"><code>x &lt;- 10
 eval_bare(expr(x))</code></pre>
@@ -9753,7 +9885,7 @@ eval_bare(expr(x + y))</code></pre>
 <pre class="r"><code>eval_bare(x + y, env(x = 1000))</code></pre>
 <pre><code>## [1] 12</code></pre>
 <div id="application-local" class="section level3">
-<h3><span class="header-section-number">13.2.1</span> Application: <code>local()</code></h3>
+<h3><span class="header-section-number">17.2.1</span> Application: <code>local()</code></h3>
 <p>Sometimes you want to perform a chunk of calculation that creates a bunch of intermediate variables. The intermediate variables have no long-term use and could be quite large, so you’d rather not keep them around. One approach is to clean up after yourself using <code>rm()</code>; another approach is to wrap the code in a function, and just call it once. A more elegant approach is to use <code>local()</code>:</p>
 <pre class="r"><code># Clean up variables created earlier
 rm(x, y)
@@ -9790,7 +9922,7 @@ foo</code></pre>
 <pre><code>## Error in eval(expr, envir, enclos): object 'y' not found</code></pre>
 </div>
 <div id="application-source" class="section level3">
-<h3><span class="header-section-number">13.2.2</span> Application: <code>source()</code></h3>
+<h3><span class="header-section-number">17.2.2</span> Application: <code>source()</code></h3>
 <p>We can create a simple version of <code>source()</code> by combining <code>parse_expr()</code> and <code>eval_bare()</code>. We read in the file from disk, use <code>parse_expr()</code> to parse the string into a list of expressions, and then use <code>eval_bare()</code> to evaluate each component in turn. This version evaluates the code in the caller environment, and invisibly returns the result of the last expression in the file like <code>source()</code>.</p>
 <pre class="r"><code>source2 &lt;- function(path, env = caller_env()) {
     file &lt;- paste(readLines(path, warn = FALSE), collapse = &quot;\n&quot;)
@@ -9806,7 +9938,7 @@ foo</code></pre>
 <p>The real <code>source()</code> is considerably more complicated because it can echo input and output, and has many other settings that control its behaviour.</p>
 </div>
 <div id="base-r" class="section level3">
-<h3><span class="header-section-number">13.2.3</span> Base R</h3>
+<h3><span class="header-section-number">17.2.3</span> Base R</h3>
 <p>The base function equivalent to <code>eval_bare()</code> is the two-argument form of <code>eval()</code>: <code>eval(expr, envir)</code>:</p>
 <pre class="r"><code>eval(expr(x + y), env(x = 1000, y = 1))</code></pre>
 <pre><code>## [1] 1001</code></pre>
@@ -9818,7 +9950,7 @@ foo</code></pre>
 </ul>
 </div>
 <div id="exercises-37" class="section level3">
-<h3><span class="header-section-number">13.2.4</span> Exercises</h3>
+<h3><span class="header-section-number">17.2.4</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Carefully read the documentation for <code>source()</code>. What environment does it use by default? What if you supply <code>local = TRUE</code>? How do you provide a custom argument?<br />
 <strong>A</strong>: By default, <code>local = FALSE</code> hence the global environment is used. If <code>local = TRUE</code> then the calling environment is used. If <code>local</code> is an environment, then that is used.</p>
@@ -9974,10 +10106,10 @@ Z &lt; 50</code></pre>
 </div>
 </div>
 <div id="quosures" class="section level2">
-<h2><span class="header-section-number">13.3</span> Quosures</h2>
+<h2><span class="header-section-number">17.3</span> Quosures</h2>
 <p>The simplest form of evaluation combines an expression and an environment. This coupling is so important that we need a data structure that can hold both pieces: we need a quosure, a portmanteau of quoting and closure.</p>
 <div id="motivation" class="section level3">
-<h3><span class="header-section-number">13.3.1</span> Motivation</h3>
+<h3><span class="header-section-number">17.3.1</span> Motivation</h3>
 <p>Quosures are important when the distance between capturing and evaluating an expression grows. Take this simple, if somewhat contrived example:</p>
 <pre class="r"><code>foo &lt;- function(x) {
     y &lt;- 100
@@ -10037,7 +10169,7 @@ f(x = x)</code></pre>
 <p>This ensures that each expression is evaluated in the correct environment.</p>
 </div>
 <div id="creating-and-manipulating" class="section level3">
-<h3><span class="header-section-number">13.3.2</span> Creating and manipulating</h3>
+<h3><span class="header-section-number">17.3.2</span> Creating and manipulating</h3>
 <p>Each of the <code>expr()</code> functions that you learned about in the previous chapter has an equivalent <code>quo()</code> function that creates a quosure:</p>
 <p>Use <code>quo()</code> and <code>quos()</code> to capture your expressions.</p>
 <pre class="r"><code>quo(x + y + z)</code></pre>
@@ -10065,7 +10197,7 @@ foo(a + b)</code></pre>
 x</code></pre>
 <pre><code>## &lt;quosure&gt;
 ##   expr: ^x + y
-##   env:  0000000012BD1640</code></pre>
+##   env:  000000001A650778</code></pre>
 <p>If you need to turn a quosure into text for output to the console you can use <code>quo_name()</code>, <code>quo_label()</code>, or <code>quo_text()</code>. <code>quo_name()</code> and <code>quo_label()</code> are guaranteed to be short; <code>quo_expr()</code> may span multiple lines.</p>
 <pre class="r"><code>y &lt;- quo(long_function_name(argument_1 = long_argument_value, argument_2 = long_argument_value, 
     argument_3 = long_argument_value, argument_4 = long_argument_value))
@@ -10077,14 +10209,14 @@ quo_name(y)  # e.g. for data frames</code></pre>
 <pre><code>## [1] &quot;long_function_name(argument_1 = long_argument_value, argument_2 = long_argument_value, \n    argument_3 = long_argument_value, argument_4 = long_argument_value)&quot;</code></pre>
 </div>
 <div id="evaluating" class="section level3">
-<h3><span class="header-section-number">13.3.3</span> Evaluating</h3>
+<h3><span class="header-section-number">17.3.3</span> Evaluating</h3>
 <p>You can evaluate a quosure with <code>eval_tidy()</code>:</p>
 <pre class="r"><code>x &lt;- new_quosure(expr(x + y), env(x = 1, y = 10))
 eval_tidy(x)</code></pre>
 <pre><code>## [1] 11</code></pre>
 <p>And you can extract its components with the quo_get_ helpers:</p>
 <pre class="r"><code>quo_get_env(x)</code></pre>
-<pre><code>## &lt;environment: 0x000000001d79c3d0&gt;</code></pre>
+<pre><code>## &lt;environment: 0x000000001c4a3510&gt;</code></pre>
 <pre class="r"><code>quo_get_expr(x)</code></pre>
 <pre><code>## x + y</code></pre>
 <p>For this simple case, <code>eval_tidy()</code> is basically a wrapper around <code>eval_bare()</code>. In the next section, you’ll learn about the data argument which makes <code>eval_tidy()</code> particularly powerful.</p>
@@ -10092,7 +10224,7 @@ eval_tidy(x)</code></pre>
 <pre><code>## [1] 11</code></pre>
 </div>
 <div id="implementation" class="section level3">
-<h3><span class="header-section-number">13.3.4</span> Implementation</h3>
+<h3><span class="header-section-number">17.3.4</span> Implementation</h3>
 <p>Quosures rely on R’s internal representation of function arguments as a special type of object called a promise. A promise captures the expression needed to compute the value and the environment in which to compute it. You’re not normally aware of promises because the first time you access a promise its code is evaluated in its environment, yielding a value. This is what powers lazy evaluation. You cannot manipulate promises with R code. Promises are like a quantum state: any attempt to inspect them with R code will force an immediate evaluation, making the promise disappear. To work around this, rlang manipulates promises with C code, reifying them into an R object that you can work with.</p>
 <p>There is one big difference between promises and quosures. A promise is evaluated once, when you access it for the first time. Every time you access it subsequently it will return the same value. A quosure must be evaluated explicitly, and each evaluation is independent of the previous evaluations.</p>
 <pre class="r"><code># The argument x is evaluated once, then reused
@@ -10113,7 +10245,7 @@ eval_tidy(x_quo)</code></pre>
 <pre><code>## [1] 0.470610053 0.009335659 0.437871225</code></pre>
 </div>
 <div id="when-not-to-use-quosures" class="section level3">
-<h3><span class="header-section-number">13.3.5</span> When not to use quosures</h3>
+<h3><span class="header-section-number">17.3.5</span> When not to use quosures</h3>
 <p>Almost all quoting functions should capture quosures rather than expressions, and you should default to using <code>enquo()</code> and <code>enquos()</code> to capture arguments from the user. You should only use expressions if you have explicitly decided that the environment is not important. This tends to happen in three main cases:</p>
 <ul>
 <li>In code generation, such as you saw in Slicing an array.</li>
@@ -10131,24 +10263,24 @@ quo(log(x, base = base))</code></pre>
 <p>(Assuming that x will be supplied in some other way)</p>
 </div>
 <div id="exercises-38" class="section level3">
-<h3><span class="header-section-number">13.3.6</span> Exercises</h3>
+<h3><span class="header-section-number">17.3.6</span> Exercises</h3>
 <ol style="list-style-type: decimal">
 <li><p>Predict what evaluating each of the following quosures will return.</p>
 <pre class="r"><code>q1 &lt;- new_quosure(expr(x), env(x = 1))
 q1</code></pre>
 <pre><code>## &lt;quosure&gt;
 ##   expr: ^x
-##   env:  000000001B98AAC0</code></pre>
+##   env:  0000000016564950</code></pre>
 <pre class="r"><code>q2 &lt;- new_quosure(expr(x + !!q1), env(x = 10))
 q2</code></pre>
 <pre><code>## &lt;quosure&gt;
 ##   expr: ^x + (^x)
-##   env:  0000000012AF2C40</code></pre>
+##   env:  000000001431DAE8</code></pre>
 <pre class="r"><code>q3 &lt;- new_quosure(expr(x + !!q2), env(x = 100))
 q3</code></pre>
 <pre><code>## &lt;quosure&gt;
 ##   expr: ^x + (^x + (^x))
-##   env:  000000001BFF8850</code></pre>
+##   env:  000000001BD51B10</code></pre>
 <p><strong>A</strong>: 1, 11, 111</p>
 <pre class="r"><code>q1 &lt;- new_quosure(expr(x), env(x = 1))
 eval_tidy(q1)</code></pre>
@@ -10174,14 +10306,14 @@ enenv(x)</code></pre>
     enenv(x)
 }
 g()</code></pre>
-<pre><code>## &lt;environment: 0x000000001c4ca288&gt;</code></pre>
+<pre><code>## &lt;environment: 0x000000001d061f60&gt;</code></pre>
 <pre class="r"><code>env_parent(g())</code></pre>
 <pre><code>## &lt;environment: R_GlobalEnv&gt;</code></pre></li>
 </ol>
 </div>
 </div>
 <div id="tidy-evaluation" class="section level2">
-<h2><span class="header-section-number">13.4</span> Tidy evaluation</h2>
+<h2><span class="header-section-number">17.4</span> Tidy evaluation</h2>
 <p>In the previous section, you learned how to capture quosures, why they are important, and the basics of <code>eval_tidy()</code>. In this section, we’ll go deep on <code>eval_tidy()</code> and talk more generally about the ideas of tidy evaluation. There are two big new concepts:</p>
 <ul>
 <li>A data mask is a data frame where the evaluated code will look first for variable definitions.</li>
@@ -10189,7 +10321,7 @@ g()</code></pre>
 </ul>
 <p>We’ll explore tidy evaluation in the context of <code>base::subset()</code>, because it’s a simple yet powerful function that encapsulates one of the central ideas that makes R so elegant for data analysis. Once we’ve seen the tidy implementation, we’ll return to the base R implementation, learn how it works, and explore the limitations that make <code>subset()</code> suitable only for interactive usage.</p>
 <div id="data-masks" class="section level3">
-<h3><span class="header-section-number">13.4.1</span> Data masks</h3>
+<h3><span class="header-section-number">17.4.1</span> Data masks</h3>
 <p>In the previous section, you learned that <code>eval_tidy()</code> is basically a wrapper around <code>eval_bare()</code> when evaluating a quosure. The real power of <code>eval_tidy()</code> comes with the second argument: data. This lets you set up a data mask, where variables in the environment are potentially masked by variables in a data frame. This allows you to mingle variables from the environment and variables from a data frame:</p>
 <pre class="r"><code>x &lt;- 10
 df &lt;- data.frame(y = 1:10)
@@ -10206,7 +10338,7 @@ eval_tidy(q2)</code></pre>
 <pre><code>##  [1]  10  20  30  40  50  60  70  80  90 100</code></pre>
 </div>
 <div id="application-subset" class="section level3">
-<h3><span class="header-section-number">13.4.2</span> Application: <code>subset()</code>:</h3>
+<h3><span class="header-section-number">17.4.2</span> Application: <code>subset()</code>:</h3>
 <p>To see why the data mask is so useful, lets implement our own version of <code>subset()</code>. If you haven’t used it before, <code>subset()</code> (like <code>dplyr::filter()</code>), provides a convenient way of selecting rows of a data frame using an expression that is evaluated in the context of the data frame. It allows you to subset without repeatedly referring to the name of the data frame:</p>
 <pre class="r"><code>sample_df &lt;- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))</code></pre>
 <pre><code>## Error in c(5, 3, 1, 4, 1): unused arguments (3, 1, 4, 1)</code></pre>
@@ -10230,7 +10362,7 @@ subset2(sample_df, b == c)</code></pre>
 <pre><code>## Error in eval_tidy(rows, df): object 'sample_df' not found</code></pre>
 </div>
 <div id="application-arrange" class="section level3">
-<h3><span class="header-section-number">13.4.3</span> Application: <code>arrange()</code></h3>
+<h3><span class="header-section-number">17.4.3</span> Application: <code>arrange()</code></h3>
 <p>A slightly more complicated exercise is to implement the heart of <code>dplyr::arrange()</code>. The goal of <code>arrange()</code> is to allow you to sort a data frame by multiple variables, each evaluated in the context of the data frame. This is more challenging than <code>subset()</code> because we want to arrange by multiple variables captured in <code>...</code>.</p>
 <pre class="r"><code>arrange2 &lt;- function(.df, ..., .na.last = TRUE) {
     # Capture all dots
@@ -10265,7 +10397,7 @@ df &lt;- data.frame(x = c(2, 3, 1), y = runif(3))</code></pre>
 ## 1   1</code></pre>
 </div>
 <div id="ambiguity-and-pronouns" class="section level3">
-<h3><span class="header-section-number">13.4.4</span> Ambiguity and pronouns</h3>
+<h3><span class="header-section-number">17.4.4</span> Ambiguity and pronouns</h3>
 <p>One of the downsides of the data mask is that it introduces ambiguity: when you say <code>x</code>, are you refering to a variable in the data or in the environment? This ambiguity is ok when doing interactive data analysis because you are familiar with the data, and if there are problems, you’ll spot them quickly because you are looking at the data frequently. However, ambiguity becomes a problem when you start programming with functions that use tidy evaluation. For example, take this simple wrapper:</p>
 <pre class="r"><code>threshold_x &lt;- function(df, val) {
     subset2(df, x &gt;= val)
@@ -10339,7 +10471,7 @@ threshold_var2(df, val, 11)
 <p>In <code>threshold_var1</code> we need to use the prefix form of <code>$</code>, because <code>.data$!!var</code> is not valid R syntax. Alternatively, we can convert the symbol to a string, and use <code>[[</code>.</p>
 </div>
 <div id="base-subset" class="section level3">
-<h3><span class="header-section-number">13.4.5</span> Base <code>subset()</code>:</h3>
+<h3><span class="header-section-number">17.4.5</span> Base <code>subset()</code>:</h3>
 <p>Why is <code>subset()</code> dangerous for programming and how does tidy evaluation help us avoid those dangers? First, lets implement the key parts of <code>subset()</code> using base R, following the same structure as <code>subset2()</code>. We convert <code>enquo()</code> to <code>substitute()</code> and <code>eval_tidy()</code> to <code>eval()</code>. We also need to supply a backup environment to <code>eval()</code>. There’s no way to access the environment associated with an argument in base R, so we take the best approximation: the caller environment (aka parent frame).</p>
 <pre class="r"><code>subset_base &lt;- function(data, rows) {
     rows &lt;- substitute(rows)
@@ -10399,7 +10531,7 @@ f(df, x == xval)</code></pre>
 </div>
 </div>
 <div id="performance" class="section level2">
-<h2><span class="header-section-number">13.5</span> Performance</h2>
+<h2><span class="header-section-number">17.5</span> Performance</h2>
 <p>Note that there is some performance overhead when evaluating a quosure compared to evaluating an expression.</p>
 <p>However, most of the overhead is due to setting up the data mask so if you need to evaluate code repeatedly, it’s a good idea to define the data mask once then reuse it. This considerably reduces the overhead, with a small change in behaviour: if the code being evaluated creates objects in the “current” environment, those objects will persist across calls.</p>
 <pre class="r"><code>mask &lt;- as_data_mask(mtcars)
@@ -10412,7 +10544,7 @@ eval_tidy(quo(cyl * 2), mask)</code></pre>
 <pre><code>##  [1] 14 14 10 12 16 12 16  8  8 12 12 16 16 16 16 16 16 10 10 10  8 16 16
 ## [24] 16 16 10 10 10 18 14 18 10</code></pre>
 <div id="exercises-39" class="section level3">
-<h3><span class="header-section-number">13.5.1</span> Exercises</h3>
+<h3><span class="header-section-number">17.5.1</span> Exercises</h3>
 <ol start="3" style="list-style-type: decimal">
 <li><p>Here’s an alternative implementation of <code>arrange()</code>:</p>
 <pre class="r"><code>invoke &lt;- function(fun, ...) do.call(fun, dots_list(...))
@@ -10477,10 +10609,10 @@ df &lt;- data.frame(a = 1:5, b = 5:1, c = c(5, 3, 1, 4, 1))</code></pre>
 </div>
 </div>
 <div id="wrapping-quoting-functions" class="section level2">
-<h2><span class="header-section-number">13.6</span> Wrapping quoting functions</h2>
+<h2><span class="header-section-number">17.6</span> Wrapping quoting functions</h2>
 <p>Now we have all the tools we need to wrap a quoting function inside another function, regardless of whether the quoting function uses tidy evaluation or base R. This is important because it allows you to reduce duplication by turning repeated code into functions. It’s straightforward to do this for evaluated arguments; now you’ll learn the techniques that allow you to wrap quoted arguments.</p>
 <div id="tidy-evaluation-1" class="section level3">
-<h3><span class="header-section-number">13.6.1</span> Tidy evaluation</h3>
+<h3><span class="header-section-number">17.6.1</span> Tidy evaluation</h3>
 <p>If you need to wrap a function that quasi-quotes one of its arguments, it’s simple to wrap. You just need to quote and unquote. Take this repeat code:</p>
 <pre class="r"><code>df %&gt;% group_by(x1) %&gt;% summarise(mean = mean(y1))
 df %&gt;% group_by(x2) %&gt;% summarise(mean = mean(y2))
@@ -10501,7 +10633,7 @@ df %&gt;% group_by(x3) %&gt;% summarise(mean = mean(y3))</code></pre>
 </div>
 </div>
 <div id="debugging" class="section level1">
-<h1><span class="header-section-number">14</span> Debugging</h1>
+<h1><span class="header-section-number">18</span> Debugging</h1>
 <p>debugger dump.frames</p>
 <p>browser traceback recover</p>
 <p>browserText(n = 1) browserCondition(n = 1) browserSetDebug(n = 1</p>
