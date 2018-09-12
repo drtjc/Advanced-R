@@ -51,13 +51,17 @@ library(pryr)
 ```{r child_YAML, child = "Function_operators.Rmd", results='markup', cache=TRUE, error=TRUE}
 ```
 
+```{r child_YAML, child = "Base_types.Rmd", results='markup', error=TRUE}
+```
+
+
 ```{r child_YAML, child = "Expressions.Rmd", results='markup', cache=TRUE, error=TRUE}
 ```
 
 ```{r child_YAML, child = "Quasiquotation.Rmd", results='markup', cache=TRUE, error=TRUE}
 ```
 
-```{r child_YAML, child = "Evaluation.Rmd", results='markup', error=TRUE}
+```{r child_YAML, child = "Evaluation.Rmd", results='markup', cache = TRUE, error=TRUE}
 ```
 
 
