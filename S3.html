@@ -225,6 +225,122 @@ div.tocify {
 
 <div id="introduction" class="section level1">
 <h1><span class="header-section-number">1</span> Introduction</h1>
+<p>S3 is R’s first and simplest OO system. S3 is informal and ad hoc, but it has a certain elegance in its minimalism: you can’t take away any part of it and still have a useful OO system. Because of these reasons, S3 should be your default choice for OO programming: you should use it unless you have a compelling reason otherwise. S3 is the only OO system used in the base and stats packages, and it’s the most commonly used system in CRAN packages.</p>
+<p>S3 is a very flexible system: it allows you to do a lot of things that are quite ill-advised. If you’re coming from a strict environment like Java, this will seem pretty frightening (and it is!) but it does give R programmers a tremendous amount of freedom. While it’s very difficult to prevent someone from doing something you don’t want them to do, your users will never be held back because there is something you haven’t implemented yet. Since S3 has few built-in constraints, the key to its successful use is applying the constraints yourself. This chapter will teach you the conventions you should (almost) always adhere to in order to use S3 safely.</p>
+</div>
+<div id="basics" class="section level1">
+<h1><span class="header-section-number">2</span> Basics</h1>
+<p>An S3 object is built on top of a base type with the “class” attribute set. The base type is typically a vector, although we will see later that it’s possible to use other types of classes. For example, take the factor. It is built on top of an integer vector, and the value of the class attribute is “factor”. It stores information about the “levels” in another attribute.</p>
+<pre class="r"><code>f &lt;- factor(&quot;a&quot;)
+
+typeof(f)</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>attributes(f)</code></pre>
+<pre><code>## $levels
+## [1] &quot;a&quot;
+## 
+## $class
+## [1] &quot;factor&quot;</code></pre>
+<p>An S3 object behaves differently from its underlying base type because of <strong>generic functions</strong>, or <strong>generics</strong> for short. A generic executes different code depending on the class of one of its arguments, almost always the first. You can see this difference with the most important generic function: <code>print()</code>.</p>
+<pre class="r"><code>print(f)</code></pre>
+<pre><code>## [1] a
+## Levels: a</code></pre>
+<pre class="r"><code>print(unclass(f))</code></pre>
+<pre><code>## [1] 1
+## attr(,&quot;levels&quot;)
+## [1] &quot;a&quot;</code></pre>
+<p><code>unclass()</code> strips the class attribute from its input, so it is a useful tool for seeing what special behaviour an S3 class adds.</p>
+<p><code>str()</code> shows the internal structure of S3 objects. Be careful when using <code>str()</code>: some S3 classes provide a custom <code>str()</code> method which can hide the underlying details. For example, take the <code>POSIXlt</code> class, which is one of the two classes used to represent date-time data:</p>
+<pre class="r"><code>time &lt;- strptime(&quot;2017-01-01&quot;, &quot;%Y-%m-%d&quot;)
+str(time)</code></pre>
+<pre><code>##  POSIXlt[1:1], format: &quot;2017-01-01&quot;</code></pre>
+<pre class="r"><code>str(unclass(time))</code></pre>
+<pre><code>## List of 11
+##  $ sec   : num 0
+##  $ min   : int 0
+##  $ hour  : int 0
+##  $ mday  : int 1
+##  $ mon   : int 0
+##  $ year  : int 117
+##  $ wday  : int 0
+##  $ yday  : int 0
+##  $ isdst : int 0
+##  $ zone  : chr &quot;-05&quot;
+##  $ gmtoff: int NA</code></pre>
+<p>A <strong>generic</strong> and its <strong>methods</strong> are functions that operate on classes. The role of a generic is to find the right method for the arguments that it is provided, the process of <strong>method dispatch</strong>. A method is a function that implements the generic behaviour for a specific class. In other words the job of the generic is to find the right method; the job of the method is to do the work.</p>
+<p>S3 methods are functions with a special naming scheme, <code>generic.class()</code>. For example, the Date method for the <code>mean()</code> generic is called <code>mean.Date()</code>, and the factor method for <code>print()</code> is called <code>print.factor()</code>. This is the reason that most modern style guides discourage the use of <code>.</code> in function names: it makes them look like S3 methods. For example, is <code>t.test()</code> the t method for <code>test</code> objects?</p>
+<p>You can find some S3 methods (those in the base package and those that you’ve created) by typing their names. However, this will not work with most packages because S3 methods are not exported: they live only inside the package, and are not available from the global environment. Instead, you can use <code>getS3method()</code>, which will work regardless of where the method lives:</p>
+<pre class="r"><code># Only works because the method is in the base package
+mean.Date</code></pre>
+<pre><code>## function (x, ...) 
+## .Date(mean(unclass(x), ...))
+## &lt;bytecode: 0x00000000183cf228&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<pre class="r"><code># Always works
+getS3method(&quot;mean&quot;, &quot;Date&quot;)</code></pre>
+<pre><code>## function (x, ...) 
+## .Date(mean(unclass(x), ...))
+## &lt;bytecode: 0x00000000183cf228&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<div id="exercises" class="section level2">
+<h2><span class="header-section-number">2.1</span> Exercises</h2>
+<ol style="list-style-type: decimal">
+<li><p>The most important S3 objects in base R are factors, data frames, and date/times (Dates, POSIXct, POSIXlt). You’ve already seen the attributes and base type that factors are built on. What base types and attributes are the others built on?<br />
+<strong>A</strong>: Data frames are build up on (named) lists. Together with the <code>row.names</code> attribute and after setting the class to “data.frame”, we get a classical data frame.</p>
+<pre class="r"><code>df &lt;- data.frame()
+attributes(df)</code></pre>
+<pre><code>## $names
+## character(0)
+## 
+## $row.names
+## integer(0)
+## 
+## $class
+## [1] &quot;data.frame&quot;</code></pre>
+<pre class="r"><code>df_build &lt;- structure(list(1:2, 3:4), names = c(&quot;a&quot;, &quot;b&quot;), row.names = 1:2, 
+    class = &quot;data.frame&quot;)
+
+df_classic &lt;- data.frame(a = 1:2, b = 3:4)
+
+identical(df_build, df_classic)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>Date is just a double with the class attribute set to “Date”</p>
+<pre class="r"><code>d &lt;- as.Date(&quot;1970-01-01&quot;)
+attributes(d)</code></pre>
+<pre><code>## $class
+## [1] &quot;Date&quot;</code></pre>
+<pre class="r"><code>date_build &lt;- structure(0, class = &quot;Date&quot;)
+date_classic &lt;- as.Date(&quot;1970-01-01&quot;)
+identical(date_build, date_classic)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>POSIXct is a class for date/times that inherits from POSIXt and is built on doubles as well. The only attribute is tz (for timezone)</p>
+<pre class="r"><code>POSIXct_build &lt;- structure(1, class = c(&quot;POSIXct&quot;, &quot;POSIXt&quot;), tzone = &quot;CET&quot;)
+POSIXct_classic &lt;- .POSIXct(1, tz = &quot;CET&quot;)  # note that tz's default is NULL
+identical(POSIXct_build, POSIXct_classic)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>POSIXlt is another date/time class that inherits from POSIXt. It is built on top of a named list and a tzone attribute. Differences between POSIXct and POSIXlt are described in <code>?DateTimeClasses</code>.</p>
+<pre class="r"><code>POSIXlt_build &lt;- structure(list(sec = 30, min = 30L, hour = 14L, mday = 1L, 
+    mon = 0L, year = 70L, wday = 4L, yday = 0L, isdst = 0L, zone = &quot;CET&quot;, gmtoff = 3600L), 
+    tzone = c(&quot;&quot;, &quot;CET&quot;, &quot;CEST&quot;), class = c(&quot;POSIXlt&quot;, &quot;POSIXt&quot;))
+POSIXlt_classic &lt;- as.POSIXlt(.POSIXct(13.5 * 3600 + 30))
+identical(POSIXlt_build, POSIXlt_classic)</code></pre>
+<pre><code>## [1] FALSE</code></pre></li>
+<li><p>Describe the difference in behaviour in these two calls.</p>
+<pre class="r"><code>set.seed(1014)
+some_days &lt;- as.Date(&quot;2017-01-31&quot;) + sample(10, 5)
+
+mean(some_days)</code></pre>
+<pre><code>## [1] &quot;2017-02-05&quot;</code></pre>
+<pre class="r"><code>mean(unclass(some_days))</code></pre>
+<pre><code>## [1] 17202.2</code></pre>
+<p><strong>A</strong>: Since <code>mean()</code> is a generic and some_days is an object of class Date, the first call results in <code>mean.Date(some_days)</code>. In the second call <code>unclass()</code> removes the class attribute from some_days, which means that unclass(some_days)<code>is not an OO object and the call results in</code>mean.default(unclass(some_days))`, which calculates the mean of the underlying double. Note:</p></li>
+</ol>
+<pre class="r"><code>mean.Date</code></pre>
+<pre><code>## function (x, ...) 
+## .Date(mean(unclass(x), ...))
+## &lt;bytecode: 0x00000000183cf228&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+</div>
 </div>
 
 
