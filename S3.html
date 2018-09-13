@@ -274,13 +274,13 @@ str(time)</code></pre>
 mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x00000000183cf228&gt;
+## &lt;bytecode: 0x00000000189285e8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code># Always works
 getS3method(&quot;mean&quot;, &quot;Date&quot;)</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x00000000183cf228&gt;
+## &lt;bytecode: 0x00000000189285e8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <div id="exercises" class="section level2">
 <h2><span class="header-section-number">2.1</span> Exercises</h2>
@@ -333,13 +333,173 @@ mean(some_days)</code></pre>
 <pre><code>## [1] &quot;2017-02-05&quot;</code></pre>
 <pre class="r"><code>mean(unclass(some_days))</code></pre>
 <pre><code>## [1] 17202.2</code></pre>
-<p><strong>A</strong>: Since <code>mean()</code> is a generic and some_days is an object of class Date, the first call results in <code>mean.Date(some_days)</code>. In the second call <code>unclass()</code> removes the class attribute from some_days, which means that unclass(some_days)<code>is not an OO object and the call results in</code>mean.default(unclass(some_days))`, which calculates the mean of the underlying double. Note:</p></li>
-</ol>
+<p><strong>A</strong>: Since <code>mean()</code> is a generic and some_days is an object of class Date, the first call results in <code>mean.Date(some_days)</code>. In the second call <code>unclass()</code> removes the class attribute from some_days, which means that unclass(some_days)<code>is not an OO object and the call results in</code>mean.default(unclass(some_days))`, which calculates the mean of the underlying double. Note:</p>
 <pre class="r"><code>mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x00000000183cf228&gt;
-## &lt;environment: namespace:base&gt;</code></pre>
+## &lt;bytecode: 0x00000000189285e8&gt;
+## &lt;environment: namespace:base&gt;</code></pre></li>
+</ol>
+</div>
+</div>
+<div id="classes" class="section level1">
+<h1><span class="header-section-number">3</span> Classes</h1>
+<p>S3 is a simple and ad hoc system, and has no formal definition of a class. To make an object an instance of a class, you simply take an existing object and set the class attribute. You can do that during creation with <code>structure()</code>, or after the fact with <code>class&lt;-()</code>:</p>
+<pre class="r"><code># Create and assign class in one step
+foo &lt;- structure(list(), class = &quot;foo&quot;)
+
+# Create, then set class
+foo &lt;- list()
+class(foo) &lt;- &quot;foo&quot;</code></pre>
+<p>You can determine the class of any object using <code>class(x)</code>, and see if an object inherits from a specific class using <code>inherits(x, &quot;classname&quot;)</code>.</p>
+<pre class="r"><code>class(foo)</code></pre>
+<pre><code>## [1] &quot;foo&quot;</code></pre>
+<pre class="r"><code>inherits(foo, &quot;foo&quot;)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>It’s possible to provide a vector of class names, which allows S3 to implement a basic style of inheritance. This allows you to reduce your workload by allowing classes to share code where possible. We’ll come back to this idea in inheritance.</p>
+<p>S3 has no checks for correctness. This means you can change the class of existing objects:</p>
+<pre class="r"><code># Create a linear model
+mod &lt;- lm(log(mpg) ~ log(disp), data = mtcars)
+class(mod)</code></pre>
+<pre><code>## [1] &quot;lm&quot;</code></pre>
+<pre class="r"><code>print(mod)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(mpg) ~ log(disp), data = mtcars)
+## 
+## Coefficients:
+## (Intercept)    log(disp)  
+##      5.3810      -0.4586</code></pre>
+<pre class="r"><code># Turn it into a data frame (?!)
+class(mod) &lt;- &quot;data.frame&quot;
+# Unsurprisingly this doesn't work very well
+print(mod)</code></pre>
+<pre><code>##  [1] coefficients  residuals     effects       rank          fitted.values
+##  [6] assign        qr            df.residual   xlevels       call         
+## [11] terms         model        
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+<p>When creating your own class, you should always provide:</p>
+<ul>
+<li>A <strong>constructor</strong>, <code>new_x()</code>, that efficiently creates new objects with the correct structure.</li>
+</ul>
+<p>For more complicated classes, you may also want to provide:</p>
+<ul>
+<li>A <strong>validator</strong>, <code>validate_x()</code>, that performs more expensive checks that the object has correct values.</li>
+<li>A <strong>helper</strong>, <code>x()</code>, that provides a convenient and neatly parameterised way for others to construct and validate (create) objects of this class.</li>
+</ul>
+<div id="constructors" class="section level2">
+<h2><span class="header-section-number">3.1</span> Constructors</h2>
+<p>S3 doesn’t provide a formal definition of a class, so it has no built-in way to ensure that all objects of a given class have the same structure (i.e. same attributes with the same types). Instead, you should enforce a consistent structure yourself by using a constructor. A constructor is a function whose job is to create objects of a given class, ensuring that they always have the same structure.</p>
+<p>There are three rules that a constructor should follow. It should:</p>
+<ul>
+<li>Be called <code>new_class_name()</code>.</li>
+<li>Have one argument for the base object, and one for each attribute. (More if the class can be subclassed, see inheritance.)</li>
+<li>Check the types of the base object and each attribute.</li>
+</ul>
+<p>Base R generally does not provide constructors (three exceptions are the internal <code>.difftime()</code>, <code>.POSIXct()</code>, and <code>.POSIXlt()</code>) so we’ll demonstrate constructors by filling in some missing pieces in base. (If you want to use these constructors in your own code, you can use the versions exported by the sloop package, which complete a few details that we skip here in order to focus on the core issues.)</p>
+<p>We’ll start with one of the simplest S3 classes in base R: Date, which is just a double with a class attribute. The constructor rules lead to the slightly awkward name <code>new_Date()</code>, because the existing base class uses a capital letter. I recommend using lower case class names to avoid this problem.</p>
+<pre class="r"><code>new_Date &lt;- function(x) {
+    stopifnot(is.double(x))
+    structure(x, class = &quot;Date&quot;)
+}
+
+new_Date(c(-1, 0, 1))</code></pre>
+<pre><code>## [1] &quot;1969-12-31&quot; &quot;1970-01-01&quot; &quot;1970-01-02&quot;</code></pre>
+<p>A slightly more complicated example is POSIXct, which is used to represent date-times. It is again built on a double, but has an attribute that specifies the time zone, a length 1 character vector. R defaults to using the local time zone, which is represented by the empty string. To create the constructor, we need to make sure each attribute of the class gets an argument to the constructor. This gives us:</p>
+<pre class="r"><code>new_POSIXct &lt;- function(x, tzone = &quot;&quot;) {
+    stopifnot(is.double(x))
+    stopifnot(is.character(tzone), length(tzone) == 1)
+    
+    structure(x, class = c(&quot;POSIXct&quot;, &quot;POSIXt&quot;), tzone = tzone)
+}
+
+new_POSIXct(1)</code></pre>
+<pre><code>## [1] &quot;1969-12-31 19:00:01 -05&quot;</code></pre>
+<pre class="r"><code>new_POSIXct(1, tzone = &quot;UTC&quot;)</code></pre>
+<pre><code>## [1] &quot;1970-01-01 00:00:01 UTC&quot;</code></pre>
+<p>Note that POSIXct uses a class <em>vector</em>; we’ll come back to what that means in inheritance.</p>
+<p>Generally, the constructor should not check that the values are valid because such checks are often expensive.</p>
+</div>
+<div id="validators" class="section level2">
+<h2><span class="header-section-number">3.2</span> Validators</h2>
+<p>More complicated classes will require more complicated checks for validity. Take factors, for example. The constructor function only checks that the structure is correct:</p>
+<pre class="r"><code>new_factor &lt;- function(x, levels) {
+    stopifnot(is.integer(x))
+    stopifnot(is.character(levels))
+    
+    structure(x, levels = levels, class = &quot;factor&quot;)
+}</code></pre>
+<p>So it’s possible to use this to create invalid factors:</p>
+<pre class="r"><code>new_factor(1:5, &quot;a&quot;)</code></pre>
+<pre><code>## Error in as.character.factor(x): malformed factor</code></pre>
+<pre class="r"><code>new_factor(0:1, &quot;a&quot;)</code></pre>
+<pre><code>## Error in as.character.factor(x): malformed factor</code></pre>
+<p>Rather than encumbering the constructor with complicated checks, it’s better to put them in a separate function. This is a good idea because it allows you to cheaply create new objects when you know that the values are correct, and to re-use the checks in other places.</p>
+<pre class="r"><code>validate_factor &lt;- function(x) {
+    values &lt;- unclass(x)
+    levels &lt;- attr(x, &quot;levels&quot;)
+    
+    if (!all(!is.na(values) &amp; values &gt; 0)) {
+        stop(&quot;All `x` values must be non-missing and greater than zero&quot;, call. = FALSE)
+    }
+    
+    if (length(levels) &lt; max(values)) {
+        stop(&quot;There must at least as many `levels` as possible values in `x`&quot;, 
+            call. = FALSE)
+    }
+    
+    x
+}
+
+validate_factor(new_factor(1:5, &quot;a&quot;))</code></pre>
+<pre><code>## Error: There must at least as many `levels` as possible values in `x`</code></pre>
+<pre class="r"><code>validate_factor(new_factor(0:1, &quot;a&quot;))</code></pre>
+<pre><code>## Error: All `x` values must be non-missing and greater than zero</code></pre>
+</div>
+<div id="helpers" class="section level2">
+<h2><span class="header-section-number">3.3</span> Helpers</h2>
+<p>If you want others to construct objects from your class, you should also provide a helper method that makes their life as easy as possible. This should have the same name as the class, and should be parameterised in a convenient way. <code>factor()</code> is a good example of this as well: you want to automatically derive the internal representation from a vector. The simplest possible implementation looks something like this:</p>
+<pre class="r"><code>factor &lt;- function(x, levels = unique(x)) {
+    ind &lt;- match(x, levels)
+    validate_factor(new_factor(ind, levels))
+}
+factor(c(&quot;a&quot;, &quot;a&quot;, &quot;b&quot;))</code></pre>
+<pre><code>## [1] a a b
+## Levels: a b</code></pre>
+<pre class="r"><code>factor(c(&quot;a&quot;, &quot;a&quot;, &quot;b&quot;), levels = &quot;a&quot;)</code></pre>
+<pre><code>## Error: All `x` values must be non-missing and greater than zero</code></pre>
+</div>
+<div id="object-styles" class="section level2">
+<h2><span class="header-section-number">3.4</span> Object styles</h2>
+<p>S3 gives you the freedom to build a new class on top of any existing base type. So far, we’ve focussed on vector-style where you take an existing vector type and add some attributes. Importantly, a single vector-style object represents multiple values. There are two other important styles: scalar-style and data-frame-style.</p>
+<p>Each <strong>scalar</strong>-style object represents a single “value”, and are built on top of named lists. This is the style that you are most likely to use in practice. The constructor for the scalar type is slightly different because the arguments become named elements of the list, rather than attributes.</p>
+<pre class="r"><code>new_scalar_class &lt;- function(x, y, z) {
+    structure(list(x = x, y = y, z = z), class = &quot;scalar_class&quot;)
+}</code></pre>
+<p>In base R, the most important example of this style is <code>lm</code>, the class returned when you fit a linear model:</p>
+<pre class="r"><code>mod &lt;- lm(mpg ~ wt, data = mtcars)
+typeof(mod)</code></pre>
+<pre><code>## [1] &quot;list&quot;</code></pre>
+<pre class="r"><code>names(mod)</code></pre>
+<pre><code>##  [1] &quot;coefficients&quot;  &quot;residuals&quot;     &quot;effects&quot;       &quot;rank&quot;         
+##  [5] &quot;fitted.values&quot; &quot;assign&quot;        &quot;qr&quot;            &quot;df.residual&quot;  
+##  [9] &quot;xlevels&quot;       &quot;call&quot;          &quot;terms&quot;         &quot;model&quot;</code></pre>
+<pre class="r"><code>class(mod)</code></pre>
+<pre><code>## [1] &quot;lm&quot;</code></pre>
+<pre class="r"><code>attributes(mod)</code></pre>
+<pre><code>## $names
+##  [1] &quot;coefficients&quot;  &quot;residuals&quot;     &quot;effects&quot;       &quot;rank&quot;         
+##  [5] &quot;fitted.values&quot; &quot;assign&quot;        &quot;qr&quot;            &quot;df.residual&quot;  
+##  [9] &quot;xlevels&quot;       &quot;call&quot;          &quot;terms&quot;         &quot;model&quot;        
+## 
+## $class
+## [1] &quot;lm&quot;</code></pre>
+<p>The <strong>data-frame</strong>-style builds on top of a data frame (a named list where each element is a vector of the same length), and adds additional attributes to store important metadata. A data-frame-style constructor looks like:</p>
+<pre class="r"><code>new_df_class &lt;- function(df, attr1, attr2) {
+    stopifnot(is.data.frame(df))
+    
+    structure(df, attr1 = attr1, attr2 = attr2, class = c(&quot;df_class&quot;, &quot;data.frame&quot;))
+}</code></pre>
 </div>
 </div>
 

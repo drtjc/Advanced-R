@@ -10,11 +10,7 @@ library(sloop)
 
 
 
-is_s3_method("mean")
 
-is_s3_method("mean.default")
-
-typeof(mean)
 
 
 filter_all(mtcars, all_vars(. > 150))

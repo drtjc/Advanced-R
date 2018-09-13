@@ -136,7 +136,246 @@ POSIXlt is another date/time class that inherits from POSIXt. It is built on top
     mean.Date
     ```
 
+# Classes
+S3 is a simple and ad hoc system, and has no formal definition of a class. To make an object an instance of a class, you simply take an existing object and set the class attribute. You can do that during creation with `structure()`, or after the fact with `class<-()`:
 
+```{r}
+# Create and assign class in one step
+foo <- structure(list(), class = "foo")
+
+# Create, then set class
+foo <- list()
+class(foo) <- "foo"
+```
+
+You can determine the class of any object using `class(x)`, and see if an object inherits from a specific class using `inherits(x, "classname")`.
+
+```{r}
+class(foo)
+inherits(foo, "foo")
+```
+
+It’s possible to provide a vector of class names, which allows S3 to implement a basic style of inheritance. This allows you to reduce your workload by allowing classes to share code where possible. We’ll come back to this idea in inheritance.
+
+S3 has no checks for correctness. This means you can change the class of existing objects:
+
+```{r}
+# Create a linear model
+mod <- lm(log(mpg) ~ log(disp), data = mtcars)
+class(mod)
+print(mod)
+
+# Turn it into a data frame (?!)
+class(mod) <- "data.frame"
+# Unsurprisingly this doesn't work very well
+print(mod)
+```
+
+When creating your own class, you should always provide:
+
+* A **constructor**, `new_x()`, that efficiently creates new objects with the correct structure.
+
+For more complicated classes, you may also want to provide:
+
+* A **validator**, `validate_x()`, that performs more expensive checks that the object has correct values.
+* A **helper**, `x()`, that provides a convenient and neatly parameterised way for others to construct and validate (create) objects of this class.
+
+## Constructors
+S3 doesn’t provide a formal definition of a class, so it has no built-in way to ensure that all objects of a given class have the same structure (i.e. same attributes with the same types). Instead, you should enforce a consistent structure yourself by using a constructor. A constructor is a function whose job is to create objects of a given class, ensuring that they always have the same structure.
+
+There are three rules that a constructor should follow. It should:
+
+* Be called `new_class_name()`.
+* Have one argument for the base object, and one for each attribute. (More if the class can be subclassed, see inheritance.)
+* Check the types of the base object and each attribute.
+
+Base R generally does not provide constructors (three exceptions are the internal `.difftime()`, `.POSIXct()`, and `.POSIXlt()`) so we’ll demonstrate constructors by filling in some missing pieces in base. (If you want to use these constructors in your own code, you can use the versions exported by the sloop package, which complete a few details that we skip here in order to focus on the core issues.)
+
+We’ll start with one of the simplest S3 classes in base R: Date, which is just a double with a class attribute. The constructor rules lead to the slightly awkward name `new_Date()`, because the existing base class uses a capital letter. I recommend using lower case class names to avoid this problem.
+
+```{r}
+new_Date <- function(x) {
+  stopifnot(is.double(x))
+  structure(x, class = "Date")
+}
+
+new_Date(c(-1, 0, 1))
+```
+
+A slightly more complicated example is POSIXct, which is used to represent date-times. It is again built on a double, but has an attribute that specifies the time zone, a length 1 character vector. R defaults to using the local time zone, which is represented by the empty string. To create the constructor, we need to make sure each attribute of the class gets an argument to the constructor. This gives us:
+
+```{r}
+new_POSIXct <- function(x, tzone = "") {
+  stopifnot(is.double(x))
+  stopifnot(is.character(tzone), length(tzone) == 1)
+  
+  structure(x, 
+    class = c("POSIXct", "POSIXt"),
+    tzone = tzone
+  )
+}
+
+new_POSIXct(1)
+new_POSIXct(1, tzone = "UTC")
+```
+
+Note that POSIXct uses a class *vector*; we’ll come back to what that means in inheritance.
+
+Generally, the constructor should not check that the values are valid because such checks are often expensive.
+
+## Validators
+More complicated classes will require more complicated checks for validity. Take factors, for example. The constructor function only checks that the structure is correct:
+
+```{r}
+new_factor <- function(x, levels) {
+  stopifnot(is.integer(x))
+  stopifnot(is.character(levels))
+  
+  structure(
+    x,
+    levels = levels,
+    class = "factor"
+  )
+}
+```
+
+So it’s possible to use this to create invalid factors:
+
+```{r, error=TRUE}
+new_factor(1:5, "a")
+new_factor(0:1, "a")
+```
+
+Rather than encumbering the constructor with complicated checks, it’s better to put them in a separate function. This is a good idea because it allows you to cheaply create new objects when you know that the values are correct, and to re-use the checks in other places.
+
+```{r, error=TRUE}
+validate_factor <- function(x) {
+  values <- unclass(x)
+  levels <- attr(x, "levels")
+  
+  if (!all(!is.na(values) & values > 0)) {
+    stop(
+      "All `x` values must be non-missing and greater than zero",
+      call. = FALSE
+    )
+  }
+  
+  if (length(levels) < max(values)) {
+    stop(
+      "There must at least as many `levels` as possible values in `x`",
+      call. = FALSE
+    )
+  }
+  
+  x
+}
+
+validate_factor(new_factor(1:5, "a"))
+validate_factor(new_factor(0:1, "a"))
+```
+
+## Helpers
+If you want others to construct objects from your class, you should also provide a helper method that makes their life as easy as possible. This should have the same name as the class, and should be parameterised in a convenient way. `factor()` is a good example of this as well: you want to automatically derive the internal representation from a vector. The simplest possible implementation looks something like this:
+
+```{r, error=TRUE}
+factor <- function(x, levels = unique(x)) {
+  ind <- match(x, levels)
+  validate_factor(new_factor(ind, levels))
+}
+factor(c("a", "a", "b"))
+factor(c("a", "a", "b"), levels = "a")
+```
+
+## Object styles
+S3 gives you the freedom to build a new class on top of any existing base type. So far, we’ve focussed on vector-style where you take an existing vector type and add some attributes. Importantly, a single vector-style object represents multiple values. There are two other important styles: scalar-style and data-frame-style.
+
+Each **scalar**-style object represents a single “value”, and are built on top of named lists. This is the style that you are most likely to use in practice. The constructor for the scalar type is slightly different because the arguments become named elements of the list, rather than attributes.
+
+```{r}
+new_scalar_class <- function(x, y, z) {
+  structure(
+    list(
+      x = x,
+      y = y,
+      z = z
+    ),
+    class = "scalar_class"
+  )
+}
+```
+
+In base R, the most important example of this style is `lm`, the class returned when you fit a linear model:
+
+```{r}
+mod <- lm(mpg ~ wt, data = mtcars)
+typeof(mod)
+names(mod)
+class(mod)
+attributes(mod)
+```
+
+The **data-frame**-style builds on top of a data frame (a named list where each element is a vector of the same length), and adds additional attributes to store important metadata. A data-frame-style constructor looks like:
+
+```{r}
+new_df_class <- function(df, attr1, attr2) {
+  stopifnot(is.data.frame(df))
+  
+  structure(
+    df, 
+    attr1 = attr1,
+    attr2 = attr2,
+    class = c("df_class", "data.frame")
+  )
+}
+```
+
+Collectively, we’ll call the attributes of a vector-style or data-frame-style class and the names of a list-style class the **fields** of an object.
+
+## Exercises
+
+
+# Generics and methods
+The job of an S3 generic is to perform method dispatch, i.e. find the function designed to work specifically for the given class. S3 generics have a simple structure: they call `UseMethod()`, which then calls the right method. `UseMethod()` takes two arguments: the name of the generic function (required), and the argument to use for method dispatch (optional). If you omit the second argument it will dispatch based on the first argument, which is what I generally advise.
+
+```{r}
+# Dispatches on x
+generic <- function(x, y, ...) {
+  UseMethod("generic")
+}
+
+# Dispatches on y
+generic2 <- function(x, y, ...) {
+  UseMethod("generic2", y)
+}
+```
+
+Note that you don’t pass any of the arguments of the generic to `UseMethod()`; it uses black magic to pass them on automatically. Generally, you should avoid doing any computation in a generic, because the semantics are complicated and few people know the details. In general, any modifications to the arguments of the generic will be undone, leading to much confusion.
+
+A generic isn’t useful without some methods, which are just functions that follow a naming scheme (`generic.class`). Because a method is just a function with a special name, you can call methods directly, but you generally shouldn’t. The main reason to call the method directly is that it sometimes leads to considerable performance improvements. See performance for an example.
+
+```{r}
+generic.foo <- function(x, y, ...) {
+  message("foo method")
+}
+
+str(new_s3_scalar(class = "foo"))
+generic(new_s3_scalar(class = "foo"))
+```
+
+You can see all the methods defined for a generic with `s3_methods_generic()` or `utils::methods()`:
+
+```{r}
+s3_methods_generic("generic")
+methods(generic)
+```
+
+Note the false positive: `generic.skeleton()` is not a method for our generic but an existing function in the methods package. It’s picked up because method definition relies only on a naming convention. This is another reason that you should avoid using `.` in non-method function names.
+
+Remember that apart from methods that you’ve created, and those defined in the base package, most S3 methods will not be directly accessible. You’ll need to use `getS3method("generic", "class")` to see their source code.
+
+```{r}
+getS3method("generic", "foo")
+```
 
 
 
