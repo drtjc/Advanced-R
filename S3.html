@@ -274,13 +274,13 @@ str(time)</code></pre>
 mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x00000000189285e8&gt;
+## &lt;bytecode: 0x0000000018fd5e70&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code># Always works
 getS3method(&quot;mean&quot;, &quot;Date&quot;)</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x00000000189285e8&gt;
+## &lt;bytecode: 0x0000000018fd5e70&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <div id="exercises" class="section level2">
 <h2><span class="header-section-number">2.1</span> Exercises</h2>
@@ -337,7 +337,7 @@ mean(some_days)</code></pre>
 <pre class="r"><code>mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x00000000189285e8&gt;
+## &lt;bytecode: 0x0000000018fd5e70&gt;
 ## &lt;environment: namespace:base&gt;</code></pre></li>
 </ol>
 </div>
@@ -500,6 +500,137 @@ typeof(mod)</code></pre>
     
     structure(df, attr1 = attr1, attr2 = attr2, class = c(&quot;df_class&quot;, &quot;data.frame&quot;))
 }</code></pre>
+<p>Collectively, we’ll call the attributes of a vector-style or data-frame-style class and the names of a list-style class the <strong>fields</strong> of an object.</p>
+</div>
+<div id="exercises-1" class="section level2">
+<h2><span class="header-section-number">3.5</span> Exercises</h2>
+</div>
+</div>
+<div id="generics-and-methods" class="section level1">
+<h1><span class="header-section-number">4</span> Generics and methods</h1>
+<p>The job of an S3 generic is to perform method dispatch, i.e. find the function designed to work specifically for the given class. S3 generics have a simple structure: they call <code>UseMethod()</code>, which then calls the right method. <code>UseMethod()</code> takes two arguments: the name of the generic function (required), and the argument to use for method dispatch (optional). If you omit the second argument it will dispatch based on the first argument, which is what I generally advise.</p>
+<pre class="r"><code># Dispatches on x
+generic &lt;- function(x, y, ...) {
+    UseMethod(&quot;generic&quot;)
+}
+
+# Dispatches on y
+generic2 &lt;- function(x, y, ...) {
+    UseMethod(&quot;generic2&quot;, y)
+}</code></pre>
+<p>Note that you don’t pass any of the arguments of the generic to <code>UseMethod()</code>; it uses black magic to pass them on automatically. Generally, you should avoid doing any computation in a generic, because the semantics are complicated and few people know the details. In general, any modifications to the arguments of the generic will be undone, leading to much confusion.</p>
+<p>A generic isn’t useful without some methods, which are just functions that follow a naming scheme (<code>generic.class</code>). Because a method is just a function with a special name, you can call methods directly, but you generally shouldn’t. The main reason to call the method directly is that it sometimes leads to considerable performance improvements. See performance for an example.</p>
+<pre class="r"><code>generic.foo &lt;- function(x, y, ...) {
+    message(&quot;foo method&quot;)
+}
+
+str(new_s3_scalar(class = &quot;foo&quot;))</code></pre>
+<pre><code>##  list()
+##  - attr(*, &quot;class&quot;)= chr &quot;foo&quot;</code></pre>
+<pre class="r"><code>generic(new_s3_scalar(class = &quot;foo&quot;))</code></pre>
+<pre><code>## foo method</code></pre>
+<p>You can see all the methods defined for a generic with <code>s3_methods_generic()</code> or <code>utils::methods()</code>:</p>
+<pre class="r"><code>s3_methods_generic(&quot;generic&quot;)</code></pre>
+<pre><code>## # A tibble: 2 x 4
+##   generic class    visible source    
+##   &lt;chr&gt;   &lt;chr&gt;    &lt;lgl&gt;   &lt;chr&gt;     
+## 1 generic foo      TRUE    .GlobalEnv
+## 2 generic skeleton TRUE    methods</code></pre>
+<pre class="r"><code>methods(generic)</code></pre>
+<pre><code>## [1] generic.foo      generic.skeleton
+## see '?methods' for accessing help and source code</code></pre>
+<p>Note the false positive: <code>generic.skeleton()</code> is not a method for our generic but an existing function in the methods package. It’s picked up because method definition relies only on a naming convention. This is another reason that you should avoid using <code>.</code> in non-method function names.</p>
+<p>Remember that apart from methods that you’ve created, and those defined in the base package, most S3 methods will not be directly accessible. You’ll need to use <code>getS3method(&quot;generic&quot;, &quot;class&quot;)</code> to see their source code.</p>
+<pre class="r"><code>getS3method(&quot;generic&quot;, &quot;foo&quot;)</code></pre>
+<pre><code>## function(x, y, ...) {
+##     message(&quot;foo method&quot;)
+## }</code></pre>
+<div id="coercion" class="section level2">
+<h2><span class="header-section-number">4.1</span> Coercion</h2>
+<p>Many S3 objects can be naturally created from an existing object through coercion. If this is the case for your class, you should provide a coercion function, an S3 generic called <code>as_class_name</code>. Base R generally does not follow this convention, which can cause problems as illustrated by <code>as.factor()</code>:</p>
+<ul>
+<li>The name is confusing, since <code>as.factor()</code> is not the factor method of the <code>as()</code> generic.</li>
+<li><code>as.factor()</code> is not a generic, which means that if you create a new class that could be usefully converted to a factor, you can not extend <code>as.factor()</code>.</li>
+</ul>
+<p>We can fix these issues by creating a new generic coercion function and providing it with some methods:</p>
+<pre class="r"><code>as_factor &lt;- function(x, ...) {
+    UseMethod(&quot;as_factor&quot;)
+}</code></pre>
+<p>Every <code>as_y()</code> generic should have a <code>y</code> method that returns its input unchanged:</p>
+<pre class="r"><code>as_factor.factor &lt;- function(x, ...) x</code></pre>
+<p>This ensures that <code>as_factor()</code> works if the input is already a factor.</p>
+<p>Two useful methods would be for character and integer vectors.</p>
+<pre class="r"><code>as_factor.character &lt;- function(x, ...) {
+    factor(x, levels = unique(x))
+}
+as_factor.integer &lt;- function(x, ...) {
+    factor(x, levels = as.character(unique(x)))
+}</code></pre>
+<p>Typically the coercion methods will either call the constructor or the helper; pick the function that makes the code simpler. Here the helper is simplest. If you use the constructor, remember to also call the validator function.</p>
+<p>If you think your coercion function will be frequently used, it’s worth providing a default method that gives a better error message. Default methods are called when no other method is appropriate, and are discussed in more detail in inheritance.</p>
+<pre class="r"><code>as_factor(1)</code></pre>
+<pre><code>## Error in UseMethod(&quot;as_factor&quot;): no applicable method for 'as_factor' applied to an object of class &quot;c('double', 'numeric')&quot;</code></pre>
+<pre class="r"><code># &gt; Error in UseMethod('as_factor'): no applicable method for 'as_factor'
+# applied to an object of class 'c('double', 'numeric')'
+
+as_factor.default &lt;- function(x, ...) {
+    stop(&quot;Don't know how to coerce object of class &quot;, paste(class(x), collapse = &quot;/&quot;), 
+        &quot; into a factor&quot;, call. = FALSE)
+}
+as_factor(1)</code></pre>
+<pre><code>## Error: Don't know how to coerce object of class numeric into a factor</code></pre>
+</div>
+<div id="arguments" class="section level2">
+<h2><span class="header-section-number">4.2</span> Arguments</h2>
+<p>Methods should always have the same arguments as their generics. This is not usually enforced, but it is good practice because it will avoid confusing behaviour. If you do eventually turn your code into a package, R CMD check will enforce it, so it’s good to get into the habit now.</p>
+<p>There is one exception to this rule: if the generic has <code>...</code>, the method must still have all the same arguments (including <code>...</code>), but can also have its own additional arguments. This allows methods to take additional arguments, which is important because you don’t know what additional arguments that a method for someone else’s class might need. The downside of using <code>...</code>, however, is that any misspelled arguments will be silently swallowed.</p>
+<div id="exercises-2" class="section level3">
+<h3><span class="header-section-number">4.2.1</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Read the source code for <code>t()</code> and <code>t.test()</code> and confirm that <code>t.test()</code> is an S3 generic and not an S3 method. What happens if you create an object with class test and call <code>t()</code> with it? Why?</p>
+<pre class="r"><code>x &lt;- structure(1:10, class = &quot;test&quot;)
+t(x)</code></pre>
+<pre><code>## 
+##  One Sample t-test
+## 
+## data:  x
+## t = 5.7446, df = 9, p-value = 0.0002782
+## alternative hypothesis: true mean is not equal to 0
+## 95 percent confidence interval:
+##  3.334149 7.665851
+## sample estimates:
+## mean of x 
+##       5.5</code></pre>
+<p><strong>A</strong>:</p>
+<pre class="r"><code>t.test</code></pre>
+<pre><code>## function (x, ...) 
+## UseMethod(&quot;t.test&quot;)
+## &lt;bytecode: 0x0000000013ab8898&gt;
+## &lt;environment: namespace:stats&gt;</code></pre>
+<pre class="r"><code>t</code></pre>
+<pre><code>## function (x) 
+## UseMethod(&quot;t&quot;)
+## &lt;bytecode: 0x000000001a6b3030&gt;
+## &lt;environment: namespace:base&gt;</code></pre>
+<p>if we create an object with class test, <code>t()</code>, will dispatch to <code>t.test()</code>. This simply happens, because <code>UseMethod()</code> just looks for functions named <code>paste0(&quot;generic&quot;, &quot;.&quot;, c(class(x), &quot;default&quot;))</code>. So <code>t.test()</code> is erroneously treated like a method of <code>t()</code>. Since <code>t.test()</code> is a generic itself and doesn’t find a method called <code>t.test.test()</code>, it dispatches to <code>t.test.default()</code>.</p>
+<pre class="r"><code>getS3method(&quot;t.test&quot;, &quot;default&quot;)(x)</code></pre>
+<pre><code>## 
+##  One Sample t-test
+## 
+## data:  x
+## t = 5.7446, df = 9, p-value = 0.0002782
+## alternative hypothesis: true mean is not equal to 0
+## 95 percent confidence interval:
+##  3.334149 7.665851
+## sample estimates:
+## mean of x 
+##       5.5</code></pre>
+<pre class="r"><code># specific a method t.test.test
+t.test.test &lt;- function(x) &quot;hi&quot;
+t(x)</code></pre>
+<pre><code>## [1] &quot;hi&quot;</code></pre></li>
+</ol>
+</div>
 </div>
 </div>
 

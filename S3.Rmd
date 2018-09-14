@@ -24,6 +24,7 @@ library(tidyverse)
 library(lobstr)
 library(memoise)
 library(purrr)
+library(sloop)
 ```
 
 # Introduction
@@ -376,6 +377,86 @@ Remember that apart from methods that you’ve created, and those defined in the
 ```{r}
 getS3method("generic", "foo")
 ```
+
+## Coercion
+Many S3 objects can be naturally created from an existing object through coercion. If this is the case for your class, you should provide a coercion function, an S3 generic called `as_class_name`. Base R generally does not follow this convention, which can cause problems as illustrated by `as.factor()`:
+
+* The name is confusing, since `as.factor()` is not the factor method of the `as()` generic.
+* `as.factor()` is not a generic, which means that if you create a new class that could be usefully converted to a factor, you can not extend `as.factor()`.
+
+We can fix these issues by creating a new generic coercion function and providing it with some methods:
+
+```{r}
+as_factor <- function(x, ...) {
+  UseMethod("as_factor")
+}
+```
+
+Every `as_y()` generic should have a `y` method that returns its input unchanged:
+
+```{r}
+as_factor.factor <- function(x, ...) x
+```
+
+This ensures that `as_factor()` works if the input is already a factor.
+
+Two useful methods would be for character and integer vectors.
+
+```{r}
+as_factor.character <- function(x, ...) {
+  factor(x, levels = unique(x))
+}
+as_factor.integer <- function(x, ...) {
+  factor(x, levels = as.character(unique(x)))
+}
+```
+
+Typically the coercion methods will either call the constructor or the helper; pick the function that makes the code simpler. Here the helper is simplest. If you use the constructor, remember to also call the validator function.
+
+If you think your coercion function will be frequently used, it’s worth providing a default method that gives a better error message. Default methods are called when no other method is appropriate, and are discussed in more detail in inheritance.
+
+```{r, error=TRUE}
+as_factor(1)
+#> Error in UseMethod("as_factor"): no applicable method for 'as_factor' applied to an object of class "c('double', 'numeric')"
+
+as_factor.default <- function(x, ...) {
+  stop(
+    "Don't know how to coerce object of class ", 
+    paste(class(x), collapse = "/"), " into a factor", 
+    call. = FALSE
+  )
+}
+as_factor(1)
+```
+
+## Arguments
+Methods should always have the same arguments as their generics. This is not usually enforced, but it is good practice because it will avoid confusing behaviour. If you do eventually turn your code into a package, R CMD check will enforce it, so it’s good to get into the habit now.
+
+There is one exception to this rule: if the generic has `...`, the method must still have all the same arguments (including `...`), but can also have its own additional arguments. This allows methods to take additional arguments, which is important because you don’t know what additional arguments that a method for someone else’s class might need. The downside of using `...`, however, is that any misspelled arguments will be silently swallowed.
+
+### Exercises
+1. Read the source code for `t()` and `t.test()` and confirm that `t.test()` is an S3 generic and not an S3 method. What happens if you create an object with class test and call `t()` with it? Why?
+    ```{r}
+    x <- structure(1:10, class = "test")
+    t(x)
+    ```
+**A**:
+    ```{r}
+    t.test
+    t
+    ```
+if we create an object with class test, `t()`, will dispatch to `t.test()`. This simply happens, because `UseMethod()` just looks for functions named `paste0("generic", ".", c(class(x), "default"))`. So `t.test()` is erroneously treated like a method of `t()`. Since `t.test()` is a generic itself and doesn’t find a method called `t.test.test()`, it dispatches to `t.test.default()`.
+    ```{r}
+    getS3method("t.test", "default")(x)
+    
+    # specific a method t.test.test
+    t.test.test <- function(x) "hi"
+    t(x)
+    ```
+
+
+
+
 
 
 

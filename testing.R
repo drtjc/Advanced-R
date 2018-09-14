@@ -9,6 +9,63 @@ library(pryr)
 library(sloop)
 
 
+e <- env()
+
+g <- function(x) {
+  x <- 10
+  y <- 10
+  UseMethod("g")
+  print("hi")
+}
+environment(g) <- e
+ls.str(e)
+g
+e
+#g.default <- function(x) c(x = x, y = y) 
+
+
+
+g.default <- function(x) {
+  print(ls.str(environment(), all.names = TRUE))
+  c(x = x, y = y) 
+}
+
+
+# Find the context for the calling function (the generic): this gives us the unevaluated arguments for the original call.
+# UseMethod creates a new function call with arguments matched as they came in to the generic. 
+
+x <- 1
+y <- 1
+g(x)
+
+# x  y
+# 1 10
+
+
+
+
+gg <- function(x) {
+  x <- 10
+  y <- 10
+  gg.default(x)
+}
+
+gg.default <- function(x) {
+  print(ls.str(environment(), all.names = TRUE))
+  c(x = x, y = y) # global is evaluation environment so y = 1 when called
+}
+
+
+environment(gg.default)
+
+x <- 1
+y <- 1
+gg(x)
+
+# x  y
+# 10 1
+
+
 
 
 
