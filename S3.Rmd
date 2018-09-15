@@ -454,9 +454,191 @@ if we create an object with class test, `t()`, will dispatch to `t.test()`. This
     t(x)
     ```
 
+2. Carefully read the documentation for `UseMethod()` and explain why the following code returns the results that it does. What two usual rules of function evaluation does `UseMethod()` violate?
+    ```{r}
+    g <- function(x) {
+      x <- 10
+      y <- 10
+      UseMethod("g")
+    }
+    g.default <- function(x) c(x = x, y = y)
+    
+    x <- 1
+    y <- 1
+    g(x)
+    ```
+**A**: First consider this where `UseMethod()` is not used
+    ```{r}
+    gg <- function(x) {
+      x <- 10
+      y <- 10
+      gg.default(x)
+    }
+    
+    gg.default <- function(x) {
+      print(ls.str(environment(), all.names = TRUE))
+      c(x = x, y = y) # global function environment so y = 1 when called
+    }
+    
+    x <- 1
+    y <- 1
+    gg(x)
+    ```
+`x = 10` as this is passed to `gg.default()`, and `y = 1` as this is defined in the function environment (Global environment) of `gg.default()`.  
 
+Now consider this from `UseMethod()` help:
 
+... environment within which the method is evaluated by the dispatch mechanism, which is as follows:
 
+1. Find the context for the calling function (the generic): this gives us the unevaluated arguments for the original call.
 
+2. Evaluate the object (usually an argument) to be used for dispatch, and find a method (possibly the default method) or throw an error.
+
+3. Create an environment for evaluating the method and insert special variables (see below) into that environment. Also copy any variables in the environment of the generic that are not formal (or actual) arguments.
+
+4. Fix up the argument list to be the arguments of the call matched to the formals of the method.
+
+Hence we would expect `g.default` to be constructed with `x = 1` and evaluted in a created environment with `y = 10`.
+
+    ```{r}
+    g <- function(x) {
+      x <- 10
+      y <- 10
+      UseMethod("g")
+      print("hi")
+    }
+    
+    g.default <- function(x) {
+      print(ls.str(environment(), all.names = TRUE))
+      c(x = x, y = y) 
+    }
+    
+    x <- 1
+    y <- 1
+    g(x)
+    ```
+
+# Method dispatch
+At a high-level, S3 method dispatch is simple, and revolves around two functions, `UseMethod()` and `NextMethod()`. You’ll learn about these two functions below, and then we’ll come back to some of the additional wrinkles in dispatch details.
+
+## UseMethod()
+The purpose of `UseMethod()` is to find the appropriate method to call given a generic and a class. It does this by creating a vector of function names, `paste0("generic", ".", c(class(x), "default"))`, and looking for each method in turn. As soon as it finds a matching method, it calls it. If no matching method is found, it throws an error. To explore dispatch, we’ll use `sloop::s3_dispatch()`. You give it a call to an S3 generic, and it lists all the possible methods, noting which ones exist. For example, what happens when you try to print a `POSIXct` object?
+
+```{r}
+x <- Sys.time()
+s3_dispatch(print(x))
+```
+
+`print()` will look for three possible methods, of which two exist, and one, `print.POSIXct()`, will be called. The last method is always the “default” method. This doesn’t correspond to a specific class, so is a useful catch all.
+
+## NextMethod()
+Method dispatch usually terminates as soon as a matching method is found. However, methods can explicitly choose to call the next available method using `NextMethod()`. This is useful because it allows you to rely on code that others have already written, which we’ll come back to in inheritance. Let’s make `NextMethod()` concrete with an example. Here, I define a new generic (“showoff”) with three methods. Each method signals that it’s been called, and then calls the “next” method:
+
+```{r}
+showoff <- function(x) {
+  UseMethod("showoff")
+}
+showoff.default <- function(x) {
+  message("showoff.default")
+  TRUE
+}
+showoff.a <- function(x) {
+  message("showoff.a")
+  NextMethod()
+}
+showoff.b <- function(x) {
+  message("showoff.b")
+  NextMethod()
+}
+```
+
+Let’s create a dummy object with classes “b” and “a”. `s3_dispatch()` shows that all three potential methods are available:
+
+```{r}
+x <- new_s3_scalar(class = c("b", "a"))
+s3_dispatch(showoff(x))
+```
+
+When you call `NextMethod()` it finds and calls the next available method in the dispatch list. When we call `showoff()`, the method for `b` forwards to the method for `a`, which forwards to the default method.
+
+```{r}
+showoff(x)
+```
+
+Like `UseMethod()`, the precise semantics of `NextMethod()` are complex. It doesn’t actually work with the class attribute of the object, but instead uses a special global variable (`.Class`) to keep track of which method to call next. This means that modifying the argument that is dispatched upon has no impact, and you should avoid modifying the object that is being dispatched on.
+
+Generally, you call `NextMethod()` without any arguments. However, if you do give arguments, they are passed on to the next method, as if they’d been supplied to the generic.
+
+### Exercises
+
+1. Which base generic has the greatest number of defined methods?
+**A**: `print()` has clearly the most
+    ```{r}
+    library(methods)
+    objs <- mget(ls("package:base"), inherits = TRUE)
+    funs <- Filter(is.function, objs)
+    generics <- Filter(function(x) ("generic" %in% pryr::ftype(x)), funs)
+    
+    sort(
+      lengths(sapply(names(generics), function(x) methods(x), USE.NAMES = TRUE)),
+      decreasing = TRUE
+      )[1:3]
+    ```
+
+2. Explain what is happening in the following code.
+    ```{r}
+    generic2 <- function(x) UseMethod("generic2")
+    generic2.a1 <- function(x) "a1"
+    generic2.a2 <- function(x) "a2"
+    generic2.b <- function(x) {
+      class(x) <- "a1"
+      NextMethod()
+    }
+    
+    generic2(new_s3_scalar(class = c("b", "a2")))
+    ```
+**A**:  
+* We supply an object of classes b and a2 to `generic2()`, so R will look for a method `generic2.b()`
+* `generic2.b()` changes the class to a1 and then calls NextMethod()
+* One could think, that R calls now `generic2.a1()`. But in fact, as mentioned in the textbook, `NextMethod()`  
+
+doesn’t actually work with the class attribute of the object, but instead uses a special global variable (`.Class`) to keep track of which method to call next.  
+    ```{r}
+    generic2 <- function(x) UseMethod("generic2")
+    generic2.a1 <- function(x) "a1"
+    generic2.a2 <- function(x) "a2"
+    generic2.b <- function(x) {
+      class(x) <- "a1"
+      print(.Class) # still class a2
+      NextMethod()
+    }
+    generic2(new_s3_scalar(class = c("b", "a2")))
+    
+    # but this changes the class order
+    generic2.b <- function(x) {
+      .Class <- c("b", "a1")
+      print(.Class) # still class a2
+      NextMethod()
+    }
+    generic2(new_s3_scalar(class = c("b", "a2")))
+    ```
+
+# Inheritance
+The class attribute is not limited to a single string, but can be a character vector. This, along with S3 method dispatch and `NextMethod()`, gives a surprising amount of flexibility that can be used creatively to reduce code duplication. However, this flexibility can also lead to code that is hard to understand or reason about, so you are best constraining yourself to simple styles of inheritance. Here we will focus on defining subclasses that inherit their fields, and some behaviour, from a parent class.
+
+Subclasses use a character vector for the class attribute. There are two examples of subclasses that you might have come across in base R:
+
+* Generalised linear models are a generalisation of linear models that allow the error term to belong to a richer set of distributions, not just the normal distribution like the linear model. This is a natural case for the use of inheritance and indeed, in R, `glm()` returns objects of class `c("glm", "lm")`.
+
+* Ordered factors are used when the levels of a factor have some intrinsic ordering, like `c("Good", "Better", "Best")`. Ordered factors are produced by `ordered()` which returns an object with class `c("ordered", "factor")`.
+
+You can think of the glm class “inheriting” behaviour from the lm class, and the ordered class inheriting behaviour from the factor class because of the way method dispatch works. If there is a method available for the subclass, R will use it, otherwise it will fall back to the “parent” class. For example, if you “plot” a glm object, it falls back to the lm method, but if you compute the ANOVA, it uses a glm-specific method.
+
+```{r}
+mod1 <- glm(mpg ~ wt, data = mtcars)
+
+s3_dispatch(plot(mod1))
+s3_dispatch(anova(mod1))
+```
 
 

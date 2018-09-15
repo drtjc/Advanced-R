@@ -274,13 +274,13 @@ str(time)</code></pre>
 mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x0000000018fd5e70&gt;
+## &lt;bytecode: 0x0000000018fc7b78&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code># Always works
 getS3method(&quot;mean&quot;, &quot;Date&quot;)</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x0000000018fd5e70&gt;
+## &lt;bytecode: 0x0000000018fc7b78&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <div id="exercises" class="section level2">
 <h2><span class="header-section-number">2.1</span> Exercises</h2>
@@ -337,7 +337,7 @@ mean(some_days)</code></pre>
 <pre class="r"><code>mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x0000000018fd5e70&gt;
+## &lt;bytecode: 0x0000000018fc7b78&gt;
 ## &lt;environment: namespace:base&gt;</code></pre></li>
 </ol>
 </div>
@@ -605,12 +605,12 @@ t(x)</code></pre>
 <pre class="r"><code>t.test</code></pre>
 <pre><code>## function (x, ...) 
 ## UseMethod(&quot;t.test&quot;)
-## &lt;bytecode: 0x0000000013ab8898&gt;
+## &lt;bytecode: 0x00000000138b68a0&gt;
 ## &lt;environment: namespace:stats&gt;</code></pre>
 <pre class="r"><code>t</code></pre>
 <pre><code>## function (x) 
 ## UseMethod(&quot;t&quot;)
-## &lt;bytecode: 0x000000001a6b3030&gt;
+## &lt;bytecode: 0x00000000162a6400&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>if we create an object with class test, <code>t()</code>, will dispatch to <code>t.test()</code>. This simply happens, because <code>UseMethod()</code> just looks for functions named <code>paste0(&quot;generic&quot;, &quot;.&quot;, c(class(x), &quot;default&quot;))</code>. So <code>t.test()</code> is erroneously treated like a method of <code>t()</code>. Since <code>t.test()</code> is a generic itself and doesn’t find a method called <code>t.test.test()</code>, it dispatches to <code>t.test.default()</code>.</p>
 <pre class="r"><code>getS3method(&quot;t.test&quot;, &quot;default&quot;)(x)</code></pre>
@@ -629,7 +629,198 @@ t(x)</code></pre>
 t.test.test &lt;- function(x) &quot;hi&quot;
 t(x)</code></pre>
 <pre><code>## [1] &quot;hi&quot;</code></pre></li>
+<li><p>Carefully read the documentation for <code>UseMethod()</code> and explain why the following code returns the results that it does. What two usual rules of function evaluation does <code>UseMethod()</code> violate?</p>
+<pre class="r"><code>g &lt;- function(x) {
+    x &lt;- 10
+    y &lt;- 10
+    UseMethod(&quot;g&quot;)
+}
+g.default &lt;- function(x) c(x = x, y = y)
+
+x &lt;- 1
+y &lt;- 1
+g(x)</code></pre>
+<pre><code>##  x  y 
+##  1 10</code></pre>
+<p><strong>A</strong>: First consider this where <code>UseMethod()</code> is not used</p>
+<pre class="r"><code>gg &lt;- function(x) {
+    x &lt;- 10
+    y &lt;- 10
+    gg.default(x)
+}
+
+gg.default &lt;- function(x) {
+    print(ls.str(environment(), all.names = TRUE))
+    c(x = x, y = y)  # global function environment so y = 1 when called
+}
+
+x &lt;- 1
+y &lt;- 1
+gg(x)</code></pre>
+<pre><code>## x :  num 10</code></pre>
+<pre><code>##  x  y 
+## 10  1</code></pre>
+<p><code>x = 10</code> as this is passed to <code>gg.default()</code>, and <code>y = 1</code> as this is defined in the function environment (Global environment) of <code>gg.default()</code>.</p></li>
 </ol>
+<p>Now consider this from <code>UseMethod()</code> help:</p>
+<p>… environment within which the method is evaluated by the dispatch mechanism, which is as follows:</p>
+<ol style="list-style-type: decimal">
+<li><p>Find the context for the calling function (the generic): this gives us the unevaluated arguments for the original call.</p></li>
+<li><p>Evaluate the object (usually an argument) to be used for dispatch, and find a method (possibly the default method) or throw an error.</p></li>
+<li><p>Create an environment for evaluating the method and insert special variables (see below) into that environment. Also copy any variables in the environment of the generic that are not formal (or actual) arguments.</p></li>
+<li><p>Fix up the argument list to be the arguments of the call matched to the formals of the method.</p></li>
+</ol>
+<p>Hence we would expect <code>g.default</code> to be constructed with <code>x = 1</code> and evaluted in a created environment with <code>y = 10</code>.</p>
+<pre><code>```r
+g &lt;- function(x) {
+    x &lt;- 10
+    y &lt;- 10
+    UseMethod(&quot;g&quot;)
+    print(&quot;hi&quot;)
+}
+
+g.default &lt;- function(x) {
+    print(ls.str(environment(), all.names = TRUE))
+    c(x = x, y = y)
+}
+
+x &lt;- 1
+y &lt;- 1
+g(x)
+```
+
+```
+## .Class :  NULL
+## .Generic :  chr &quot;g&quot;
+## .GenericCallEnv : &lt;environment: R_GlobalEnv&gt; 
+## .GenericDefEnv : &lt;environment: R_GlobalEnv&gt; 
+## .Group :  chr &quot;&quot;
+## .Method :  chr &quot;g.default&quot;
+## x :  num 1
+## y :  num 10
+```
+
+```
+##  x  y 
+##  1 10
+```</code></pre>
+</div>
+</div>
+</div>
+<div id="method-dispatch" class="section level1">
+<h1><span class="header-section-number">5</span> Method dispatch</h1>
+<p>At a high-level, S3 method dispatch is simple, and revolves around two functions, <code>UseMethod()</code> and <code>NextMethod()</code>. You’ll learn about these two functions below, and then we’ll come back to some of the additional wrinkles in dispatch details.</p>
+<div id="usemethod" class="section level2">
+<h2><span class="header-section-number">5.1</span> UseMethod()</h2>
+<p>The purpose of <code>UseMethod()</code> is to find the appropriate method to call given a generic and a class. It does this by creating a vector of function names, <code>paste0(&quot;generic&quot;, &quot;.&quot;, c(class(x), &quot;default&quot;))</code>, and looking for each method in turn. As soon as it finds a matching method, it calls it. If no matching method is found, it throws an error. To explore dispatch, we’ll use <code>sloop::s3_dispatch()</code>. You give it a call to an S3 generic, and it lists all the possible methods, noting which ones exist. For example, what happens when you try to print a <code>POSIXct</code> object?</p>
+<pre class="r"><code>x &lt;- Sys.time()
+s3_dispatch(print(x))</code></pre>
+<pre><code>## -&gt; print.POSIXct
+##    print.POSIXt
+##  * print.default</code></pre>
+<p><code>print()</code> will look for three possible methods, of which two exist, and one, <code>print.POSIXct()</code>, will be called. The last method is always the “default” method. This doesn’t correspond to a specific class, so is a useful catch all.</p>
+</div>
+<div id="nextmethod" class="section level2">
+<h2><span class="header-section-number">5.2</span> NextMethod()</h2>
+<p>Method dispatch usually terminates as soon as a matching method is found. However, methods can explicitly choose to call the next available method using <code>NextMethod()</code>. This is useful because it allows you to rely on code that others have already written, which we’ll come back to in inheritance. Let’s make <code>NextMethod()</code> concrete with an example. Here, I define a new generic (“showoff”) with three methods. Each method signals that it’s been called, and then calls the “next” method:</p>
+<pre class="r"><code>showoff &lt;- function(x) {
+    UseMethod(&quot;showoff&quot;)
+}
+showoff.default &lt;- function(x) {
+    message(&quot;showoff.default&quot;)
+    TRUE
+}
+showoff.a &lt;- function(x) {
+    message(&quot;showoff.a&quot;)
+    NextMethod()
+}
+showoff.b &lt;- function(x) {
+    message(&quot;showoff.b&quot;)
+    NextMethod()
+}</code></pre>
+<p>Let’s create a dummy object with classes “b” and “a”. <code>s3_dispatch()</code> shows that all three potential methods are available:</p>
+<pre class="r"><code>x &lt;- new_s3_scalar(class = c(&quot;b&quot;, &quot;a&quot;))
+s3_dispatch(showoff(x))</code></pre>
+<pre><code>## -&gt; showoff.b
+##  * showoff.a
+##  * showoff.default</code></pre>
+<p>When you call <code>NextMethod()</code> it finds and calls the next available method in the dispatch list. When we call <code>showoff()</code>, the method for <code>b</code> forwards to the method for <code>a</code>, which forwards to the default method.</p>
+<pre class="r"><code>showoff(x)</code></pre>
+<pre><code>## showoff.b</code></pre>
+<pre><code>## showoff.a</code></pre>
+<pre><code>## showoff.default</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<p>Like <code>UseMethod()</code>, the precise semantics of <code>NextMethod()</code> are complex. It doesn’t actually work with the class attribute of the object, but instead uses a special global variable (<code>.Class</code>) to keep track of which method to call next. This means that modifying the argument that is dispatched upon has no impact, and you should avoid modifying the object that is being dispatched on.</p>
+<p>Generally, you call <code>NextMethod()</code> without any arguments. However, if you do give arguments, they are passed on to the next method, as if they’d been supplied to the generic.</p>
+<div id="exercises-3" class="section level3">
+<h3><span class="header-section-number">5.2.1</span> Exercises</h3>
+<ol style="list-style-type: decimal">
+<li><p>Which base generic has the greatest number of defined methods? <strong>A</strong>: <code>print()</code> has clearly the most</p>
+<pre class="r"><code>library(methods)
+objs &lt;- mget(ls(&quot;package:base&quot;), inherits = TRUE)
+funs &lt;- Filter(is.function, objs)
+generics &lt;- Filter(function(x) (&quot;generic&quot; %in% pryr::ftype(x)), funs)
+
+sort(lengths(sapply(names(generics), function(x) methods(x), USE.NAMES = TRUE)), 
+    decreasing = TRUE)[1:3]</code></pre>
+<pre><code>##   print  format summary 
+##     336     110      74</code></pre></li>
+<li><p>Explain what is happening in the following code.</p>
+<pre class="r"><code>generic2 &lt;- function(x) UseMethod(&quot;generic2&quot;)
+generic2.a1 &lt;- function(x) &quot;a1&quot;
+generic2.a2 &lt;- function(x) &quot;a2&quot;
+generic2.b &lt;- function(x) {
+    class(x) &lt;- &quot;a1&quot;
+    NextMethod()
+}
+
+generic2(new_s3_scalar(class = c(&quot;b&quot;, &quot;a2&quot;)))</code></pre>
+<pre><code>## [1] &quot;a2&quot;</code></pre>
+<strong>A</strong>:</li>
+</ol>
+<ul>
+<li>We supply an object of classes b and a2 to <code>generic2()</code>, so R will look for a method <code>generic2.b()</code></li>
+<li><code>generic2.b()</code> changes the class to a1 and then calls NextMethod()</li>
+<li>One could think, that R calls now <code>generic2.a1()</code>. But in fact, as mentioned in the textbook, <code>NextMethod()</code></li>
+</ul>
+<p>doesn’t actually work with the class attribute of the object, but instead uses a special global variable (<code>.Class</code>) to keep track of which method to call next.</p>
+<pre><code>```r
+generic2 &lt;- function(x) UseMethod(&quot;generic2&quot;)
+generic2.a1 &lt;- function(x) &quot;a1&quot;
+generic2.a2 &lt;- function(x) &quot;a2&quot;
+generic2.b &lt;- function(x) {
+    class(x) &lt;- &quot;a1&quot;
+    print(.Class)  # still class a2
+    NextMethod()
+}
+generic2(new_s3_scalar(class = c(&quot;b&quot;, &quot;a2&quot;)))
+```
+
+```
+## [1] &quot;b&quot;  &quot;a2&quot;
+```
+
+```
+## [1] &quot;a2&quot;
+```
+
+```r
+# but this changes the class order
+generic2.b &lt;- function(x) {
+    .Class &lt;- c(&quot;b&quot;, &quot;a1&quot;)
+    print(.Class)  # still class a2
+    NextMethod()
+}
+generic2(new_s3_scalar(class = c(&quot;b&quot;, &quot;a2&quot;)))
+```
+
+```
+## [1] &quot;b&quot;  &quot;a1&quot;
+```
+
+```
+## [1] &quot;a1&quot;
+```</code></pre>
 </div>
 </div>
 </div>

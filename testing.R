@@ -9,62 +9,53 @@ library(pryr)
 library(sloop)
 
 
-e <- env()
-
-g <- function(x) {
-  x <- 10
-  y <- 10
-  UseMethod("g")
-  print("hi")
-}
-environment(g) <- e
-ls.str(e)
-g
-e
-#g.default <- function(x) c(x = x, y = y) 
-
-
-
-g.default <- function(x) {
-  print(ls.str(environment(), all.names = TRUE))
-  c(x = x, y = y) 
+new_my_class <- function(x, y, ..., subclass = NULL) {
+  stopifnot(is.numeric(x))
+  stopifnot(is.logical(y))
+  
+  structure(
+    x,
+    y = y,
+    ...,
+    class = c(subclass, "my_class")
+  )
 }
 
 
-# Find the context for the calling function (the generic): this gives us the unevaluated arguments for the original call.
-# UseMethod creates a new function call with arguments matched as they came in to the generic. 
 
-x <- 1
-y <- 1
-g(x)
+d <- 1:3
 
-# x  y
-# 1 10
+v1 <- new_my_class(d, TRUE)
+v1
+str(v1)
+class(v1)
 
-
-
-
-gg <- function(x) {
-  x <- 10
-  y <- 10
-  gg.default(x)
+new_subclass <- function(x, y, z) {
+  stopifnot(is.character(z))
+  new_my_class(x, y, z = z, subclass = "subclass")
 }
 
-gg.default <- function(x) {
-  print(ls.str(environment(), all.names = TRUE))
-  c(x = x, y = y) # global is evaluation environment so y = 1 when called
+v2 <- new_subclass(1:3, TRUE, "test")
+v2
+str(v2)
+class(v2)
+
+
+as_new_my_class <- function(x, ...) {
+  UseMethod("as_new_my_class")
 }
 
+as_new_my_class.subclass <- function(x) {
+  #print("hi")
+  sc <- new_my_class(x, attr(x, "y"))
+  attr(sc, "z") <- NULL
+  sc
+}
 
-environment(gg.default)
-
-x <- 1
-y <- 1
-gg(x)
-
-# x  y
-# 10 1
-
+v11 <- as_new_my_class(v2)
+v11
+str(v11)
+class(v11)
 
 
 
