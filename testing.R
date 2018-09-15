@@ -9,6 +9,49 @@ library(pryr)
 library(sloop)
 
 
+
+
+
+ll <- list(
+  a = c(A = 1, B = 2),
+  b = c(A = 3, B = 4)
+)
+bind_rows(ll)
+
+# You can circumvent that behaviour with explicit splicing:
+bind_rows(!!!ll)
+
+
+methods(Math)
+getS3method("Math", "data.frame")
+
+
+.S3PrimitiveGenerics
+.S3_methods_table
+.S3methods(`[`)
+
+
+s3_dispatch(sum(Sys.time()))
+
+tt <- structure(-1, class="foo")
+tt
+class(tt)
+
+Math.foo <- function(x) 42
+
+s3_dispatch(abs(tt))
+abs(tt)
+
+uu <- structure(-1)
+s3_dispatch(abs(uu))
+abs(uu)
+
+
+
+s3_dispatch(+date)
+
+
+
 new_my_class <- function(x, y, ..., subclass = NULL) {
   stopifnot(is.numeric(x))
   stopifnot(is.logical(y))
@@ -45,11 +88,10 @@ as_new_my_class <- function(x, ...) {
   UseMethod("as_new_my_class")
 }
 
-as_new_my_class.subclass <- function(x) {
-  #print("hi")
-  sc <- new_my_class(x, attr(x, "y"))
-  attr(sc, "z") <- NULL
-  sc
+as_my_class.sub_class <- function(x) {
+  pc <- new_my_class(x, attr(x, "y"))
+  attr(pc, "z") <- NULL
+  pc
 }
 
 v11 <- as_new_my_class(v2)
