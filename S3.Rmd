@@ -25,6 +25,7 @@ library(lobstr)
 library(memoise)
 library(purrr)
 library(sloop)
+library(lubridate)
 ```
 
 # Introduction
@@ -639,6 +640,184 @@ mod1 <- glm(mpg ~ wt, data = mtcars)
 
 s3_dispatch(plot(mod1))
 s3_dispatch(anova(mod1))
+```
+
+## Constructors
+There are three principles to adhere to when creating a subclass:
+
+* A subclass should be built on the same base type as a parent.
+* The `class()` of the subclass should be of the form `c(subclass, parent_class)`
+* The fields of the subclass should include the fields of the parent.
+
+And these properties should be enforced by the constructor.
+
+When you create a class, you need to decide if you want to allow subclasses, because it requires changes to the constructor and careful thought in your methods. To allow subclasses, the parent constructor needs to have `...` and `subclass` arguments:
+
+```{r}
+new_my_class <- function(x, y, ..., subclass = NULL) {
+  stopifnot(is.numeric(x))
+  stopifnot(is.logical(y))
+  
+  structure(
+    x,
+    y = y,
+    ...,
+    class = c(subclass, "my_class")
+  )
+}
+
+v1 <- new_my_class(1:3, TRUE)
+v1
+str(v1)
+class(v1)
+```
+
+Then the implementation of the subclass constructor is simple: it checks the types of the new fields, then calls the parent constructor.
+
+```{r}
+new_subclass <- function(x, y, z) {
+  stopifnot(is.character(z))
+  new_my_class(x, y, z = z, subclass = "subclass")
+}
+
+v2 <- new_subclass(1:3, TRUE, "test")
+v2
+str(v2)
+class(v2)
+```
+
+If you wanted to allow this subclass to be futher subclassed, you’d need to include `...` and `subclass` arguments:
+
+```{r}
+new_subclass <- function(x, y, z, ..., subclass = NULL) {
+  stopifnot(is.character(z))
+  
+  new_my_class(x, y, z = z, ..., subclass = c(subclass, "subclass"))
+}
+
+v3 <- new_subclass(1:3, TRUE, "test", a = "hi", subclass = "subclass2")
+v3
+str(v3)
+class(v3)
+```
+
+But above approach doesn't allow easily for further subsetting, so perhaps this is better?
+
+```{r}
+newsubclass2 <- function(x, y, z, a, ..., subclass = NULL) {
+  stopifnot(is.character(a))
+
+  new_subclass(x, y, z, a = a, ..., subclass = c(subclass, "subclass2"))
+}
+
+v4 <- newsubclass2(1:3, TRUE, "test", "hi")
+v4
+identical(v3, v4)
+
+v5 <- newsubclass2(1:3, TRUE, "test", "hi", b = "there", subclass = "subclass3")
+v5
+```
+
+## Coercion
+You also need to make sure that there’s some way to convert the subclass back to the parent class. The best way to do that is to add a method to the coercion generic. Generally, this method should call the parent constructor:
+
+```{r}
+as_new_my_class <- function(x, ...) {
+  UseMethod("as_new_my_class")
+}
+
+as_new_my_class.subclass <- function(x) {
+  pc <- new_my_class(x, attr(x, "y"))
+  attr(pc, "z") <- NULL
+  pc
+}
+
+v11 <- as_new_my_class(new_subclass(1:3, TRUE, "test"))
+v11
+```
+
+## Methods
+The goal of creating a subclass is to reuse as much code as possible from the parent class. This means that you should not have to define every method that the parent class provides (if you do, reconsider if you actually need a subclass!). Generally, defining new methods is straightforward: you simply create a new method (`generic.subclass`) whenever the parent method doesn’t do quite the right thing. In many cases, the new method will be able to call `NextMethod()` in order to take advantage of the computation done in the parent.
+
+```{r}
+new_provenance <- function(df, author, date = Sys.Date()) {
+  stopifnot(is.data.frame(df))
+  stopifnot(is.character(author), length(author) == 1)
+  stopifnot(is.Date(date), length(date) == 1)
+  
+  structure(
+    df,
+    author = author, 
+    date = date,
+    class = c("provenance", "data.frame")
+  )
+}
+
+print.provenance <- function(df) {
+  print(attr(df, "author"))
+  print(attr(df, "date"))
+  NextMethod()
+}
+
+df <- data.frame(x = 1:3, y = 4:6)
+df
+df_prov <- new_provenance(df, "Tom")
+df_prov
+str(df_prov)
+s3_dispatch(print(df_prov))
+```
+
+
+## Environments and namespaces
+The precise rules for where a generic looks for the methods are a little complicated because there are two paths for discovery:
+
+* In the calling environment of the function that called the generic.
+
+* In the special `.__S3MethodsTable__.` object in the function environment of the generic. Every package has an `.__S3MethodsTable__` which lists all the S3 methods exported by the package.
+
+These details are not usually important, but are necessary in order for S3 generics to find the correct method when the generic and method are in different packages.
+
+## S3 and base types
+What happens when you call an S3 generic with a non-S3 object, i.e. an object that doesn’t have the class attribute set? You might think it would dispatch on what `class()` returns:
+
+```{r}
+class(matrix(1:5))
+```
+
+But unfortunately dispatch actually occurs on the **implicit class**, which has three components:
+
+* “array” or “matrix” (if the object has dimensions).
+* `typeof()` (with a few minor tweaks).
+* If it’s “integer” or “double”, “numeric”.
+
+There is no base function that will compute the implicit class, but you can use a helper from the sloop package:
+
+```{r}
+s3_class(matrix(1:5))
+s3_dispatch(print(matrix(1:5)))
+```
+
+`s3_dispatch()` knows about the implicit class, so use it if you’re ever in doubt about method dispatch:
+
+Note that this can lead to different dispatch for objects that look similar:
+
+```{r}
+x1 <- 1:5
+class(x1)
+s3_dispatch(mean(x1))
+
+x2 <- structure(x1, class = "integer")
+class(x2)
+s3_dispatch(mean(x2))
+```
+
+## Internal generics
+Some S3 generics, like `[`, `sum()`, and `cbind()`, don’t call `UseMethod()` because they are implemented in C. Instead, they call the C functions `DispatchGroup()` or `DispatchOrEval()`. These functions are called internal generics, because they do dispatch internally, in C code. Internal generics only exist in base R, so you can not create an internal generic in a package.
+
+`s3_dispatch()` shows internal generics by including the name of the generic at the bottom of the method class. If this method is called, all the work happens in C code, typically using [switchpatch].
+
+```{r}
+s3_dispatch(Sys.time()[1])
 ```
 
 

@@ -274,13 +274,13 @@ str(time)</code></pre>
 mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x0000000018fc7b78&gt;
+## &lt;bytecode: 0x00000000190683b8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <pre class="r"><code># Always works
 getS3method(&quot;mean&quot;, &quot;Date&quot;)</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x0000000018fc7b78&gt;
+## &lt;bytecode: 0x00000000190683b8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <div id="exercises" class="section level2">
 <h2><span class="header-section-number">2.1</span> Exercises</h2>
@@ -337,7 +337,7 @@ mean(some_days)</code></pre>
 <pre class="r"><code>mean.Date</code></pre>
 <pre><code>## function (x, ...) 
 ## .Date(mean(unclass(x), ...))
-## &lt;bytecode: 0x0000000018fc7b78&gt;
+## &lt;bytecode: 0x00000000190683b8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre></li>
 </ol>
 </div>
@@ -605,12 +605,12 @@ t(x)</code></pre>
 <pre class="r"><code>t.test</code></pre>
 <pre><code>## function (x, ...) 
 ## UseMethod(&quot;t.test&quot;)
-## &lt;bytecode: 0x00000000138b68a0&gt;
+## &lt;bytecode: 0x0000000013c6a8b8&gt;
 ## &lt;environment: namespace:stats&gt;</code></pre>
 <pre class="r"><code>t</code></pre>
 <pre><code>## function (x) 
 ## UseMethod(&quot;t&quot;)
-## &lt;bytecode: 0x00000000162a6400&gt;
+## &lt;bytecode: 0x000000001290e7d8&gt;
 ## &lt;environment: namespace:base&gt;</code></pre>
 <p>if we create an object with class test, <code>t()</code>, will dispatch to <code>t.test()</code>. This simply happens, because <code>UseMethod()</code> just looks for functions named <code>paste0(&quot;generic&quot;, &quot;.&quot;, c(class(x), &quot;default&quot;))</code>. So <code>t.test()</code> is erroneously treated like a method of <code>t()</code>. Since <code>t.test()</code> is a generic itself and doesn’t find a method called <code>t.test.test()</code>, it dispatches to <code>t.test.default()</code>.</p>
 <pre class="r"><code>getS3method(&quot;t.test&quot;, &quot;default&quot;)(x)</code></pre>
@@ -776,7 +776,8 @@ generic2.b &lt;- function(x) {
 
 generic2(new_s3_scalar(class = c(&quot;b&quot;, &quot;a2&quot;)))</code></pre>
 <pre><code>## [1] &quot;a2&quot;</code></pre>
-<strong>A</strong>:</li>
+<strong>A</strong>:<br />
+</li>
 </ol>
 <ul>
 <li>We supply an object of classes b and a2 to <code>generic2()</code>, so R will look for a method <code>generic2.b()</code></li>
@@ -822,6 +823,252 @@ generic2(new_s3_scalar(class = c(&quot;b&quot;, &quot;a2&quot;)))
 ## [1] &quot;a1&quot;
 ```</code></pre>
 </div>
+</div>
+</div>
+<div id="inheritance" class="section level1">
+<h1><span class="header-section-number">6</span> Inheritance</h1>
+<p>The class attribute is not limited to a single string, but can be a character vector. This, along with S3 method dispatch and <code>NextMethod()</code>, gives a surprising amount of flexibility that can be used creatively to reduce code duplication. However, this flexibility can also lead to code that is hard to understand or reason about, so you are best constraining yourself to simple styles of inheritance. Here we will focus on defining subclasses that inherit their fields, and some behaviour, from a parent class.</p>
+<p>Subclasses use a character vector for the class attribute. There are two examples of subclasses that you might have come across in base R:</p>
+<ul>
+<li><p>Generalised linear models are a generalisation of linear models that allow the error term to belong to a richer set of distributions, not just the normal distribution like the linear model. This is a natural case for the use of inheritance and indeed, in R, <code>glm()</code> returns objects of class <code>c(&quot;glm&quot;, &quot;lm&quot;)</code>.</p></li>
+<li><p>Ordered factors are used when the levels of a factor have some intrinsic ordering, like <code>c(&quot;Good&quot;, &quot;Better&quot;, &quot;Best&quot;)</code>. Ordered factors are produced by <code>ordered()</code> which returns an object with class <code>c(&quot;ordered&quot;, &quot;factor&quot;)</code>.</p></li>
+</ul>
+<p>You can think of the glm class “inheriting” behaviour from the lm class, and the ordered class inheriting behaviour from the factor class because of the way method dispatch works. If there is a method available for the subclass, R will use it, otherwise it will fall back to the “parent” class. For example, if you “plot” a glm object, it falls back to the lm method, but if you compute the ANOVA, it uses a glm-specific method.</p>
+<pre class="r"><code>mod1 &lt;- glm(mpg ~ wt, data = mtcars)
+
+s3_dispatch(plot(mod1))</code></pre>
+<pre><code>##    plot.glm
+## -&gt; plot.lm
+##  * plot.default</code></pre>
+<pre class="r"><code>s3_dispatch(anova(mod1))</code></pre>
+<pre><code>## -&gt; anova.glm
+##  * anova.lm
+##    anova.default</code></pre>
+<div id="constructors-1" class="section level2">
+<h2><span class="header-section-number">6.1</span> Constructors</h2>
+<p>There are three principles to adhere to when creating a subclass:</p>
+<ul>
+<li>A subclass should be built on the same base type as a parent.</li>
+<li>The <code>class()</code> of the subclass should be of the form <code>c(subclass, parent_class)</code></li>
+<li>The fields of the subclass should include the fields of the parent.</li>
+</ul>
+<p>And these properties should be enforced by the constructor.</p>
+<p>When you create a class, you need to decide if you want to allow subclasses, because it requires changes to the constructor and careful thought in your methods. To allow subclasses, the parent constructor needs to have <code>...</code> and <code>subclass</code> arguments:</p>
+<pre class="r"><code>new_my_class &lt;- function(x, y, ..., subclass = NULL) {
+    stopifnot(is.numeric(x))
+    stopifnot(is.logical(y))
+    
+    structure(x, y = y, ..., class = c(subclass, &quot;my_class&quot;))
+}
+
+v1 &lt;- new_my_class(1:3, TRUE)
+v1</code></pre>
+<pre><code>## [1] 1 2 3
+## attr(,&quot;y&quot;)
+## [1] TRUE
+## attr(,&quot;class&quot;)
+## [1] &quot;my_class&quot;</code></pre>
+<pre class="r"><code>str(v1)</code></pre>
+<pre><code>##  'my_class' int [1:3] 1 2 3
+##  - attr(*, &quot;y&quot;)= logi TRUE</code></pre>
+<pre class="r"><code>class(v1)</code></pre>
+<pre><code>## [1] &quot;my_class&quot;</code></pre>
+<p>Then the implementation of the subclass constructor is simple: it checks the types of the new fields, then calls the parent constructor.</p>
+<pre class="r"><code>new_subclass &lt;- function(x, y, z) {
+    stopifnot(is.character(z))
+    new_my_class(x, y, z = z, subclass = &quot;subclass&quot;)
+}
+
+v2 &lt;- new_subclass(1:3, TRUE, &quot;test&quot;)
+v2</code></pre>
+<pre><code>## [1] 1 2 3
+## attr(,&quot;y&quot;)
+## [1] TRUE
+## attr(,&quot;z&quot;)
+## [1] &quot;test&quot;
+## attr(,&quot;class&quot;)
+## [1] &quot;subclass&quot; &quot;my_class&quot;</code></pre>
+<pre class="r"><code>str(v2)</code></pre>
+<pre><code>##  'subclass' int [1:3] 1 2 3
+##  - attr(*, &quot;y&quot;)= logi TRUE
+##  - attr(*, &quot;z&quot;)= chr &quot;test&quot;</code></pre>
+<pre class="r"><code>class(v2)</code></pre>
+<pre><code>## [1] &quot;subclass&quot; &quot;my_class&quot;</code></pre>
+<p>If you wanted to allow this subclass to be futher subclassed, you’d need to include <code>...</code> and <code>subclass</code> arguments:</p>
+<pre class="r"><code>new_subclass &lt;- function(x, y, z, ..., subclass = NULL) {
+    stopifnot(is.character(z))
+    
+    new_my_class(x, y, z = z, ..., subclass = c(subclass, &quot;subclass&quot;))
+}
+
+v3 &lt;- new_subclass(1:3, TRUE, &quot;test&quot;, a = &quot;hi&quot;, subclass = &quot;subclass2&quot;)
+v3</code></pre>
+<pre><code>## [1] 1 2 3
+## attr(,&quot;y&quot;)
+## [1] TRUE
+## attr(,&quot;z&quot;)
+## [1] &quot;test&quot;
+## attr(,&quot;a&quot;)
+## [1] &quot;hi&quot;
+## attr(,&quot;class&quot;)
+## [1] &quot;subclass2&quot; &quot;subclass&quot;  &quot;my_class&quot;</code></pre>
+<pre class="r"><code>str(v3)</code></pre>
+<pre><code>##  'subclass2' int [1:3] 1 2 3
+##  - attr(*, &quot;y&quot;)= logi TRUE
+##  - attr(*, &quot;z&quot;)= chr &quot;test&quot;
+##  - attr(*, &quot;a&quot;)= chr &quot;hi&quot;</code></pre>
+<pre class="r"><code>class(v3)</code></pre>
+<pre><code>## [1] &quot;subclass2&quot; &quot;subclass&quot;  &quot;my_class&quot;</code></pre>
+<p>But above approach doesn’t allow easily for further subsetting, so perhaps this is better?</p>
+<pre class="r"><code>newsubclass2 &lt;- function(x, y, z, a, ..., subclass = NULL) {
+    stopifnot(is.character(a))
+    
+    new_subclass(x, y, z, a = a, ..., subclass = c(subclass, &quot;subclass2&quot;))
+}
+
+v4 &lt;- newsubclass2(1:3, TRUE, &quot;test&quot;, &quot;hi&quot;)
+v4</code></pre>
+<pre><code>## [1] 1 2 3
+## attr(,&quot;y&quot;)
+## [1] TRUE
+## attr(,&quot;z&quot;)
+## [1] &quot;test&quot;
+## attr(,&quot;a&quot;)
+## [1] &quot;hi&quot;
+## attr(,&quot;class&quot;)
+## [1] &quot;subclass2&quot; &quot;subclass&quot;  &quot;my_class&quot;</code></pre>
+<pre class="r"><code>identical(v3, v4)</code></pre>
+<pre><code>## [1] TRUE</code></pre>
+<pre class="r"><code>v5 &lt;- newsubclass2(1:3, TRUE, &quot;test&quot;, &quot;hi&quot;, b = &quot;there&quot;, subclass = &quot;subclass3&quot;)
+v5</code></pre>
+<pre><code>## [1] 1 2 3
+## attr(,&quot;y&quot;)
+## [1] TRUE
+## attr(,&quot;z&quot;)
+## [1] &quot;test&quot;
+## attr(,&quot;a&quot;)
+## [1] &quot;hi&quot;
+## attr(,&quot;b&quot;)
+## [1] &quot;there&quot;
+## attr(,&quot;class&quot;)
+## [1] &quot;subclass3&quot; &quot;subclass2&quot; &quot;subclass&quot;  &quot;my_class&quot;</code></pre>
+</div>
+<div id="coercion-1" class="section level2">
+<h2><span class="header-section-number">6.2</span> Coercion</h2>
+<p>You also need to make sure that there’s some way to convert the subclass back to the parent class. The best way to do that is to add a method to the coercion generic. Generally, this method should call the parent constructor:</p>
+<pre class="r"><code>as_new_my_class &lt;- function(x, ...) {
+    UseMethod(&quot;as_new_my_class&quot;)
+}
+
+as_new_my_class.subclass &lt;- function(x) {
+    pc &lt;- new_my_class(x, attr(x, &quot;y&quot;))
+    attr(pc, &quot;z&quot;) &lt;- NULL
+    pc
+}
+
+v11 &lt;- as_new_my_class(new_subclass(1:3, TRUE, &quot;test&quot;))
+v11</code></pre>
+<pre><code>## [1] 1 2 3
+## attr(,&quot;y&quot;)
+## [1] TRUE
+## attr(,&quot;class&quot;)
+## [1] &quot;my_class&quot;</code></pre>
+</div>
+<div id="methods" class="section level2">
+<h2><span class="header-section-number">6.3</span> Methods</h2>
+<p>The goal of creating a subclass is to reuse as much code as possible from the parent class. This means that you should not have to define every method that the parent class provides (if you do, reconsider if you actually need a subclass!). Generally, defining new methods is straightforward: you simply create a new method (<code>generic.subclass</code>) whenever the parent method doesn’t do quite the right thing. In many cases, the new method will be able to call <code>NextMethod()</code> in order to take advantage of the computation done in the parent.</p>
+<pre class="r"><code>new_provenance &lt;- function(df, author, date = Sys.Date()) {
+    stopifnot(is.data.frame(df))
+    stopifnot(is.character(author), length(author) == 1)
+    stopifnot(is.Date(date), length(date) == 1)
+    
+    structure(df, author = author, date = date, class = c(&quot;provenance&quot;, &quot;data.frame&quot;))
+}
+
+print.provenance &lt;- function(df) {
+    print(attr(df, &quot;author&quot;))
+    print(attr(df, &quot;date&quot;))
+    NextMethod()
+}
+
+df &lt;- data.frame(x = 1:3, y = 4:6)
+df</code></pre>
+<pre><code>##   x y
+## 1 1 4
+## 2 2 5
+## 3 3 6</code></pre>
+<pre class="r"><code>df_prov &lt;- new_provenance(df, &quot;Tom&quot;)
+df_prov</code></pre>
+<pre><code>## [1] &quot;Tom&quot;
+## [1] &quot;2018-09-16&quot;
+##   x y
+## 1 1 4
+## 2 2 5
+## 3 3 6</code></pre>
+<pre class="r"><code>str(df_prov)</code></pre>
+<pre><code>## Classes 'provenance' and 'data.frame':   3 obs. of  2 variables:
+##  $ x: int  1 2 3
+##  $ y: int  4 5 6
+##  - attr(*, &quot;author&quot;)= chr &quot;Tom&quot;
+##  - attr(*, &quot;date&quot;)= Date, format: &quot;2018-09-16&quot;</code></pre>
+<pre class="r"><code>s3_dispatch(print(df_prov))</code></pre>
+<pre><code>## -&gt; print.provenance
+##  * print.data.frame
+##  * print.default</code></pre>
+</div>
+<div id="environments-and-namespaces" class="section level2">
+<h2><span class="header-section-number">6.4</span> Environments and namespaces</h2>
+<p>The precise rules for where a generic looks for the methods are a little complicated because there are two paths for discovery:</p>
+<ul>
+<li><p>In the calling environment of the function that called the generic.</p></li>
+<li><p>In the special <code>.__S3MethodsTable__.</code> object in the function environment of the generic. Every package has an <code>.__S3MethodsTable__</code> which lists all the S3 methods exported by the package.</p></li>
+</ul>
+<p>These details are not usually important, but are necessary in order for S3 generics to find the correct method when the generic and method are in different packages.</p>
+</div>
+<div id="s3-and-base-types" class="section level2">
+<h2><span class="header-section-number">6.5</span> S3 and base types</h2>
+<p>What happens when you call an S3 generic with a non-S3 object, i.e. an object that doesn’t have the class attribute set? You might think it would dispatch on what <code>class()</code> returns:</p>
+<pre class="r"><code>class(matrix(1:5))</code></pre>
+<pre><code>## [1] &quot;matrix&quot;</code></pre>
+<p>But unfortunately dispatch actually occurs on the <strong>implicit class</strong>, which has three components:</p>
+<ul>
+<li>“array” or “matrix” (if the object has dimensions).</li>
+<li><code>typeof()</code> (with a few minor tweaks).</li>
+<li>If it’s “integer” or “double”, “numeric”.</li>
+</ul>
+<p>There is no base function that will compute the implicit class, but you can use a helper from the sloop package:</p>
+<pre class="r"><code>s3_class(matrix(1:5))</code></pre>
+<pre><code>## [1] &quot;matrix&quot;  &quot;integer&quot; &quot;numeric&quot;</code></pre>
+<pre class="r"><code>s3_dispatch(print(matrix(1:5)))</code></pre>
+<pre><code>##    print.matrix
+##    print.integer
+##    print.numeric
+## -&gt; print.default</code></pre>
+<p><code>s3_dispatch()</code> knows about the implicit class, so use it if you’re ever in doubt about method dispatch:</p>
+<p>Note that this can lead to different dispatch for objects that look similar:</p>
+<pre class="r"><code>x1 &lt;- 1:5
+class(x1)</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>s3_dispatch(mean(x1))</code></pre>
+<pre><code>##    mean.integer
+##    mean.numeric
+## -&gt; mean.default</code></pre>
+<pre class="r"><code>x2 &lt;- structure(x1, class = &quot;integer&quot;)
+class(x2)</code></pre>
+<pre><code>## [1] &quot;integer&quot;</code></pre>
+<pre class="r"><code>s3_dispatch(mean(x2))</code></pre>
+<pre><code>##    mean.integer
+## -&gt; mean.default</code></pre>
+</div>
+<div id="internal-generics" class="section level2">
+<h2><span class="header-section-number">6.6</span> Internal generics</h2>
+<p>Some S3 generics, like <code>[</code>, <code>sum()</code>, and <code>cbind()</code>, don’t call <code>UseMethod()</code> because they are implemented in C. Instead, they call the C functions <code>DispatchGroup()</code> or <code>DispatchOrEval()</code>. These functions are called internal generics, because they do dispatch internally, in C code. Internal generics only exist in base R, so you can not create an internal generic in a package.</p>
+<p><code>s3_dispatch()</code> shows internal generics by including the name of the generic at the bottom of the method class. If this method is called, all the work happens in C code, typically using [switchpatch].</p>
+<pre class="r"><code>s3_dispatch(Sys.time()[1])</code></pre>
+<pre><code>## -&gt; [.POSIXct
+##    [.POSIXt
+##    [.default
+##  * [</code></pre>
 </div>
 </div>
 

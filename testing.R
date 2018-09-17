@@ -7,19 +7,66 @@ library(rlang)
 library(rlist)
 library(pryr)
 library(sloop)
+library(lubridate)
+
+
+x <- 1:2
+s3_dispatch(x[1]) # [.integer is top of dispatch list
+
+
+
+class(x) # integer
+attributes(x) # note that there is no class attribute even though x has a class
+is.object(x) # not an object
+
+# define [.integer method
+`[.integer` <- function(x, y) "hi"
+x[1] # 1 ## [ does not dispatch to [.integer, internal generic `[` is called directly
+
+# turn x into an object
+attr(x, "class") <- "integer" # assign class attribute of integer
+attributes(x) # there is now a class attribute
+is.object(x) # now an object
+x[1] # hi ## since x is now an object, [ dispatches to [.integer
 
 
 
 
 
-ll <- list(
-  a = c(A = 1, B = 2),
-  b = c(A = 3, B = 4)
-)
-bind_rows(ll)
+y <- 1:2
+class(y)
+attributes(y)
 
-# You can circumvent that behaviour with explicit splicing:
-bind_rows(!!!ll)
+class(y) <- "integer"
+attributes(y)
+
+attr(y, "class") <- "integer" 
+attributes(y)
+
+
+attr(x, "class") <- "integer"
+class(x)
+
+is.object(x)
+s3_dispatch(x[1])
+
+
+class(m) 
+#> [1] "numeric"
+s3_dispatch(mtcars[1])
+#> -> [.data.frame
+#>    [.default
+#>  * [
+
+
+
+
+
+
+
+
+
+
 
 
 methods(Math)
@@ -45,61 +92,12 @@ abs(tt)
 uu <- structure(-1)
 s3_dispatch(abs(uu))
 abs(uu)
-
-
-
 s3_dispatch(+date)
 
 
+View(.__S3MethodsTable__.)
 
-new_my_class <- function(x, y, ..., subclass = NULL) {
-  stopifnot(is.numeric(x))
-  stopifnot(is.logical(y))
-  
-  structure(
-    x,
-    y = y,
-    ...,
-    class = c(subclass, "my_class")
-  )
-}
-
-
-
-d <- 1:3
-
-v1 <- new_my_class(d, TRUE)
-v1
-str(v1)
-class(v1)
-
-new_subclass <- function(x, y, z) {
-  stopifnot(is.character(z))
-  new_my_class(x, y, z = z, subclass = "subclass")
-}
-
-v2 <- new_subclass(1:3, TRUE, "test")
-v2
-str(v2)
-class(v2)
-
-
-as_new_my_class <- function(x, ...) {
-  UseMethod("as_new_my_class")
-}
-
-as_my_class.sub_class <- function(x) {
-  pc <- new_my_class(x, attr(x, "y"))
-  attr(pc, "z") <- NULL
-  pc
-}
-
-v11 <- as_new_my_class(v2)
-v11
-str(v11)
-class(v11)
-
-
+ls.str(.__S3MethodsTable__., all.names = TRUE)
 
 
 
